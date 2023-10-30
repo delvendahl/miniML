@@ -4,7 +4,7 @@
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-%23FF6F00.svg?style=flat&logo=TensorFlow&logoColor=white)
 
 
-<img align="right" width="100" height="100" src="/Users/igor/Projects/Data analysis/miniML-release/miniML/minML_icon.png">
+<img align="right" width="100" height="100" src="minML_icon.png">
 
 
 This repository contains the code used in the following publication:  
