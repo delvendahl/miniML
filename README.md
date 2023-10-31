@@ -1,4 +1,4 @@
-<img align="left" width="100" height="100" src="minML_icon.png">
+<img align="left" width="110" height="110" src="minML_icon.png">
 
 # miniML: A deep learning framework for synaptic event detection
 
