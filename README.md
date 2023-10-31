@@ -1,10 +1,10 @@
-<img align="left" width="100" height="100" src="minML_icon.png">
+<img align="left" width="90" height="90" src="minML_icon.png">
 
 # miniML: A deep learning framework for synaptic event detection
 
 [![minimal Python version](https://img.shields.io/badge/Python%3E%3D-3.9-grey.svg?style=for-the-badge&logo=python&labelColor=3670A0&logoColor=white)](https://www.anaconda.com/download/)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-%23FF6F00.svg?style=for-the-badge&logo=TensorFlow&logoColor=white)](https://www.tensorflow.org)
-[![DOI](https://img.shields.io/badge/DOI-TBD-grey.svg?style=for-the-badge&labelColor=green&logoColor=white)](https://www.dx.doi.org)
+[![DOI](https://img.shields.io/badge/DOI-TBD-grey.svg?style=for-the-badge&logo=doi&labelColor=green&logoColor=white)](https://dx.doi.org)
 
 
 This repository contains the code described in the following publication:  
@@ -27,11 +27,11 @@ To use miniML, clone the GitHub Repositiory and install the requirements. Python
 
 ### ⏱ RUNNING MINIML
 
-First, a miniML *trace* object needs to be created containing 1d timeseries data. Currently, miniML supports loading from HEKA .dat files, Axon .abf files as well as HDF .h5 files. Other files formats need to be imported as Python objects.
+First, a miniML *trace* object needs to be created containing 1d timeseries data. Currently, miniML supports loading from HEKA .dat files, Axon .abf files as well as HDF .h5 files. Data in other file formats need to be imported as Python objects.
 
-Next, a miniML *detection* object can be created, specifying a miniML *model* file to use as well as the *trace* object to operate on. 
+Next, a miniML *detection* object can be created. Here, one needs to specify a miniML *model* file to use as well as the *trace* object to operate on. 
 
-Finally, model inference can be run using the *detect_events()* method. 
+Finally, model inference can be run using the *detect_events()* method. This method will run miniML over the given data using the specified model. Runtime will depend on data length.
 
 
 ### 💡 EXAMPLE
