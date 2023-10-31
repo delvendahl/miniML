@@ -1,4 +1,4 @@
-<img align="right" width="100" height="100" src="minML_icon.png">
+<img align="left" width="100" height="100" src="minML_icon.png">
 
 # miniML: A deep learning framework for synaptic event detection
 
@@ -11,20 +11,25 @@ O'Neill P.S., Baccino Calace M., Rupprecht P., Friedrich R.W., Müller, M., and 
 (2023) Deep learning-based detection of spontaneous synaptic events. _bioRxiv_ XXX ([doi:xxx](https://tbd))  
 
 
----
+
+### 💻 INSTALLATION
 
 
 miniML is a deep-learning-based tool to detect synaptic events in 1d timeseries data. In this repository, we provide pretrained models and Python code to run model inference on recorded data. In addition, an application example is included.
 
 
-To run miniML, clone the GitHub Repositiory and install the requirements
+To use miniML, clone the GitHub Repositiory and install the requirements
 (run `pip install -r requirements.txt`). Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. 
 
+
+### ⏱ RUNNING MINIML
+
+
+### 💡 EXAMPLE
 
 The folder "Example/" contains an example recording from a MF–GC synapse together with a commented Jupyter Notebook illustrating the use of miniML.
 
 
 
----  
-Contact:
+### ✉️ CONTACT
 philippsean.oneill@uzh.ch or igor.delvendahl@uzh.ch
