@@ -2,8 +2,9 @@
 
 # miniML: A deep learning framework for synaptic event detection
 
-[![minimal Python version](https://img.shields.io/badge/Python%3E%3D-3.9-3670A0.svg?style=flat&logo=python&logoColor=white)](https://www.anaconda.com/download/)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-%23FF6F00.svg?style=flat&logo=TensorFlow&logoColor=white)
+[![minimal Python version](https://img.shields.io/badge/Python%3E%3D-3.9-grey.svg?style=for-the-badge&logo=python&labelColor=3670A0&logoColor=white)](https://www.anaconda.com/download/)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-%23FF6F00.svg?style=for-the-badge&logo=TensorFlow&logoColor=white)](https://www.tensorflow.org)
+[![DOI](https://img.shields.io/badge/DOI-TBD-grey.svg?style=for-the-badge&labelColor=green&logoColor=white)](https://www.dx.doi.org)
 
 
 This repository contains the code described in the following publication:  
@@ -21,7 +22,7 @@ In this repository, we provide pretrained models and Python code to run model in
 
 To use miniML, clone the GitHub Repositiory and install the requirements. Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies, run 
 
-`pip install -r requirements.txt`. 
+`pip install -r requirements.txt`
 
 
 ### ⏱ RUNNING MINIML
