@@ -4,7 +4,7 @@
 
 [![minimal Python version](https://img.shields.io/badge/Python%3E%3D-3.9-grey.svg?style=for-the-badge&logo=python&labelColor=3670A0&logoColor=white)](https://www.anaconda.com/download/)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-%23FF6F00.svg?style=for-the-badge&logo=TensorFlow&logoColor=white)](https://www.tensorflow.org)
-[![DOI](https://img.shields.io/badge/DOI-TBD-grey.svg?style=for-the-badge&logo=doi&labelColor=green&logoColor=white)](https://dx.doi.org)
+[![DOI](https://img.shields.io/badge/DOI-biorxiv/2023/565316-grey.svg?style=for-the-badge&logo=doi&labelColor=green&logoColor=white)](https://dx.doi.org/BIORXIV/2023/565316)
 
 
 This repository contains the code described in the following publication:  
