@@ -20,7 +20,7 @@ In this repository, we provide pretrained models and Python code to run model in
 
 ### 💻 INSTALLATION
 
-To use miniML, clone the GitHub Repositiory and install the requirements. Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies, run 
+To use miniML, clone the GitHub Repositiory and install the requirements. Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies, run:
 
 `pip install -r requirements.txt`
 
