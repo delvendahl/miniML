@@ -36,7 +36,7 @@ Finally, model inference can be run using the *detect_events()* method. This met
 
 ### 💡 EXAMPLE
 
-The folder "Example/" contains an example recording from a MF–GC synapse together with a commented Jupyter Notebook illustrating the use of miniML.
+The folder "example_data/" contains an example recording from a MF–GC synapse together with a commented Jupyter Notebook ([tutorial](tutorial.ipynb)) illustrating the use of miniML.
 
 
 
