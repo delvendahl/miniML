@@ -1,9 +1,26 @@
 from __future__ import annotations
 import numpy as np
 
+
 # - - - - - - - - - - - - - - - - - - - - - - -
 # functions for evaluation of individual events
 def get_event_peak(data, event_num, add_points, window_size, diffs):
+    """
+    A function that calculates the peak position of an event in a given dataset.
+
+    Parameters:
+    - data: The dataset containing the event.
+    - event_num: The index of the event in the dataset.
+    - add_points: The number of points to add to the event index.
+    - window_size: The size of the window to consider when calculating the peak position.
+    - diffs: The differences between the events in the dataset.
+
+    Returns:
+    - peak_position: The index of the peak position in the dataset.
+
+    Note: This function assumes that the dataset is a numpy array.
+    """
+
     if diffs[event_num] < window_size:
         right_window_limit = int(diffs[event_num]/2)
     
@@ -14,8 +31,24 @@ def get_event_peak(data, event_num, add_points, window_size, diffs):
 
     return peak_position
 
+
 def get_event_baseline(data, event_num, add_points, diffs, peak_positions, positions):
-    # Get baseline and onset
+    """
+    Calculate the baseline and baseline variance for an event in the given data.
+
+    Parameters:
+    - data (np.ndarray): The input data.
+    - event_num (int): The index of the event.
+    - add_points (int): The number of additional points to consider.
+    - diffs (np.ndarray): The differences between consecutive peak positions.
+    - peak_positions (np.ndarray): The positions of the peaks.
+    - positions (np.ndarray): The positions of the events.
+
+    Returns:
+    - baseline (float): The calculated baseline.
+    - bsl_var (float): The calculated baseline variance.
+    """
+
     previous_peak_in_trace = int(peak_positions[event_num-1] + positions[event_num-1] - add_points)
     steepest_rise_in_trace = int(positions[event_num])
     if (steepest_rise_in_trace - previous_peak_in_trace) <= (add_points*1.2) and event_num != 0:
@@ -50,11 +83,24 @@ def get_event_baseline(data, event_num, add_points, diffs, peak_positions, posit
 
 
 def get_event_onset(data, peak_position, baseline, baseline_var):
+    """
+    Calculate the position of the event onset relative to the peak position.
+
+    Parameters:
+        data (numpy.ndarray): The input data array.
+        peak_position (int): The position of the peak in the data array.
+        baseline (float): The baseline value.
+        baseline_var (float): The variance of the baseline.
+
+    Returns:
+        int: The position of the event onset relative to the peak position.
+    """
+    
     var_factor: float=0.25
 
     bsl_thresh = baseline + var_factor * baseline_var
     arr = data[0:peak_position]
-    below_threshold = arr[::-1] < bsl_thresh # arr[::-1] inverts the event
+    below_threshold = arr[::-1] < bsl_thresh
     try:
         level_crossing = np.argmax(below_threshold)
     except ValueError:
@@ -68,18 +114,33 @@ def get_event_onset(data, peak_position, baseline, baseline_var):
     return onset_position
 
 
-def get_event_risetime(data, peak_position, onset_position):
-    # get 10-90% risetime
-    min_perc, max_perc=10, 90
+def get_event_risetime(data, peak_position: int, onset_position: int):
+    """
+    Get the 10-90% risetime of an event.
+
+    Parameters:
+    - data: A list or array-like object containing the event data.
+    - peak_position (int): An integer representing the index of the peak position in the event data.
+    - onset_position (int): An integer representing the index of the onset position in the event data.
+
+    Returns:
+    - risetime: A float representing the 10-90% risetime of the event.
+    - min_position_rise: An integer representing the index of the minimum position in the risetime range.
+    - max_position_rise: An integer representing the index of the maximum position in the risetime range.
+    """
+
+    min_perc = 10
+    max_perc = 90
     if not (0 <= min_perc < max_perc) and (min_perc < max_perc <= 100):
         raise ValueError('Invalid risetime parameters.')
     
     rise_data = data[onset_position:peak_position]
     amp = data[peak_position] - data[onset_position]
     min_level = data[onset_position] + amp * min_perc/100
-    max_level = data[onset_position]+ amp * max_perc/100
-    rise_min_threshold = rise_data[::-1] < min_level # arr[::-1] inverts the event
-    rise_max_threshold = rise_data[::-1] < max_level # arr[::-1] inverts the event
+    max_level = data[onset_position] + amp * max_perc/100
+    rise_min_threshold = rise_data[::-1] < min_level
+    rise_max_threshold = rise_data[::-1] < max_level
+
     try:
         rise_min_level_crossing = np.argmax(rise_min_threshold)
         rise_max_level_crossing = np.argmax(rise_max_threshold)
@@ -97,7 +158,6 @@ def get_event_risetime(data, peak_position, onset_position):
         min_position_rise = onset_position
         max_position_rise = peak_position
         risetime = (max_position_rise - min_position_rise)*0.8
-
     else:
         risetime, _ = max_position_rise - min_position_rise, (min_position_rise , max_position_rise)
         
