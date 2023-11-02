@@ -9,7 +9,7 @@
 
 This repository contains the code described in the following publication:  
 O'Neill P.S., Baccino Calace M., Rupprecht P., Friedrich R.W., Müller, M., and Delvendahl, I. 
-(2023) Deep learning-based detection of spontaneous synaptic events. _bioRxiv_ ([doi:BIORXIV/2023/565316](https://dx.doi.org/BIORXIV/2023/565316))  
+(2023) Deep learning-based synaptic event detection. _bioRxiv_ ([doi:BIORXIV/2023/565316](https://dx.doi.org/BIORXIV/2023/565316))  
 
 
 ### 🧠 ABOUT
