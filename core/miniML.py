@@ -344,15 +344,12 @@ class MiniTrace():
         plt.show()
 
 
-    def detrend(self, type: str='linear', segment: int=0) -> MiniTrace:
+    def detrend(self, detrend_type: str='linear', num_segments: int=0) -> MiniTrace:
         ''' Detrend the data. '''
         from scipy.signal import detrend
-        if segment > 1:
-            dat_len = self.trace.data.shape[0]
-            breaks = np.arange(dat_len/segment, dat_len, dat_len/segment, dtype=np.int64)
-        else:
-            breaks = 0
-        detrended = detrend(self.trace.data, bp=breaks, type=type)
+        num_data = self.trace.data.shape[0]
+        breaks = np.arange(num_data/num_segments, num_data, num_data/num_segments, dtype=np.int64) if num_segments > 1 else 0
+        detrended = detrend(self.trace.data, bp=breaks, type=detrend_type)
 
         return MiniTrace(detrended, self.sampling, y_unit=self.y_unit, filename=self.filename)
 
@@ -415,13 +412,13 @@ class MiniTrace():
         return MiniTrace(resampled_data, sampling_interval=new_sampling_interval, y_unit=self.y_unit, filename=self.filename)
 
 
-    def _extract_event_data(self, positions: np.ndarray | list, before: int, after: int) -> np.ndarray:
+    def _extract_event_data(self, positions: np.ndarray, before: int, after: int) -> np.ndarray:
         '''
         Extracts events from trace
 
         Parameters
         ------
-        positions: np.ndarray | list
+        positions: np.ndarray
             The event positions.
         before: int
             Number of samples before event position for event extraction. Positions-before must be positive.
@@ -442,7 +439,6 @@ class MiniTrace():
         indices = positions + np.arange(-before, after)[:, None, None]
 
         return np.squeeze(self.data[indices].T, axis=1)
-
 
 
 class EventStats():
@@ -592,10 +588,11 @@ class EventDetection():
 
     def events_present(self) -> bool:
         ''' Checks if events are present '''
-        if self.events.shape[0] == 0:
-            print('No events present')
-
-        return self.events.shape[0] > 0
+        num_events = self.events.shape[0]
+        if num_events == 0:
+            return False
+        else:
+            return True
 
 
     def load_model(self, filepath: str, threshold: float=0.5, compile=True) -> None:
@@ -894,8 +891,8 @@ class EventDetection():
     def _get_average_event_properties(self) -> dict:
         '''extracts event properties for the event average the same way the individual events are analysed'''
         ### Prepare data
-        diffs = [int(self.window_size/3)*10]*3 # Difference in points between the event locations
-        add_points = int(self.window_size/3)
+        diffs = [int(self.window_size / 3) * 10] * 3 # Difference in points between the event locations
+        add_points = int(self.window_size / 3)
 
         ### Set parameters for charge calculation
         factor_charge = 4
@@ -1042,7 +1039,7 @@ class EventDetection():
         if event_num > self.events.shape[0]:
             print('Plot error: Event does not exist')
             return
-        _ = plt.figure('Event')
+        fig = plt.figure('Event')
         plt.plot(self.events[event_num])
         plt.show()
 
@@ -1051,7 +1048,7 @@ class EventDetection():
         ''' Plot all events (overlaid) '''
         if not self.events_present():
             return
-        _ = plt.figure('Events')
+        fig = plt.figure('Events')
         plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, self.events.T)
         plt.ylabel(f'{self.trace.y_unit}')
         plt.xlabel('time (s)')
@@ -1084,7 +1081,7 @@ class EventDetection():
         '''
         if not self.events_present():
             return
-        _ = plt.figure('Event average and fit')
+        fig = plt.figure('Event average and fit')
         plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, self.events.T, c='#014182', alpha=0.3)
         
         # average
@@ -1099,12 +1096,8 @@ class EventDetection():
                 self.fitted_avg_event['t_decay'],
                 self.fitted_avg_event['x_offset'])
 
-        plt.plot(
-            np.arange(int(self.window_size/6), self.events.shape[1]) * self.trace.sampling,
-            fitted_ev,
-                c='#f0833a',
-                ls='--',
-                label='fit')
+        plt.plot(np.arange(int(self.window_size/6), self.events.shape[1]) * self.trace.sampling,
+                 fitted_ev, c='#f0833a', ls='--', label='fit')
 
         plt.ylabel(f'{self.trace.y_unit}')
         plt.xlabel('time (s)')
@@ -1126,7 +1119,7 @@ class EventDetection():
             return
         histtype = 'step' if cumulative else 'bar'
         ylab_str = 'cumulative frequency' if cumulative else 'count'
-        plot = plt.figure(f'{plot}_histogram')
+        fig = plt.figure(f'{plot}_histogram')
         plt.hist(data, bins='auto', cumulative=cumulative, density=cumulative, histtype=histtype)
         plt.ylabel(ylab_str)
         plt.xlabel(xlab_str)
@@ -1149,7 +1142,7 @@ class EventDetection():
         trace_cols = '#014182'
         thresh_cols = '#f0833a'
                 
-        _ = plt.figure('prediction')
+        fig = plt.figure('prediction')
         if include_data:
             ax1 = plt.subplot(211)
         prediction_x = np.arange(0, len(self.prediction)) * self.trace.sampling * self.stride_length
@@ -1212,7 +1205,7 @@ class EventDetection():
         save_fig: str
             Filename to save the figure to (in SVG format). If provided, plot will not be shown.
         '''
-        _ = plt.figure('event locations')
+        fig = plt.figure('event locations')
         ax1 = plt.subplot(211)
         prediction_x = np.arange(0, len(self.prediction)) * self.stride_length
         if plot_filtered:
@@ -1223,7 +1216,7 @@ class EventDetection():
         plt.ylabel('probability')
 
         plt.tick_params('x', labelbottom=False)
-        _ = plt.subplot(212, sharex=ax1)
+        ax2 = plt.subplot(212, sharex=ax1)
         plt.plot(self.trace.data)
         try:
             plt.scatter(self.event_locations, self.trace.data[self.event_locations], c='orange', s=20, zorder=2)
@@ -1242,8 +1235,8 @@ class EventDetection():
             if not save_fig.endswith('.svg'):
                 save_fig = save_fig + '.svg'
             plt.savefig(save_fig, format='svg')
-            return
-        plt.show()
+        else:
+            plt.show()
 
 
     def plot_detection(self, save_fig: str='') -> None:
@@ -1253,14 +1246,13 @@ class EventDetection():
         save_fig: str
             Filename to save the figure to (in SVG format).
         '''
-        _ = plt.figure('detection')
+        fig = plt.figure('detection')
         plt.plot(self.trace.time_axis, self.trace.data, zorder=1)
-        if(hasattr(self, 'event_stats')):
+        if hasattr(self, 'event_stats'):
             plt.scatter(self.event_peak_times, self.trace.data[self.event_peak_locations], c='orange', s=20, zorder=2)
             dat_range = np.abs(np.max(self.trace.data) - np.min(self.trace.data))
             dat_min = np.min(self.trace.data)
-            plt.eventplot(self.event_peak_times, lineoffsets=dat_min - dat_range/15, 
-                          linelengths=dat_range/20, color='k', lw=1.5)
+            plt.eventplot(self.event_peak_times, lineoffsets=dat_min - dat_range/15, linelengths=dat_range/20, color='k', lw=1.5)
 
         plt.xlabel('s')
         plt.ylabel(f'{self.trace.y_unit}')
