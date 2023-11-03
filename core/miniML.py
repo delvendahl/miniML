@@ -19,13 +19,42 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 #  --------------------------------------------------  #
-#  miniML functions                                    #
-def exp_fit(x, amp, tau, offset) -> np.ndarray:
-    ''' x: time, amp: amplitude, tau: decay constant, offset: baseline '''
+#  general functions                                    #
+def exp_fit(x: np.ndarray, amp: float, tau: float, offset: float) -> np.ndarray:
+    """
+    Fits an exponential curve to the given data.
+
+    Parameters:
+        x (np.ndarray): The input data.
+        amp (float): The amplitude of the exponential curve.
+        tau (float): The time constant of the exponential curve.
+        offset (float): The offset of the exponential curve.
+
+    Returns:
+        np.ndarray: The fitted exponential curve.
+    """
+
     return amp * np.exp(-(x - x[0]) / tau) + offset
 
 
-def mEPSC_template(x, a, t_rise, t_decay, x0) -> np.ndarray:
+def mEPSC_template(x: np.ndarray, a: float, t_rise: float, t_decay: float, x0: float) -> np.ndarray:
+    """
+    Generates a template miniature excitatory postsynaptic current (mEPSC) based on the given parameters.
+
+    Parameters:
+        x (np.ndarray): An array of x values.
+        a (float): The amplitude of the mEPSCs.
+        t_rise (float): The rise time constant of the mEPSCs.
+        t_decay (float): The decay time constant of the mEPSCs.
+        x0 (float): The onset time point for the mEPSCs.
+
+    Returns:
+        np.ndarray: An array of y values representing an mEPSC template.
+
+    Note:
+        - The formula used to calculate the template is y = a * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay).
+        - Any values of x that are less than x0 will be set to 0 in the resulting array.
+    """
     y = a * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay)
     y[x < x0] = 0
 
@@ -33,7 +62,19 @@ def mEPSC_template(x, a, t_rise, t_decay, x0) -> np.ndarray:
 
 
 def lowpass_filter(data: np.ndarray, sampling_rate: float, lowpass: float=500, order: int=4) -> np.ndarray:
-    ''' lowpass filter an ndarray using a butterworth forward-backward filter with specified cutoff '''
+    """
+    Apply a lowpass filter to the input data.
+
+    Parameters:
+        data (np.ndarray): The input data to be filtered.
+        sampling_rate (float): The sampling rate of the input data.
+        lowpass (float, optional): The cutoff frequency for the lowpass filter. Defaults to 500.
+        order (int, optional): The order of the filter. Defaults to 4.
+
+    Returns:
+        np.ndarray: The filtered data.
+
+    """
     nyq = sampling_rate * 0.5
     sos = butter(order, lowpass / nyq, btype='low', output='sos')
 
@@ -41,7 +82,16 @@ def lowpass_filter(data: np.ndarray, sampling_rate: float, lowpass: float=500, o
 
 
 @tf.function
-def minmax_scaling(x):
+def minmax_scaling(x: tf.Tensor):
+    """
+    Applies min-max scaling to the input tensor.
+
+    Args:
+        x (tf.Tensor): The input tensor to be scaled.
+
+    Returns:
+        tf.Tensor: The scaled tensor.
+    """
     x_min = tf.expand_dims(tf.math.reduce_min(x), axis=-1)
     x_max = tf.expand_dims(tf.math.reduce_max(x), axis=-1)
 
