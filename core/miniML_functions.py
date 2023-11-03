@@ -129,15 +129,15 @@ def get_event_risetime(data, peak_position: int, onset_position: int):
     - max_position_rise: An integer representing the index of the maximum position in the risetime range.
     """
 
-    min_perc = 10
-    max_perc = 90
-    if not (0 <= min_perc < max_perc) and (min_perc < max_perc <= 100):
+    min_percentage = 10
+    max_percentage = 90
+    if not (0 <= min_percentage < max_percentage) and (min_percentage < max_percentage <= 100):
         raise ValueError('Invalid risetime parameters.')
     
     rise_data = data[onset_position:peak_position]
-    amp = data[peak_position] - data[onset_position]
-    min_level = data[onset_position] + amp * min_perc/100
-    max_level = data[onset_position] + amp * max_perc/100
+    amplitude = data[peak_position] - data[onset_position]
+    min_level = data[onset_position] + amplitude * min_percentage / 100
+    max_level = data[onset_position] + amplitude * max_percentage / 100
     rise_min_threshold = rise_data[::-1] < min_level
     rise_max_threshold = rise_data[::-1] < max_level
 
@@ -150,32 +150,30 @@ def get_event_risetime(data, peak_position: int, onset_position: int):
         min_position_rise = onset_position
         max_position_rise = peak_position
 
-    if max_position_rise <= min_position_rise:
+    if max_position_rise <= min_position_rise or min_position_rise==onset_position or max_position_rise==peak_position:
         min_position_rise = onset_position
         max_position_rise = peak_position
-        risetime = (max_position_rise - min_position_rise)*0.8
-    elif min_position_rise==onset_position or max_position_rise==peak_position:
-        min_position_rise = onset_position
-        max_position_rise = peak_position
-        risetime = (max_position_rise - min_position_rise)*0.8
+        risetime = (max_position_rise - min_position_rise) * 0.8
     else:
-        risetime, _ = max_position_rise - min_position_rise, (min_position_rise , max_position_rise)
+        risetime = max_position_rise - min_position_rise
         
     return risetime, min_position_rise, max_position_rise
 
 
 def get_event_halfdecay_time(data, peak_position, baseline):
-    '''Calculate halfdecay time (in points) in a stretch of data '''
+    '''Calculate halfdecay time (in points) in a stretch of data.'''
     level = baseline + (data[peak_position] - baseline) / 2
-    halfdecay_level = data[peak_position:] < level
-    halfdecay_level =  np.argmax(halfdecay_level)
-    halfdecay_position, halfdecay_time = int(peak_position + halfdecay_level), halfdecay_level
-
+    halfdecay_level = np.argmax(data[peak_position:] < level)
+    
+    halfdecay_position = int(peak_position + halfdecay_level)
+    halfdecay_time = halfdecay_level
+    
     return halfdecay_position, halfdecay_time
 
 
-def get_event_charge(trace_data, start_point, end_point, baseline, sampling):
+def get_event_charge(trace_data, start_point, end_point, baseline, samplitudeling):
     '''Calculate charge in a give trace between start and endpoint'''
     integrate_array = (trace_data[start_point:end_point]) - baseline
-    charge = np.trapz(integrate_array, dx=sampling)
+    charge = np.trapz(integrate_array, dx=samplitudeling)
+
     return charge
