@@ -24,7 +24,7 @@ To use miniML, clone the GitHub Repositiory and install the requirements. The Py
 
 `pip install -r requirements.txt`
 
-miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation isntructions for these requirements may depend on the specific hardware and OS and can be found online.
+miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
 
 ### ⏱ RUNNING MINIML
 
