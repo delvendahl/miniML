@@ -171,9 +171,9 @@ def get_event_halfdecay_time(data, peak_position, baseline):
     return halfdecay_position, halfdecay_time
 
 
-def get_event_charge(trace_data, start_point, end_point, baseline, samplitudeling):
+def get_event_charge(trace_data, start_point, end_point, baseline, sampling):
     '''Calculate charge in a give trace between start and endpoint'''
     integrate_array = (trace_data[start_point:end_point]) - baseline
-    charge = np.trapz(integrate_array, dx=samplitudeling)
+    charge = np.trapz(integrate_array, dx=sampling)
 
     return charge
