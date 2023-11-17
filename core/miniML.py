@@ -934,9 +934,12 @@ class EventDetection():
 
 
     def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, apply_peak_criteria: bool=False, 
-                      peak_w:int=10, rel_prom_cutoff: float=0.25, convolve_win: int=20, resampling_factor: float=1.0) -> None:
+                      peak_w:int=10, rel_prom_cutoff: float=0.25, convolve_win: int=20, resampling_factor: float=None) -> None:
         ''' Wrapper function to perform event detection, extraction and analysis '''
-        self.resampling_factor = resampling_factor
+        if resampling_factor is None:
+            self.resampling_factor = 600/self.window_size
+        else:
+            self.resampling_factor = resampling_factor
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
