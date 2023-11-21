@@ -934,12 +934,36 @@ class EventDetection():
 
 
     def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, apply_peak_criteria: bool=False, 
-                      peak_w:int=10, rel_prom_cutoff: float=0.25, convolve_win: int=20, resampling_factor: float=None) -> None:
-        ''' Wrapper function to perform event detection, extraction and analysis '''
-        if resampling_factor is None:
+                      peak_w:int=10, rel_prom_cutoff: float=0.25, convolve_win: int=20, resample_to_600: bool=True) -> None:
+        '''
+        Wrapper function to perform event detection, extraction and analysis
+        
+        Parameters
+        ----------
+        stride: int, default = None
+            The stride used during prediction. If not specified, it will be set to 1/30 of the window size
+        eval: bool, default = False
+            Whether to evaluate detected events.
+        verbose: bool, default = True
+            Whether to print the output. 
+        apply_peak_criteria: bool, default = False
+            Whether to apply peak criteria. If true, only prediction peaks that fulfill both of the following criteria are considered:
+                - peak width >= average peak width - std of peak widths
+                - peak height >= 0.8
+        peak_w: int, default = 10
+            The minimum prediction peak width.
+        rel_prom_cutoff: int, float = 0.25
+            The relative prominence cutoff. Overlapping events are separated based on a peak-finding in the first derivative. To be considered
+            an event, any detected peak must have at least 25% prominence of the largest detected prominence.
+        convolve_win: int, default = 20
+            Window size for the hanning window used to filter the data and derivative for event analysis.
+        resample_to_600: bool, default = True
+            Whether to resample the the data to match a 600 point window. Should always be true, unless a model was trained with a different window size.
+        '''
+        if resample_to_600:
             self.resampling_factor = 600/self.window_size
         else:
-            self.resampling_factor = resampling_factor
+            self.resampling_factor = 1
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
