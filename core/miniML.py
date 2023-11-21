@@ -527,8 +527,12 @@ class EventDetection():
         The data trace to be analysed.
     window_size: int, default=600
         The window size for the event detection (samples per event window).
-    direction: str, default='negative'
-        Event direction. Should be 'negative' or any other string for positive events.
+    event_direction: str, default='negative'
+        Event direction in data. Should be 'negative' or any other string for positive events.
+    training_direction: str, default='negative'
+        Event direction during training. Should be 'negative' or 'positive'. All provided GitHub
+        models were trained with negative events (improved TL performance). If a model is trained
+        with positive events, this needs to be specified to run inference.
     batch_size: int, default=128
         The batch size for the event detection (used in model.predict).
     model_path: str, default=''
@@ -554,12 +558,13 @@ class EventDetection():
     event_stats: EventStats object
         Contains event statistics
     '''
-    def __init__(self, data: MiniTrace, window_size: int=600, direction: str='negative', batch_size: int=128,
-                 model_path: str='', model_threshold: float=None, compile_model=True, callbacks: list=[]) -> None:
+    def __init__(self, data: MiniTrace, window_size: int=600, event_direction: str='negative', training_direction: str='negative',
+                 batch_size: int=128, model_path: str='', model_threshold: float=None, compile_model=True, callbacks: list=[]) -> None:
         self.trace = data
         self.prediction = None
         self.window_size = window_size
-        self.direction = direction
+        self.event_direction = event_direction
+        self.training_direction = training_direction
         self.event_locations = np.array([])
         self.event_scores = np.array([])
         self.events = np.array([])
@@ -572,13 +577,20 @@ class EventDetection():
             self.callbacks = callbacks
 
     @property
-    def direction(self):
-        return self._direction
+    def event_direction(self):
+        return self._event_direction
 
-    @direction.setter
-    def direction(self, direction_str: str):
-        self._direction = -1 if direction_str.lower() == 'negative' else 1
+    @event_direction.setter
+    def event_direction(self, event_direction_str: str):
+        self._event_direction = -1 if event_direction_str.lower() == 'negative' else 1
 
+    @property
+    def training_direction(self):
+        return self._training_direction
+
+    @training_direction.setter
+    def training_direction(self, training_direction_str: str):
+        self._training_direction = -1 if training_direction_str.lower() == 'negative' else 1
 
     def _init_arrays(self, attr_names, shape, dtype):
         ''' initialize multiple 1d ndarrays with given shape containing NaNs '''
@@ -615,7 +627,9 @@ class EventDetection():
 
         # resample values for prediction:
         trace = resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
-        if self.direction == 1:
+
+        # invert the trace if event_direction and training_direction are different.
+        if self.event_direction != self.training_direction:
             trace *= -1
 
         win_size = self.window_size*self.resampling_factor
@@ -656,7 +670,7 @@ class EventDetection():
         
         # set all values for resampling traces
         trace = resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
-        trace *= self.direction # (-1 = 'negative', 1 else)
+        trace *= self.event_direction # (-1 = 'negative', 1 else)
         
         win_size = int(self.window_size*self.resampling_factor)
         stride = int(self.stride_length*self.resampling_factor)
@@ -760,7 +774,7 @@ class EventDetection():
         else:
             mini_trace = self.trace.data
 
-        mini_trace *= self.direction   
+        mini_trace *= self.event_direction   
 
         self._init_arrays(['event_peak_locations', 'event_start', 'min_positions_rise', 'max_positions_rise'], positions.shape[0], dtype='np.int64')
         self._init_arrays(['event_peak_values', 'event_bsls', 'decaytimes', 'charges', 'risetimes', 'half_decay'], positions.shape[0], dtype='np.float64')               
@@ -769,7 +783,7 @@ class EventDetection():
             indices = position + np.arange(-add_points, after)
             data = mini_trace[indices]
             if filter:
-                data_unfiltered = self.trace.data[indices]*self.direction
+                data_unfiltered = self.trace.data[indices]*self.event_direction
             else:
                 data_unfiltered = data
             
@@ -858,11 +872,11 @@ class EventDetection():
                 num_combined_charge_events = 1
 
         ## Convert units
-        self.event_peak_values *= self.direction
-        self.event_bsls *= self.direction
+        self.event_peak_values *= self.event_direction
+        self.event_bsls *= self.event_direction
         self.risetimes *= self.trace.sampling
         self.decaytimes *= self.trace.sampling
-        self.charges *= self.direction
+        self.charges *= self.event_direction
 
         ## map indices back to original trace
         for ix, position in enumerate(positions):
@@ -883,7 +897,7 @@ class EventDetection():
 
         ### Set parameters for charge calculation
         factor_charge = 4
-        data = np.mean(self.events, axis=0) * self.direction
+        data = np.mean(self.events, axis=0) * self.event_direction
 
         event_peak = get_event_peak(data=data,event_num=0,add_points=add_points,window_size=self.window_size,diffs=diffs)
         event_peak_value = data[event_peak]
@@ -898,11 +912,11 @@ class EventDetection():
 
         ## Convert units back.
         event_peak_value = event_peak_value - baseline
-        event_peak_value *= self.direction
-        baseline *= self.direction
+        event_peak_value *= self.event_direction
+        baseline *= self.event_direction
         risetime *= self.trace.sampling
         halfdecay_time *= self.trace.sampling
-        charge *= self.direction
+        charge *= self.event_direction
         
         results = {
             'amplitude':event_peak_value,
@@ -986,7 +1000,7 @@ class EventDetection():
     def _get_average_event_decay(self) -> float:
         ''' Returns the decay time constant of the averaged events '''
         event_x = np.arange(0, self.events.shape[1]) * self.trace.sampling
-        event_avg = np.average(self.events, axis=0) * self.direction
+        event_avg = np.average(self.events, axis=0) * self.event_direction
         fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
         fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
                            p0=[np.amax(event_avg), self.events.shape[1] / 50 * self.trace.sampling, 0])
@@ -1312,7 +1326,7 @@ class EventDetection():
             f.attrs['miniml_model_threshold'] = self.model_threshold
             f.attrs['stride'] = self.stride_length
             f.attrs['window'] = self.window_size
-            f.attrs['event_direction'] = self.direction
+            f.attrs['event_direction'] = self.event_direction
 
             if include_prediction:
                 f.create_dataset('prediction', data=self.prediction)
@@ -1443,7 +1457,7 @@ class EventDetection():
                 'convolve_win':self.convolve_win,
                 'min_peak_w':self.peak_w,
                 'rel_prom_cutoff':self.rel_prom_cutoff,
-                'event_direction':self.direction},
+                'event_direction':self.event_direction},
             'events':self.events}
 
 
@@ -1467,7 +1481,7 @@ class EventAnalysis(EventDetection):
         The raw data as miniML trace object.
     window_size: int
         Number of samples to extract for each individual event.
-    direction: str
+    event_direction: str
         The direction of the events.
     event_positions: np.ndarray or list
         The position(s) of detected events.
@@ -1476,8 +1490,8 @@ class EventAnalysis(EventDetection):
     eval_events: 
         Perform event analysis.
     '''
-    def __init__(self, trace, window_size, direction, event_positions, convolve_win, resampling_factor):
-        super().__init__(data=trace, window_size=window_size, direction=direction, convolve_win=convolve_win)
+    def __init__(self, trace, window_size, event_direction, event_positions, convolve_win, resampling_factor):
+        super().__init__(data=trace, window_size=window_size, event_direction=event_direction, convolve_win=convolve_win)
         self.add_points = int(self.window_size/3)
         self.resampling_factor = resampling_factor
         self.event_locations = event_positions[np.logical_and(
