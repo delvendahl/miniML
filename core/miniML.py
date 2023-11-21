@@ -681,8 +681,7 @@ class EventDetection():
         event_free_data = np.concatenate(split_data[::2]).ravel()
         threshold = int(4 * np.std(event_free_data))
 
-        event_locations, event_scores, rejected_events = [], [], []
-        removed_events = 0
+        event_locations, event_scores = [], []
 
         for i, position in enumerate(peak_properties['right_ips'] * stride): 
             if position < win_size:
@@ -698,15 +697,7 @@ class EventDetection():
                     peak_params[my_param] = peak_params[my_param][inds]
             
             if not len(peaks): # If no peak found: default argmax finding
-                if self.apply_peak_criteria: # if flag is set, apply criteria that peaks have to fulfill
-                    if (peak_properties['widths'][i] < np.mean(peak_properties['widths']) - np.std(peak_properties['widths'])) and (peak_properties['peak_heights'][i] < 0.8):
-                        removed_events += 1
-                        rejected_events.append(trace[start_pnts[i]:end_pnts[i]])
-                        continue
-                    else:
-                        peaks = np.array([np.argmax(smth_gradient[start_pnts[i]:end_pnts[i]])])
-                else:
-                    peaks = np.array([np.argmax(smth_gradient[start_pnts[i]:end_pnts[i]])])
+                peaks = np.array([np.argmax(smth_gradient[start_pnts[i]:end_pnts[i]])])
 
             for peak in peaks:
                 if (start_pnts[i] + peak) >= (trace.shape[0] - limit):
@@ -714,11 +705,7 @@ class EventDetection():
                 if start_pnts[i] + peak not in event_locations:
                     event_locations.append(start_pnts[i] + peak)
                     event_scores.append(peak_properties['peak_heights'][i])
-        
-        if self.apply_peak_criteria:
-            self.rejected_events = rejected_events
-            print(f'removed {removed_events} events via peak criteria')
-        
+
         ### Check for duplicates:
         if np.array(event_locations).shape[0] != np.unique(np.array(event_locations)).shape[0]:
             print('removed duplicates')
@@ -933,8 +920,8 @@ class EventDetection():
         return results
 
 
-    def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, apply_peak_criteria: bool=False, 
-                      peak_w:int=10, rel_prom_cutoff: float=0.25, convolve_win: int=20, resample_to_600: bool=True) -> None:
+    def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, peak_w:int=10,
+                      rel_prom_cutoff: float=0.25, convolve_win: int=20, resample_to_600: bool=True) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -946,10 +933,6 @@ class EventDetection():
             Whether to evaluate detected events.
         verbose: bool, default = True
             Whether to print the output. 
-        apply_peak_criteria: bool, default = False
-            Whether to apply peak criteria. If true, only prediction peaks that fulfill both of the following criteria are considered:
-                - peak width >= average peak width - std of peak widths
-                - peak height >= 0.8
         peak_w: int, default = 10
             The minimum prediction peak width.
         rel_prom_cutoff: int, float = 0.25
@@ -967,7 +950,6 @@ class EventDetection():
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
-        self.apply_peak_criteria = apply_peak_criteria
         self.add_points = int(self.window_size/3)
         if stride is None:
             self.stride_length = int(self.window_size/30)
@@ -1461,7 +1443,6 @@ class EventDetection():
                 'convolve_win':self.convolve_win,
                 'min_peak_w':self.peak_w,
                 'rel_prom_cutoff':self.rel_prom_cutoff,
-                'peak_crit_applied':self.apply_peak_criteria,
                 'event_direction':self.direction},
             'events':self.events}
 
