@@ -15,7 +15,7 @@ O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and 
 
 With the latest update, we include all the files required to generate and score the data to train a new model and use the model on your data. For the actual training, please refer to the following links to Kaggle:\
 Transfer learning: https://www.kaggle.com/code/philipponeill/miniml-transfer-learning \
-Full training: https://www.kaggle.com/code/philipponeill/miniml-full-training\
+Full training: https://www.kaggle.com/code/philipponeill/miniml-full-training \
 The dataset: https://www.kaggle.com/datasets/philipponeill/miniml-training-data
 
 We had to make one change that will impact scripts that have been written for the previous miniML version, namely that we split the direction parameter into two separate parameters, event_direction and training_direction (see also miniML documentation). in practice, this only means that you have to change direction to event_direction in your scripts.
