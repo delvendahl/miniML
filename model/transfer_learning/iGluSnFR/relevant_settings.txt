@@ -1,0 +1,9 @@
+Relevant settings:
+
+win_size = 600
+event_direction = 'positive'
+training_direction = 'negative'
+
+
+convolve_win = 5
+resample_to_600 = True

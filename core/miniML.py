@@ -669,8 +669,8 @@ class EventDetection():
         win = signal.windows.hann(self.convolve_win)
         
         # set all values for resampling traces
-        trace = resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
-        trace *= self.event_direction # (-1 = 'negative', 1 else)
+        data_trace = resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
+        data_trace *= self.event_direction # (-1 = 'negative', 1 else)
         
         win_size = int(self.window_size*self.resampling_factor)
         stride = int(self.stride_length*self.resampling_factor)
@@ -686,7 +686,7 @@ class EventDetection():
         end_pnts =  np.array(peak_properties['right_ips'] * stride + win_size/2, dtype=np.int64)
 
         # filter raw data trace, calculate gradient and filter first derivative trace
-        trace_convolved = signal.convolve(trace, win, mode='same') / sum(win)
+        trace_convolved = signal.convolve(data_trace, win, mode='same') / sum(win)
         gradient = np.gradient(trace_convolved, sampling)
         smth_gradient = signal.convolve(gradient, win, mode='same') / sum(win)
 
@@ -714,7 +714,7 @@ class EventDetection():
                 peaks = np.array([np.argmax(smth_gradient[start_pnts[i]:end_pnts[i]])])
 
             for peak in peaks:
-                if (start_pnts[i] + peak) >= (trace.shape[0] - limit):
+                if (start_pnts[i] + peak) >= (data_trace.shape[0] - limit):
                     continue
                 if start_pnts[i] + peak not in event_locations:
                     event_locations.append(start_pnts[i] + peak)
@@ -934,7 +934,7 @@ class EventDetection():
         return results
 
 
-    def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, peak_w:int=10,
+    def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, peak_w:int=5,
                       rel_prom_cutoff: float=0.25, convolve_win: int=20, resample_to_600: bool=True) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis

@@ -11,11 +11,16 @@ This repository contains the code described in the following publication:
 O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and Delvendahl, I. 
 (2023) Deep learning-based synaptic event detection. _bioRxiv_ ([doi:10.1101/2023.11.02.565316](https://www.biorxiv.org/content/10.1101/2023.11.02.565316))  
 
-### IMPORTANT INFORMATION ABOUT THE PROVIDED MODEL
+### UPDATE INFORMATION
 
-The model that is currently uploaded was trained exclusively with data from cerebellar granule cells (figures 1, 2, 4). If this model does not perform well in your data, we recommend training your own model. The files we used for training and the models we trained for different synaptic preparations will be added soon. We are writing some documentation for the individual files, as well as a practical guide to collecting and scoring training data.
+With the latest update, we include all the files required to generate and score the data to train a new model and use the model on your data. For the actual training, please refer to the following links to Kaggle:
+Transfer learning: https://www.kaggle.com/code/philipponeill/miniml-transfer-learning
+Full training: https://www.kaggle.com/code/philipponeill/miniml-full-training
+The dataset: https://www.kaggle.com/datasets/philipponeill/miniml-training-data
 
-So, more will follow soon!
+We had to make one change that will impact scripts that have been written for the previous miniML version, namely that we split the direction parameter into two separate parameters, event_direction and training_direction (see also miniML documentation). in practice, this only means that you have to change direction to event_direction in your scripts.
+
+Feel free to contact us if you have any questions, either via mail, or by opening an issue here on GitHub (chances are that other people have the same question).
 
 ### 🧠 ABOUT
 
