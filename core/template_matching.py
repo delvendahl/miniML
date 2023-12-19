@@ -104,6 +104,7 @@ def template_matching(data, kernel, threshold):
     # threshold crossings
     pos = np.where(crit < threshold)[0] if threshold < 0 else np.where(crit > threshold)[0]
     indices = pos[np.where(np.diff(pos, prepend=0) > 1)[0]] - N//2
+    indices = indices[np.where(indices > 0)[0]] # Handle negative indices
 
     from collections import namedtuple
     result = namedtuple('TemplateMatchResult', ['indices', 'detection_trace', 's', 'c', 'threshold', 'kernel'])

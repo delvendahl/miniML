@@ -723,8 +723,13 @@ class EventDetection():
         ### Check for duplicates:
         if np.array(event_locations).shape[0] != np.unique(np.array(event_locations)).shape[0]:
             print('removed duplicates')
-        
-        event_locations = np.unique(np.array(event_locations))
+
+        event_locations, event_scores = np.array(event_locations), np.array(event_scores)        
+        unique_indices = np.unique(event_locations, return_index=True)[1]
+
+        event_locations = event_locations[unique_indices]
+        event_scores, event_scores[unique_indices]
+
         num_locations = event_locations.shape[0]
         
         remove = []
@@ -736,8 +741,12 @@ class EventDetection():
                         remove.append(removal)
         remove = np.unique(np.array(remove))
         for i in remove:
-            event_locations = event_locations[np.where(event_locations != i)[0]]
+            remaining_indices = np.where(event_locations != i)[0]
+            event_locations = event_locations[remaining_indices]
+            event_scores = event_scores[remaining_indices]
         
+        print(event_locations.shape, event_scores.shape)
+
         if event_locations.shape[0] != num_locations:
             print('removed event locations via atol criterium')
         
@@ -750,7 +759,7 @@ class EventDetection():
         '''
         Find more detailed event location properties required for analysis. Namely, baseline, event onset,
         peak half-decay and 10 & 90% rise positions. Also extracts the actual event properties, such as
-        amplitud or half-decay time.
+        amplitude or half-decay time.
         filter: bool
             If true, properties are extracted from the filtered data.
         '''
