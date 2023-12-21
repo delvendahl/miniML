@@ -299,7 +299,7 @@ class MiniTrace():
 
 
     @classmethod
-    def from_axon_file(cls, filepath: str, channel: int=0, scaling: float=1.0, unit: str='') -> MiniTrace:
+    def from_axon_file(cls, filepath: str, channel: int=0, scaling: float=1.0, unit: str=None) -> MiniTrace:
         ''' Loads data from an AXON .abf file.
 
         Parameters
@@ -1219,7 +1219,7 @@ class EventDetection():
             plt.ylabel(f'{self.trace.y_unit}')
             
         plt.xlabel('time (s)')
-        plt.legend()
+        plt.legend(loc='upper right')
         if save_fig:
             if not save_fig.endswith('.svg'):
                 save_fig = save_fig + '.svg'
