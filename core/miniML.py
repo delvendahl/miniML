@@ -745,7 +745,7 @@ class EventDetection():
             event_locations = event_locations[remaining_indices]
             event_scores = event_scores[remaining_indices]
         
-        print(event_locations.shape, event_scores.shape)
+        # print(event_locations.shape, event_scores.shape)
 
         if event_locations.shape[0] != num_locations:
             print('removed event locations via atol criterium')
