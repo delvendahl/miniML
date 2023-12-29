@@ -1224,6 +1224,7 @@ class EventDetection():
             if not save_fig.endswith('.svg'):
                 save_fig = save_fig + '.svg'
             plt.savefig(save_fig, format='svg')
+            plt.close()
             return
         plt.show()
     
@@ -1267,6 +1268,7 @@ class EventDetection():
             if not save_fig.endswith('.svg'):
                 save_fig = save_fig + '.svg'
             plt.savefig(save_fig, format='svg')
+            plt.close()
         else:
             plt.show()
 
