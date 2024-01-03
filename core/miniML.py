@@ -959,7 +959,7 @@ class EventDetection():
             Whether to evaluate detected events.
         verbose: bool, default = True
             Whether to print the output. 
-        peak_w: int, default = 10
+        peak_w: int, default = 5
             The minimum prediction peak width.
         rel_prom_cutoff: int, float = 0.25
             The relative prominence cutoff. Overlapping events are separated based on a peak-finding in the first derivative. To be considered
