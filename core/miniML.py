@@ -595,7 +595,10 @@ class EventDetection():
     def _init_arrays(self, attr_names, shape, dtype):
         ''' initialize multiple 1d ndarrays with given shape containing NaNs '''
         for label in attr_names:
-            exec(f'self.{str(label)} = np.full({int(shape)}, np.NaN, dtype={dtype})')
+            if 'int' in str(dtype):
+                exec(f'self.{str(label)} = np.full({int(shape)}, -1, dtype={dtype})')
+            else:
+                exec(f'self.{str(label)} = np.full({int(shape)}, np.NaN, dtype={dtype})')
 
 
     def events_present(self) -> bool:
@@ -685,10 +688,11 @@ class EventDetection():
         start_pnts = np.array(peak_properties['left_ips'] * stride + win_size/4, dtype=np.int64)
         end_pnts =  np.array(peak_properties['right_ips'] * stride + win_size/2, dtype=np.int64)
 
-        # filter raw data trace, calculate gradient and filter first derivative trace
-        trace_convolved = signal.convolve(data_trace, win, mode='same') / sum(win)
+
+        # filter raw data trace, calculate gradient and filter first derivative trace        
+        trace_convolved = signal.convolve(data_trace-np.mean(data_trace), win, mode='same') / sum(win)
         gradient = np.gradient(trace_convolved, sampling)
-        smth_gradient = signal.convolve(gradient, win, mode='same') / sum(win)
+        smth_gradient = signal.convolve(gradient-np.mean(gradient), win, mode='same') / sum(win)
 
         # get threshold based on standard deviation of the derivative of event-free data sections
         split_data = np.split(smth_gradient, np.vstack((start_pnts, end_pnts)).ravel('F'))
@@ -745,8 +749,6 @@ class EventDetection():
             event_locations = event_locations[remaining_indices]
             event_scores = event_scores[remaining_indices]
         
-        print(event_locations.shape, event_scores.shape)
-
         if event_locations.shape[0] != num_locations:
             print('removed event locations via atol criterium')
         
@@ -1158,7 +1160,7 @@ class EventDetection():
         plt.show()
 
 
-    def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False,plot_filtered_trace: bool=False, save_fig: str='') -> None:
+    def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, plot_filtered_trace: bool=False, save_fig: str='') -> None:
         ''' 
         Plot prediction trace, optionally together with data and detection result.
         
@@ -1166,8 +1168,11 @@ class EventDetection():
             Boolean whether to include data and detected event peaks in the plot.
         plot_event_params: bool
             Boolean whether to plot event onset and half decay points.
-        plot_filtered: bool
+        plot_filtered_prediction: bool
             Boolean whether to plot filtered prediction trace (maximum filter).
+        plot_filtered_trace: bool
+            Boolean whether to plot filtered prediction trace (hann window). If
+            True, the first and last 100 points remain unchanged, to mask edge artifacts.
         save_fig: str
             Filename to save the figure to (in SVG format). If provided, plot will not be shown.
         '''
@@ -1191,8 +1196,8 @@ class EventDetection():
             if plot_filtered_trace:
                 win = signal.windows.hann(int(self.convolve_win/self.resampling_factor))
                 main_trace = signal.convolve(self.trace.data, win, mode='same') / sum(win)
-                main_trace[0:100] = 0
-                main_trace[main_trace.shape[0]-100:main_trace.shape[0]] = 0
+                main_trace[0:100] = self.trace.data[0:100]
+                main_trace[main_trace.shape[0]-100:main_trace.shape[0]] = self.trace.data[main_trace.shape[0]-100:main_trace.shape[0]]
                 plt.plot(self.trace.time_axis, self.trace.data, c='k', alpha=0.4)
                 plt.plot(self.trace.time_axis, main_trace, c=trace_cols)
             
