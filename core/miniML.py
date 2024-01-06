@@ -599,6 +599,10 @@ class EventDetection():
                 exec(f'self.{str(label)} = np.full({int(shape)}, -1, dtype={dtype})')
             else:
                 exec(f'self.{str(label)} = np.full({int(shape)}, np.NaN, dtype={dtype})')
+            if 'int' in str(dtype):
+                exec(f'self.{str(label)} = np.full({int(shape)}, -1, dtype={dtype})')
+            else:
+                exec(f'self.{str(label)} = np.full({int(shape)}, np.NaN, dtype={dtype})')
 
 
     def events_present(self) -> bool:
@@ -958,7 +962,7 @@ class EventDetection():
             Whether to evaluate detected events.
         verbose: bool, default = True
             Whether to print the output. 
-        peak_w: int, default = 10
+        peak_w: int, default = 5
             The minimum prediction peak width.
         rel_prom_cutoff: int, float = 0.25
             The relative prominence cutoff. Overlapping events are separated based on a peak-finding in the first derivative. To be considered
@@ -1229,6 +1233,7 @@ class EventDetection():
             if not save_fig.endswith('.svg'):
                 save_fig = save_fig + '.svg'
             plt.savefig(save_fig, format='svg')
+            plt.close()
             return
         plt.show()
     
@@ -1272,6 +1277,7 @@ class EventDetection():
             if not save_fig.endswith('.svg'):
                 save_fig = save_fig + '.svg'
             plt.savefig(save_fig, format='svg')
+            plt.close()
         else:
             plt.show()
 
