@@ -599,10 +599,6 @@ class EventDetection():
                 exec(f'self.{str(label)} = np.full({int(shape)}, -1, dtype={dtype})')
             else:
                 exec(f'self.{str(label)} = np.full({int(shape)}, np.NaN, dtype={dtype})')
-            if 'int' in str(dtype):
-                exec(f'self.{str(label)} = np.full({int(shape)}, -1, dtype={dtype})')
-            else:
-                exec(f'self.{str(label)} = np.full({int(shape)}, np.NaN, dtype={dtype})')
 
 
     def events_present(self) -> bool:
