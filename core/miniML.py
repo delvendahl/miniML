@@ -208,8 +208,6 @@ class MiniTrace():
             Path of a .dat file.
         rectype: string
             Name of the PGF sequence in the file to be loaded.
-        protocol_range: list
-            List containing the protocol indices (1=first protocol, same indexing as in PatchMaster software)
         group: int, default=1
             HEKA group to load data from. Defaults to 1.
         exclude_series: list, default=[].
