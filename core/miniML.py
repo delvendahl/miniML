@@ -1236,7 +1236,7 @@ class EventDetection():
 
     def plot_event_locations(self, plot_filtered: bool=False, save_fig: str='') -> None:
         ''' 
-        Plot prediction trace, together with data and detected event position (before any actual analysis is done).
+        Plot prediction trace, together with data and detected event positions (before any actual analysis is done).
         
         plot_filtered: bool
             Boolean whether to plot filtered prediction trace (maximum filter).
@@ -1351,9 +1351,9 @@ class EventDetection():
 
     def save_to_csv(self, path: str='', overwrite: bool=False) -> None:
         ''' 
-        Save detection results to an .csv file. 
-        Generates two files, one with averages and one with the values for individual minis.
-        Filename automatically generated.
+        Save detection results to a .csv file. 
+        Generates two files, one with averages and one with the values for the individual events.
+        Filename is automatically generated.
         
         path: str
             path or directory where the file is saved
@@ -1405,9 +1405,9 @@ class EventDetection():
 
     def save_to_pickle(self, filename: str='', include_prediction:bool=True, include_data:bool=True) -> None:
         ''' 
-        Save detection results to an .pickle file.         
+        Save detection results to a .pickle file.         
         filename: str
-            name and if desired directory in which to save the file
+            Name and if desired directory in which to save the file
         include_prediction: bool
             Include the prediction trace.
         include_data: bool
@@ -1490,7 +1490,7 @@ class EventDetection():
 
 
 class EventAnalysis(EventDetection):
-    '''miniML class for analysis of events detected by an alterantive method. Convenient for method comparison.
+    '''miniML class for analysis of events detected by an alternative method. Convenient for method comparison.
     Parameters
     ----------
     trace: miniML trace object
