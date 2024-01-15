@@ -1089,6 +1089,7 @@ class EventDetection():
             if not save_fig.endswith('.svg'):
                 save_fig = save_fig + '.svg'
             plt.savefig(save_fig, format='svg')
+            plt.close()
             return
 
         plt.show()
@@ -1098,7 +1099,7 @@ class EventDetection():
         ''' plot the average event waveform '''
         if not self.events_present():
             return
-        _ = plt.figure('Event average')
+        fig = plt.figure('Event average')
         ev_average = np.mean(self.events, axis=0)
         plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, ev_average)
         plt.ylabel(f'{self.trace.y_unit}')
