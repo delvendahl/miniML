@@ -775,8 +775,8 @@ class EventDetection():
 
         mini_trace *= self.event_direction   
 
-        self._init_arrays(['event_peak_locations', 'event_start', 'min_positions_rise', 'max_positions_rise'], positions.shape[0], dtype='np.int64')
-        self._init_arrays(['event_peak_values', 'event_bsls', 'decaytimes', 'charges', 'risetimes', 'half_decay'], positions.shape[0], dtype='np.float64')               
+        self._init_arrays(['event_peak_locations', 'event_start', 'min_positions_rise', 'max_positions_rise'], positions.shape[0], dtype=np.int64)
+        self._init_arrays(['event_peak_values', 'event_bsls', 'decaytimes', 'charges', 'risetimes', 'half_decay'], positions.shape[0], dtype=np.float64)               
 
         for ix, position in enumerate(positions):
             indices = position + np.arange(-add_points, after)
