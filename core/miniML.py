@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
 import pandas as pd
-import pyabf
 from scipy.optimize import curve_fit
 from scipy.signal import savgol_filter, butter, sosfiltfilt, find_peaks
 from scipy.ndimage import maximum_filter1d
@@ -82,7 +81,7 @@ def lowpass_filter(data: np.ndarray, sampling_rate: float, lowpass: float=500, o
 
 
 @tf.function
-def minmax_scaling(x: tf.Tensor):
+def minmax_scaling(x: tf.Tensor) -> tf.Tensor:
     """
     Applies min-max scaling to the input tensor.
 
@@ -101,7 +100,7 @@ def minmax_scaling(x: tf.Tensor):
 #  --------------------------------------------------  #
 #  miniML classes                                      #
 class MiniTrace():
-    '''miniML class for a data trace containing synaptic events. Data are stored as float64 numpy ndarray.
+    '''miniML class for a time series data trace containing synaptic events. Data are stored as float64 numpy ndarray.
 
     Parameters
     ----------
@@ -209,7 +208,7 @@ class MiniTrace():
         rectype: string
             Name of the PGF sequence in the file to be loaded.
         group: int, default=1
-            HEKA group to load data from. Defaults to 1.
+            HEKA group to load data from. HEKA groups are numbered starting from 1. Defaults to 1. 
         exclude_series: list, default=[].
             List of HEKA series to exclude.
         exclude_sweeps: dict, default={}.
@@ -246,20 +245,14 @@ class MiniTrace():
         for i, SeriesRecord in enumerate(bundle.pul[group].children):
             bundle_series.update({i: SeriesRecord.Label})
 
-        series = []
-        for seriesNo, protocol in bundle_series.items():
-            if protocol==rectype:
-                if seriesNo not in exclude_series:
-                    series.append(seriesNo)
+        series = [series_number for series_number, record_type in bundle_series.items() \
+                  if record_type == rectype and series_number not in exclude_series]
         
         series_data = []
         series_resistances = []
         for i in series:
             sweep_data = []
             for j in range(bundle.pul[group][i].NumberSweeps):
-                if j == 0:
-                    Rseries = (1/bundle.pul[group][i][j][0].GSeries)*1e-6
-
                 if i not in exclude_sweeps:
                     try:
                         sweep_data.append(bundle.data[group, i, j, 0])   
@@ -272,8 +265,7 @@ class MiniTrace():
                         except IndexError as e:
                             pass
             series_data.append((np.array(sweep_data).flatten(), bundle.pgf[i].SampleInterval))
-            series_resistances.append(Rseries)
-
+            series_resistances.append((1/bundle.pul[group][i][0][0].GSeries)*1e-6)
 
         max_sampling_interval = max([el[1] for el in series_data])
         data = np.array([], dtype=np.float64)
@@ -324,6 +316,7 @@ class MiniTrace():
         if not os.path.splitext(filepath)[-1].lower() == '.abf':
             raise Exception('Incompatible file type. Method only loads .abf files.')
 
+        import pyabf
         abf_file = pyabf.ABF(filepath)
         if channel not in abf_file.channelList:
             raise IndexError('Selected channel does not exist.')
@@ -602,10 +595,8 @@ class EventDetection():
     def events_present(self) -> bool:
         ''' Checks if events are present '''
         num_events = self.events.shape[0]
-        if num_events == 0:
-            return False
-        else:
-            return True
+        
+        return num_events != 0
 
 
     def load_model(self, filepath: str, threshold: float=0.5, compile=True) -> None:
