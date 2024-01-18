@@ -583,13 +583,12 @@ class EventDetection():
     def training_direction(self, training_direction_str: str):
         self._training_direction = -1 if training_direction_str.lower() == 'negative' else 1
 
+
     def _init_arrays(self, attr_names, shape, dtype):
         ''' initialize multiple 1d ndarrays with given shape containing NaNs '''
         for label in attr_names:
-            if 'int' in str(dtype):
-                exec(f'self.{str(label)} = np.full({int(shape)}, -1, dtype={dtype})')
-            else:
-                exec(f'self.{str(label)} = np.full({int(shape)}, np.NaN, dtype={dtype})')
+            value = -1 if 'int' in str(dtype) else np.NaN
+            setattr(self, str(label), np.full(int(shape), value, dtype=dtype))
 
 
     def events_present(self) -> bool:
