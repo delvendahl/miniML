@@ -5,12 +5,10 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
 import pandas as pd
-from scipy.optimize import curve_fit
-from scipy.signal import savgol_filter, butter, sosfiltfilt, find_peaks
-from scipy.ndimage import maximum_filter1d
-from scipy.signal import resample
 import pickle as pkl
 from scipy import signal
+from scipy.optimize import curve_fit
+from scipy.ndimage import maximum_filter1d
 from miniML_functions import (get_event_peak, get_event_baseline, get_event_onset, get_event_risetime, 
                               get_event_halfdecay_time, get_event_charge)
 
@@ -75,9 +73,9 @@ def lowpass_filter(data: np.ndarray, sampling_rate: float, lowpass: float=500, o
 
     """
     nyq = sampling_rate * 0.5
-    sos = butter(order, lowpass / nyq, btype='low', output='sos')
+    sos = signal.butter(order, lowpass / nyq, btype='low', output='sos')
 
-    return sosfiltfilt(sos, data)
+    return signal.sosfiltfilt(sos, data)
 
 
 @tf.function
@@ -195,6 +193,7 @@ class MiniTrace():
         print(f'Data loaded from {filename} with shape {data.shape}')
 
         return cls(data=data, sampling_interval=sampling, y_unit=unit, filename=os.path.split(filename)[-1])
+
 
     @classmethod
     def from_heka_file(cls, filename: str, rectype: str, group: int=1, exclude_series:list=[], exclude_sweeps:dict={},
@@ -337,10 +336,9 @@ class MiniTrace():
 
     def detrend(self, detrend_type: str='linear', num_segments: int=0) -> MiniTrace:
         ''' Detrend the data. '''
-        from scipy.signal import detrend
         num_data = self.trace.data.shape[0]
         breaks = np.arange(num_data/num_segments, num_data, num_data/num_segments, dtype=np.int64) if num_segments > 1 else 0
-        detrended = detrend(self.trace.data, bp=breaks, type=detrend_type)
+        detrended = signal.detrend(self.trace.data, bp=breaks, type=detrend_type)
 
         return MiniTrace(detrended, self.sampling, y_unit=self.y_unit, filename=self.filename)
 
@@ -363,23 +361,22 @@ class MiniTrace():
         returns: MiniTrace
             A filtered MiniTrace object.
         '''
-        from scipy.signal import iirnotch, cheby2, filtfilt, sosfilt
         filtered_data = self.data.copy()
         nyq = 0.5 * self.sampling_rate
 
         if notch:
-            b_notch, a_notch = iirnotch(notch, 2.0, self.sampling_rate)
-            filtered_data = filtfilt(b_notch, a_notch, filtered_data)
+            b_notch, a_notch = signal.iirnotch(notch, 2.0, self.sampling_rate)
+            filtered_data = signal.filtfilt(b_notch, a_notch, filtered_data)
         if highpass:
-            sos = butter(order, highpass / nyq, btype='high', output='sos')
-            filtered_data = sosfilt(sos, filtered_data)
+            sos = signal.butter(order, highpass / nyq, btype='high', output='sos')
+            filtered_data = signal.sosfilt(sos, filtered_data)
         if lowpass:
             if savgol:
                 print('Warning: Two lowpass filteres selected, Savgol filter is ignored.')
-            sos = cheby2(order, 60, lowpass / nyq, btype='low', analog=False, output='sos', fs=None)
-            filtered_data = sosfiltfilt(sos, filtered_data)
+            sos = signal.cheby2(order, 60, lowpass / nyq, btype='low', analog=False, output='sos', fs=None)
+            filtered_data = signal.sosfiltfilt(sos, filtered_data)
         elif savgol:
-            filtered_data = savgol_filter(filtered_data, int(savgol/1000/self.sampling), polyorder=order)
+            filtered_data = signal.savgol_filter(filtered_data, int(savgol/1000/self.sampling), polyorder=order)
 
         return MiniTrace(filtered_data, sampling_interval=self.sampling, y_unit=self.y_unit, filename=self.filename)
 
@@ -397,7 +394,7 @@ class MiniTrace():
             return self
 
         resampling_factor = np.round(self.sampling_rate / sampling_frequency, 2)
-        resampled_data = resample(self.data, int(self.data.shape[0]/resampling_factor))
+        resampled_data = signal.resample(self.data, int(self.data.shape[0]/resampling_factor))
         new_sampling_interval = self.sampling * resampling_factor
 
         return MiniTrace(resampled_data, sampling_interval=new_sampling_interval, y_unit=self.y_unit, filename=self.filename)
@@ -617,7 +614,7 @@ class EventDetection():
         '''
 
         # resample values for prediction:
-        trace = resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
+        trace = signal.resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
 
         # invert the trace if event_direction and training_direction are different.
         if self.event_direction != self.training_direction:
@@ -656,28 +653,25 @@ class EventDetection():
         peak_w: int
             Minimum peak width for detection peaks to be accepted
         '''
-
-        win = signal.windows.hann(self.convolve_win)
-        
         # set all values for resampling traces
-        data_trace = resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
+        data_trace = signal.resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
         data_trace *= self.event_direction # (-1 = 'negative', 1 else)
         
         win_size = int(self.window_size*self.resampling_factor)
         stride = int(self.stride_length*self.resampling_factor)
         sampling = self.trace.sampling/self.resampling_factor
         add_points = int(win_size/3)
-        limit=win_size + add_points
+        limit = win_size + add_points
 
         filtered_prediction = maximum_filter1d(self.prediction, size=5, origin=-2)
-        _, peak_properties = find_peaks(x=filtered_prediction, height=self.model_threshold, 
-                                        prominence=self.model_threshold, width=peak_w)
+        _, peak_properties = signal.find_peaks(x=filtered_prediction, height=self.model_threshold,
+                                               prominence=self.model_threshold, width=peak_w)
 
         start_pnts = np.array(peak_properties['left_ips'] * stride + win_size/4, dtype=np.int64)
         end_pnts =  np.array(peak_properties['right_ips'] * stride + win_size/2, dtype=np.int64)
 
-
-        # filter raw data trace, calculate gradient and filter first derivative trace        
+        # filter raw data trace, calculate gradient and filter first derivative trace
+        win = signal.windows.hann(self.convolve_win)    
         trace_convolved = signal.convolve(data_trace-np.mean(data_trace), win, mode='same') / sum(win)
         gradient = np.gradient(trace_convolved, sampling)
         smth_gradient = signal.convolve(gradient-np.mean(gradient), win, mode='same') / sum(win)
@@ -692,8 +686,8 @@ class EventDetection():
         for i, position in enumerate(peak_properties['right_ips'] * stride): 
             if position < win_size:
                 continue
-            peaks, peak_params = find_peaks(x=smth_gradient[start_pnts[i]:end_pnts[i]], height=threshold, 
-                                prominence=threshold)
+            peaks, peak_params = signal.find_peaks(x=smth_gradient[start_pnts[i]:end_pnts[i]], 
+                                                   height=threshold, prominence=threshold)
             
             if peaks.shape[0] > 1: # If > 1 peak found; apply relative prominence cutoff of .25
                 rel_prom = peak_params['prominences']/np.max(peak_params['prominences'])
@@ -720,7 +714,7 @@ class EventDetection():
         unique_indices = np.unique(event_locations, return_index=True)[1]
 
         event_locations = event_locations[unique_indices]
-        event_scores, event_scores[unique_indices]
+        event_scores = event_scores[unique_indices]
 
         num_locations = event_locations.shape[0]
         
@@ -909,27 +903,19 @@ class EventDetection():
         endpoint = int(event_peak + factor_charge*halfdecay_position)
         charge = get_event_charge(trace_data=data, start_point=onset_position, end_point=endpoint, baseline=baseline, sampling=self.trace.sampling)
 
-        ## Convert units back.
-        event_peak_value = event_peak_value - baseline
-        event_peak_value *= self.event_direction
-        baseline *= self.event_direction
-        risetime *= self.trace.sampling
-        halfdecay_time *= self.trace.sampling
-        charge *= self.event_direction
+        results = {'amplitude': event_peak_value - baseline,
+                   'baseline': baseline * self.event_direction,
+                   'risetime':risetime * self.trace.sampling,
+                   'halfdecay_time':halfdecay_time * self.trace.sampling,
+                   'charge':charge * self.event_direction,
+                   'event_peak':event_peak,
+                   'onset_position':onset_position,
+                   'min_position_rise':min_position_rise,
+                   'max_position_rise':max_position_rise,
+                   'halfdecay_position':halfdecay_position,
+                   'endpoint_charge':endpoint
+                   }
         
-        results = {
-            'amplitude':event_peak_value,
-            'baseline':baseline,
-            'risetime':risetime,
-            'halfdecay_time':halfdecay_time,
-            'charge':charge,
-            'event_peak':event_peak,
-            'onset_position':onset_position,
-            'min_position_rise':min_position_rise,
-            'max_position_rise':max_position_rise,
-            'halfdecay_position':halfdecay_position,
-            'endpoint_charge':endpoint
-            }
         return results
 
 
@@ -964,10 +950,7 @@ class EventDetection():
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
         self.add_points = int(self.window_size/3)
-        if stride is None:
-            self.stride_length = int(self.window_size/30)
-        else:
-            self.stride_length = stride
+        self.stride_length = stride if stride else int(self.window_size/30)
 
         self.__predict(stride)
         self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points, rel_prom_cutoff=rel_prom_cutoff, peak_w=peak_w)
@@ -1007,25 +990,23 @@ class EventDetection():
         return fit[1]
 
 
-    def _fit_event(self, data, amplitude, t_rise, t_decay, x_offset) -> np.ndarray:
+    def _fit_event(self, data, amplitude, t_rise, t_decay, x_offset) -> dict:
         '''
         Performs a rudimentary fit to input event.
         time constants and offsets are in time domain.
         '''
-
-        W_Coeff = [amplitude, t_rise, t_decay, x_offset]
         x = np.arange(0, data.shape[0]) * self.trace.sampling
         try:
-            popt, _ = curve_fit(mEPSC_template, x, data, p0=W_Coeff)
+            popt, _ = curve_fit(mEPSC_template, x, data, p0=[amplitude, t_rise, t_decay, x_offset])
         except RuntimeError:
-            popt = np.array([np.nan]*4)
+            popt = np.array([np.nan] * 4)
         
-        results = {
-            'amplitude':popt[0],
-            'risetime':popt[1],
-            't_decay':popt[2],
-            'x_offset':popt[3]}
-
+        results = {'amplitude':popt[0],
+                   'risetime':popt[1],
+                   't_decay':popt[2],
+                   'x_offset':popt[3]
+                   }
+        
         return results
 
 
