@@ -691,7 +691,7 @@ class EventDetection():
             
             if peaks.shape[0] > 1: # If > 1 peak found; apply relative prominence cutoff of .25
                 rel_prom = peak_params['prominences']/np.max(peak_params['prominences'])
-                inds = np.argwhere(rel_prom >= rel_prom_cutoff)         
+                inds = np.argwhere(rel_prom >= rel_prom_cutoff).flatten()
                 peaks = peaks[inds]
                 for my_param in peak_params:
                     peak_params[my_param] = peak_params[my_param][inds]
@@ -727,7 +727,7 @@ class EventDetection():
                         remove.append(removal)
         remove = np.unique(np.array(remove))
         for i in remove:
-            remaining_indices = np.argwhere(event_locations != i)
+            remaining_indices = np.argwhere(event_locations != i).flatten()
             event_locations = event_locations[remaining_indices]
             event_scores = event_scores[remaining_indices]
         
@@ -1180,8 +1180,8 @@ class EventDetection():
                     plt.scatter(self.event_start_times, main_trace[self.event_start], c='#a90308', s=20, zorder=2, label='event onset')
                     
                     ### remove np.nans from halfdecay
-                    half_decay_for_plot = self.half_decay[np.argwhere(~np.isnan(self.half_decay))].astype(np.int64)
-                    half_decay_times_for_plot = self.half_decay_times[np.argwhere(~np.isnan(self.half_decay_times))]
+                    half_decay_for_plot = self.half_decay[np.argwhere(~np.isnan(self.half_decay)).flatten()].astype(np.int64)
+                    half_decay_times_for_plot = self.half_decay_times[np.argwhere(~np.isnan(self.half_decay_times)).flatten()]
                     plt.scatter(half_decay_times_for_plot, main_trace[half_decay_for_plot], c='#287c37', s=20, zorder=2, label='half decay')
 
                 data_range = np.abs(np.max(main_trace) - np.min(main_trace))
