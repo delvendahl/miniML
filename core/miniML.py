@@ -244,27 +244,28 @@ class MiniTrace():
         for i, SeriesRecord in enumerate(bundle.pul[group].children):
             bundle_series.update({i: SeriesRecord.Label})
 
-        series = [series_number for series_number, record_type in bundle_series.items() \
+        series_list = [series_number for series_number, record_type in bundle_series.items() \
                   if record_type == rectype and series_number not in exclude_series]
         
         series_data = []
         series_resistances = []
-        for i in series:
+        for series in series_list:
             sweep_data = []
-            for j in range(bundle.pul[group][i].NumberSweeps):
-                if i not in exclude_sweeps:
+            for sweep in range(bundle.pul[group][i].NumberSweeps):
+                if series not in exclude_sweeps:
                     try:
-                        sweep_data.append(bundle.data[group, i, j, 0])   
+                        sweep_data.append(bundle.data[group, series, sweep, 0])   
                     except IndexError as e:
                         pass
                 else:
-                    if j not in exclude_sweeps[int(i)]:
+                    if sweep not in exclude_sweeps[int(series)]:
                         try:
-                            sweep_data.append(bundle.data[group, i, j, 0])   
+                            sweep_data.append(bundle.data[group, series, sweep, 0])   
                         except IndexError as e:
                             pass
-            series_data.append((np.array(sweep_data).flatten(), bundle.pgf[i].SampleInterval))
-            series_resistances.append((1/bundle.pul[group][i][0][0].GSeries)*1e-6)
+            pgf_series_index = sum(len(bundle.pul[i].children) for i in range(group)) + series
+            series_data.append((np.array(sweep_data).flatten(), bundle.pgf[pgf_series_index].SampleInterval))
+            series_resistances.append((1/bundle.pul[group][i][0][0].GSeries) * 1e-6)
 
         max_sampling_interval = max([el[1] for el in series_data])
         data = np.array([], dtype=np.float64)
