@@ -613,7 +613,6 @@ class EventDetection():
         Raises  
             ValueError when stride is below 1 or above window length
         '''
-
         # resample values for prediction:
         trace = signal.resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
 
@@ -962,7 +961,6 @@ class EventDetection():
 
             self._get_event_properties()
             self.events = self.events - self.event_bsls[:, None]
-            
             self.average_event_properties = self._get_average_event_properties()
             
             # Fit the average event; take a subset of the window.
@@ -1031,7 +1029,6 @@ class EventDetection():
         self.event_peak_times = self.event_peak_locations * self.trace.sampling
         self.event_start_times = self.event_start * self.trace.sampling
         self.half_decay_times = self.half_decay * self.trace.sampling
-
         self.interevent_intervals = np.diff(self.event_peak_times)
 
         if verbose:
@@ -1063,7 +1060,6 @@ class EventDetection():
             plt.savefig(save_fig, format='svg')
             plt.close()
             return
-
         plt.show()
 
 
@@ -1184,7 +1180,7 @@ class EventDetection():
                 data_range = np.abs(np.max(main_trace) - np.min(main_trace))
                 dat_min = np.min(main_trace)
                 plt.eventplot(self.event_peak_times, lineoffsets=dat_min - data_range/15, 
-                            linelengths=data_range/20, color='k', lw=1.5)
+                              linelengths=data_range/20, color='k', lw=1.5)
             except:
                 pass
             plt.tick_params('x')
@@ -1219,22 +1215,19 @@ class EventDetection():
             plt.plot(prediction_x, self.prediction)
         plt.axhline(self.model_threshold, color='orange', ls='--')
         plt.ylabel('probability')
-
         plt.tick_params('x', labelbottom=False)
         ax2 = plt.subplot(212, sharex=ax1)
         plt.plot(self.trace.data)
         try:
             plt.scatter(self.event_locations, self.trace.data[self.event_locations], c='orange', s=20, zorder=2)
-
             data_range = np.abs(np.max(self.trace.data) - np.min(self.trace.data))
             dat_min = np.min(self.trace.data)
             plt.eventplot(self.event_locations, lineoffsets=dat_min - data_range/15, 
-                        linelengths=data_range/20, color='k', lw=1.5)
+                          linelengths=data_range/20, color='k', lw=1.5)
         except IndexError as e:
             pass
         plt.tick_params('x')
         plt.ylabel(f'{self.trace.y_unit}')
-            
         plt.xlabel('time in points')
         if save_fig:
             if not save_fig.endswith('.svg'):
@@ -1442,7 +1435,6 @@ class EventDetection():
                 'rel_prom_cutoff':self.rel_prom_cutoff,
                 'event_direction':self.event_direction},
             'events':self.events}
-
 
         if include_prediction:
             results['prediction']=self.prediction.numpy() # Save prediction as numpy array
