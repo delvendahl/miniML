@@ -1091,14 +1091,14 @@ class EventDetection():
         
         # average
         ev_average = np.mean(self.events, axis=0)
-        plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, ev_average, c='#f0833a',linewidth='3', label='average event')
+        plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, ev_average, c='#a90308',linewidth='3', label='average event')
         
         # fit
         fitted_ev = mEPSC_template(np.arange(0, self.events.shape[1]-int(self.window_size/6)) * self.trace.sampling, 
                                    *self.fitted_avg_event.values())
 
         plt.plot(np.arange(int(self.window_size/6), self.events.shape[1]) * self.trace.sampling,
-                 fitted_ev, c='k', ls='--', label='fit')
+                 fitted_ev, c='#f0833a', ls='--', label='fit')
 
         plt.ylabel(f'{self.trace.y_unit}')
         plt.xlabel('time (s)')
