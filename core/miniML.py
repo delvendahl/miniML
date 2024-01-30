@@ -34,13 +34,13 @@ def exp_fit(x: np.ndarray, amp: float, tau: float, offset: float) -> np.ndarray:
     return amp * np.exp(-(x - x[0]) / tau) + offset
 
 
-def mEPSC_template(x: np.ndarray, a: float, t_rise: float, t_decay: float, x0: float) -> np.ndarray:
+def mEPSC_template(x: np.ndarray, amplitude: float, t_rise: float, t_decay: float, x0: float) -> np.ndarray:
     """
     Generates a template miniature excitatory postsynaptic current (mEPSC) based on the given parameters.
 
     Parameters:
         x (np.ndarray): An array of x values.
-        a (float): The amplitude of the mEPSCs.
+        amplitude (float): The amplitude of the mEPSCs.
         t_rise (float): The rise time constant of the mEPSCs.
         t_decay (float): The decay time constant of the mEPSCs.
         x0 (float): The onset time point for the mEPSCs.
@@ -49,10 +49,10 @@ def mEPSC_template(x: np.ndarray, a: float, t_rise: float, t_decay: float, x0: f
         np.ndarray: An array of y values representing an mEPSC template.
 
     Note:
-        - The formula used to calculate the template is y = a * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay).
+        - The formula used to calculate the template is y = amplitude * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay).
         - Any values of x that are less than x0 will be set to 0 in the resulting array.
     """
-    y = a * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay)
+    y = amplitude * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay)
     y[x < x0] = 0
 
     return y
@@ -1091,18 +1091,14 @@ class EventDetection():
         
         # average
         ev_average = np.mean(self.events, axis=0)
-        plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, ev_average, c='#a90308',linewidth='3', label='average event')
+        plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, ev_average, c='#f0833a',linewidth='3', label='average event')
         
         # fit
-        fitted_ev = mEPSC_template(
-                np.arange(0, self.events.shape[1]-int(self.window_size/6)) * self.trace.sampling,
-                self.fitted_avg_event['amplitude'],
-                self.fitted_avg_event['risetime'],
-                self.fitted_avg_event['t_decay'],
-                self.fitted_avg_event['x_offset'])
+        fitted_ev = mEPSC_template(np.arange(0, self.events.shape[1]-int(self.window_size/6)) * self.trace.sampling, 
+                                   *self.fitted_avg_event.values())
 
         plt.plot(np.arange(int(self.window_size/6), self.events.shape[1]) * self.trace.sampling,
-                 fitted_ev, c='#f0833a', ls='--', label='fit')
+                 fitted_ev, c='k', ls='--', label='fit')
 
         plt.ylabel(f'{self.trace.y_unit}')
         plt.xlabel('time (s)')
