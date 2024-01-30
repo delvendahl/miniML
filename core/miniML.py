@@ -971,10 +971,10 @@ class EventDetection():
 
             self.fitted_avg_event = self._fit_event(
                 data=np.mean(self.events, axis=0)[fit_start:fit_end],
-                amplitude=self.average_event_properties['amplitude'],
+                amplitude=self.average_event_properties['amplitude'] * self.event_direction,
                 t_rise=self.average_event_properties['risetime'],
                 t_decay=self.average_event_properties['halfdecay_time'],
-                x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)            
+                x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)
 
             if eval:
                 self._eval_events(verbose=verbose)
