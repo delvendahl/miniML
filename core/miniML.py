@@ -34,13 +34,13 @@ def exp_fit(x: np.ndarray, amp: float, tau: float, offset: float) -> np.ndarray:
     return amp * np.exp(-(x - x[0]) / tau) + offset
 
 
-def mEPSC_template(x: np.ndarray, a: float, t_rise: float, t_decay: float, x0: float) -> np.ndarray:
+def mEPSC_template(x: np.ndarray, amplitude: float, t_rise: float, t_decay: float, x0: float) -> np.ndarray:
     """
     Generates a template miniature excitatory postsynaptic current (mEPSC) based on the given parameters.
 
     Parameters:
         x (np.ndarray): An array of x values.
-        a (float): The amplitude of the mEPSCs.
+        amplitude (float): The amplitude of the mEPSCs.
         t_rise (float): The rise time constant of the mEPSCs.
         t_decay (float): The decay time constant of the mEPSCs.
         x0 (float): The onset time point for the mEPSCs.
@@ -49,10 +49,10 @@ def mEPSC_template(x: np.ndarray, a: float, t_rise: float, t_decay: float, x0: f
         np.ndarray: An array of y values representing an mEPSC template.
 
     Note:
-        - The formula used to calculate the template is y = a * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay).
+        - The formula used to calculate the template is y = amplitude * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay).
         - Any values of x that are less than x0 will be set to 0 in the resulting array.
     """
-    y = a * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay)
+    y = amplitude * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay)
     y[x < x0] = 0
 
     return y
@@ -613,7 +613,6 @@ class EventDetection():
         Raises  
             ValueError when stride is below 1 or above window length
         '''
-
         # resample values for prediction:
         trace = signal.resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
 
@@ -962,7 +961,6 @@ class EventDetection():
 
             self._get_event_properties()
             self.events = self.events - self.event_bsls[:, None]
-            
             self.average_event_properties = self._get_average_event_properties()
             
             # Fit the average event; take a subset of the window.
@@ -971,10 +969,10 @@ class EventDetection():
 
             self.fitted_avg_event = self._fit_event(
                 data=np.mean(self.events, axis=0)[fit_start:fit_end],
-                amplitude=self.average_event_properties['amplitude'],
+                amplitude=self.average_event_properties['amplitude'] * self.event_direction,
                 t_rise=self.average_event_properties['risetime'],
                 t_decay=self.average_event_properties['halfdecay_time'],
-                x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)            
+                x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)
 
             if eval:
                 self._eval_events(verbose=verbose)
@@ -1031,7 +1029,6 @@ class EventDetection():
         self.event_peak_times = self.event_peak_locations * self.trace.sampling
         self.event_start_times = self.event_start * self.trace.sampling
         self.half_decay_times = self.half_decay * self.trace.sampling
-
         self.interevent_intervals = np.diff(self.event_peak_times)
 
         if verbose:
@@ -1063,7 +1060,6 @@ class EventDetection():
             plt.savefig(save_fig, format='svg')
             plt.close()
             return
-
         plt.show()
 
 
@@ -1094,12 +1090,8 @@ class EventDetection():
         plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, ev_average, c='#a90308',linewidth='3', label='average event')
         
         # fit
-        fitted_ev = mEPSC_template(
-                np.arange(0, self.events.shape[1]-int(self.window_size/6)) * self.trace.sampling,
-                self.fitted_avg_event['amplitude'],
-                self.fitted_avg_event['risetime'],
-                self.fitted_avg_event['t_decay'],
-                self.fitted_avg_event['x_offset'])
+        fitted_ev = mEPSC_template(np.arange(0, self.events.shape[1]-int(self.window_size/6)) * self.trace.sampling, 
+                                   *self.fitted_avg_event.values())
 
         plt.plot(np.arange(int(self.window_size/6), self.events.shape[1]) * self.trace.sampling,
                  fitted_ev, c='#f0833a', ls='--', label='fit')
@@ -1188,7 +1180,7 @@ class EventDetection():
                 data_range = np.abs(np.max(main_trace) - np.min(main_trace))
                 dat_min = np.min(main_trace)
                 plt.eventplot(self.event_peak_times, lineoffsets=dat_min - data_range/15, 
-                            linelengths=data_range/20, color='k', lw=1.5)
+                              linelengths=data_range/20, color='k', lw=1.5)
             except:
                 pass
             plt.tick_params('x')
@@ -1223,22 +1215,19 @@ class EventDetection():
             plt.plot(prediction_x, self.prediction)
         plt.axhline(self.model_threshold, color='orange', ls='--')
         plt.ylabel('probability')
-
         plt.tick_params('x', labelbottom=False)
         ax2 = plt.subplot(212, sharex=ax1)
         plt.plot(self.trace.data)
         try:
             plt.scatter(self.event_locations, self.trace.data[self.event_locations], c='orange', s=20, zorder=2)
-
             data_range = np.abs(np.max(self.trace.data) - np.min(self.trace.data))
             dat_min = np.min(self.trace.data)
             plt.eventplot(self.event_locations, lineoffsets=dat_min - data_range/15, 
-                        linelengths=data_range/20, color='k', lw=1.5)
+                          linelengths=data_range/20, color='k', lw=1.5)
         except IndexError as e:
             pass
         plt.tick_params('x')
         plt.ylabel(f'{self.trace.y_unit}')
-            
         plt.xlabel('time in points')
         if save_fig:
             if not save_fig.endswith('.svg'):
@@ -1446,7 +1435,6 @@ class EventDetection():
                 'rel_prom_cutoff':self.rel_prom_cutoff,
                 'event_direction':self.event_direction},
             'events':self.events}
-
 
         if include_prediction:
             results['prediction']=self.prediction.numpy() # Save prediction as numpy array
