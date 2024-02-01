@@ -526,9 +526,9 @@ class EventDetection():
         The batch size for the event detection (used in model.predict).
     model_path: str, default=''
         The path of the model file (.h5) to be used for event detection.
-    model_threshold: float, default=None
+    model_threshold: float, default=0.5
         The threshold for the model; range=(0,1).
-    compile_model: bool, default=False
+    compile_model: bool, default=True
         Whether to compile the model.
     callbacks: list, default=[]
         List of callback function(s) to be used during event detection.
@@ -548,7 +548,7 @@ class EventDetection():
         Contains event statistics
     '''
     def __init__(self, data: MiniTrace, window_size: int=600, event_direction: str='negative', training_direction: str='negative',
-                 batch_size: int=128, model_path: str='', model_threshold: float=None, compile_model=True, callbacks: list=[]) -> None:
+                 batch_size: int=128, model_path: str='', model_threshold: float=0.5, compile_model=True, callbacks: list=[]) -> None:
         self.trace = data
         self.prediction = None
         self.window_size = window_size
