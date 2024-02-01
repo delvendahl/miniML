@@ -561,8 +561,8 @@ class EventDetection():
         self.model_path = model_path
         self.model = None
         self.model_threshold = None
-        if model_path and model_threshold:
-            self.load_model(model_path, model_threshold, compile=compile_model)
+        if model_path:
+            self.load_model(filepath=model_path, threshold=model_threshold, compile=compile_model)
             self.callbacks = callbacks
 
     @property
