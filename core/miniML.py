@@ -251,7 +251,7 @@ class MiniTrace():
         series_resistances = []
         for series in series_list:
             sweep_data = []
-            for sweep in range(bundle.pul[group][i].NumberSweeps):
+            for sweep in range(bundle.pul[group][series].NumberSweeps):
                 if series not in exclude_sweeps:
                     try:
                         sweep_data.append(bundle.data[group, series, sweep, 0])   
@@ -265,7 +265,7 @@ class MiniTrace():
                             pass
             pgf_series_index = sum(len(bundle.pul[i].children) for i in range(group)) + series
             series_data.append((np.array(sweep_data).flatten(), bundle.pgf[pgf_series_index].SampleInterval))
-            series_resistances.append((1/bundle.pul[group][i][0][0].GSeries) * 1e-6)
+            series_resistances.append((1/bundle.pul[group][series][0][0].GSeries) * 1e-6)
 
         max_sampling_interval = max([el[1] for el in series_data])
         data = np.array([], dtype=np.float64)
