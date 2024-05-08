@@ -602,6 +602,10 @@ class EventDetection():
         self.model_threshold = threshold
         print(f'Model loaded from {filepath}')
 
+    def hann_filter(self, data):
+        win = signal.windows.hann(self.convolve_win)    
+        return signal.convolve(data, win, mode='same') / sum(win)
+
 
     def __predict(self, stride: int) -> None:
         '''
@@ -637,9 +641,46 @@ class EventDetection():
         ds = ds.batch(self.batch_size, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.prefetch(tf.data.AUTOTUNE)
         self.prediction = tf.squeeze(self.model.predict(ds, verbose=1, callbacks=self.callbacks))
+        
+        # Linear interpolation of prediction trace to match the original data.
+        x = np.arange(0, self.prediction.shape[0])
+        x_interpol = np.linspace(0, self.prediction.shape[0], self.trace.data.shape[0])
+        self.interpol_factor = len(x_interpol) / len(x)
+        self.prediction = np.interp(x_interpol, x, self.prediction, left=None, right=None, period=None)
 
 
-    def _find_event_locations(self, limit: int, rel_prom_cutoff: float=0.25, peak_w:int=10):
+    def _get_prediction_peaks(self, peak_w:int=10):
+        '''
+        Find peaks in prediction trace and extracted start- and endpoints of event areas based on left 
+        and right ips respectively.
+        '''
+        filtered_prediction = maximum_filter1d(self.prediction, size=int(5*self.interpol_factor), origin=-2)
+        
+        _, peak_properties = signal.find_peaks(x=filtered_prediction, height=self.model_threshold,
+                                               prominence=self.model_threshold, width=peak_w*self.interpol_factor)
+
+        start_pnts = np.array(peak_properties['left_ips'] - self.window_size/4, dtype=np.int64)
+        end_pnts =  np.array(peak_properties['right_ips'] + self.window_size/2, dtype=np.int64)
+        scores = peak_properties['peak_heights']
+        return start_pnts, end_pnts, scores
+
+    def _make_smth_gradient(self):
+        # filter raw data trace, calculate gradient and filter first derivative trace        
+        trace_convolved = self.hann_filter(data=self.trace.data - np.mean(self.trace.data))
+        trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
+        gradient = np.gradient(trace_convolved, self.trace.sampling)
+        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient))
+        return smth_gradient
+    
+    def _get_grad_threshold(self, grad, start_pnts, end_pnts):
+        # get threshold based on standard deviation of the derivative of event-free data sections
+        split_data = np.split(grad, np.vstack((start_pnts, end_pnts)).ravel('F'))
+        event_free_data = np.concatenate(split_data[::2]).ravel()
+        grad_threshold = int(4 * np.std(event_free_data))
+        return grad_threshold
+
+
+    def _find_event_locations(self, limit: int, scores, rel_prom_cutoff: float=0.25):
         '''
         Find approximate event positions based on negative threshold crossings in prediction trace. Extract
         segment of peak windows in prediction trace and search for peaks in first derivative. If no peak is found,
@@ -653,41 +694,14 @@ class EventDetection():
         peak_w: int
             Minimum peak width for detection peaks to be accepted
         '''
-        # set all values for resampling traces
-        data_trace = signal.resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
-        data_trace *= self.event_direction # (-1 = 'negative', 1 else)
-        
-        win_size = int(self.window_size*self.resampling_factor)
-        stride = int(self.stride_length*self.resampling_factor)
-        sampling = self.trace.sampling/self.resampling_factor
-        add_points = int(win_size/3)
-        limit = win_size + add_points
-
-        filtered_prediction = maximum_filter1d(self.prediction, size=5, origin=-2)
-        _, peak_properties = signal.find_peaks(x=filtered_prediction, height=self.model_threshold,
-                                               prominence=self.model_threshold, width=peak_w)
-
-        start_pnts = np.array(peak_properties['left_ips'] * stride + win_size/4, dtype=np.int64)
-        end_pnts =  np.array(peak_properties['right_ips'] * stride + win_size/2, dtype=np.int64)
-
-        # filter raw data trace, calculate gradient and filter first derivative trace
-        win = signal.windows.hann(self.convolve_win)    
-        trace_convolved = signal.convolve(data_trace-np.mean(data_trace), win, mode='same') / sum(win)
-        gradient = np.gradient(trace_convolved, sampling)
-        smth_gradient = signal.convolve(gradient-np.mean(gradient), win, mode='same') / sum(win)
-
-        # get threshold based on standard deviation of the derivative of event-free data sections
-        split_data = np.split(smth_gradient, np.vstack((start_pnts, end_pnts)).ravel('F'))
-        event_free_data = np.concatenate(split_data[::2]).ravel()
-        threshold = int(4 * np.std(event_free_data))
 
         event_locations, event_scores = [], []
 
-        for i, position in enumerate(peak_properties['right_ips'] * stride): 
-            if position < win_size:
+        for i, position in enumerate(self.start_pnts): 
+            if position < self.window_size:
                 continue
-            peaks, peak_params = signal.find_peaks(x=smth_gradient[start_pnts[i]:end_pnts[i]], 
-                                                   height=threshold, prominence=threshold)
+            peaks, peak_params = signal.find_peaks(x=self.smth_gradient[self.start_pnts[i]:self.end_pnts[i]], 
+                                                   height=self.grad_threshold, prominence=self.grad_threshold)
             
             if peaks.shape[0] > 1: # If > 1 peak found; apply relative prominence cutoff of .25
                 rel_prom = peak_params['prominences']/np.max(peak_params['prominences'])
@@ -697,44 +711,23 @@ class EventDetection():
                     peak_params[my_param] = peak_params[my_param][inds]
             
             if not len(peaks): # If no peak found: default argmax finding
-                peaks = np.array([np.argmax(smth_gradient[start_pnts[i]:end_pnts[i]])])
+                peaks = np.array([np.argmax(self.smth_gradient[self.start_pnts[i]:self.end_pnts[i]])])
 
             for peak in peaks:
-                if (start_pnts[i] + peak) >= (data_trace.shape[0] - limit):
+                if (self.start_pnts[i] + peak) >= (self.trace.data.shape[0] - limit):
                     continue
-                if start_pnts[i] + peak not in event_locations:
-                    event_locations.append(start_pnts[i] + peak)
-                    event_scores.append(peak_properties['peak_heights'][i])
+                if self.start_pnts[i] + peak not in event_locations:
+                    event_locations.append(self.start_pnts[i] + peak)
+                    event_scores.append(scores[i])
 
         ### Check for duplicates:
-        if np.array(event_locations).shape[0] != np.unique(np.array(event_locations)).shape[0]:
-            print('removed duplicates')
-
         event_locations, event_scores = np.array(event_locations), np.array(event_scores)        
         unique_indices = np.unique(event_locations, return_index=True)[1]
-
-        event_locations = event_locations[unique_indices]
-        event_scores = event_scores[unique_indices]
-
-        num_locations = event_locations.shape[0]
-        
-        remove = []
-        for ind, i in enumerate(event_locations):
-            close = event_locations[np.isclose(i, event_locations, atol=win_size/100)]
-            if close.shape[0] > 1:
-                for ind, removal in enumerate(close):
-                    if ind > 0:
-                        remove.append(removal)
-        remove = np.unique(np.array(remove))
-        for i in remove:
-            remaining_indices = np.argwhere(event_locations != i).flatten()
-            event_locations = event_locations[remaining_indices]
-            event_scores = event_scores[remaining_indices]
-        
-        if event_locations.shape[0] != num_locations:
-            print('removed event locations via atol criterium')
-        
-        event_locations = (event_locations / self.resampling_factor).astype(int)
+        event_locations, event_scores = event_locations[unique_indices], event_scores[unique_indices]
+                
+        remove = list(np.argwhere(np.diff(event_locations)<self.window_size/100).flatten() + 1)
+        event_locations = np.delete(event_locations, remove)
+        event_scores = np.delete(event_scores, remove)
 
         return np.asarray(event_locations, dtype=np.int64), event_scores
 
@@ -762,8 +755,8 @@ class EventDetection():
             raise ValueError('Cannot extract time windows exceeding input data size.')
 
         if filter:
-            win = signal.windows.hann(int(self.convolve_win/self.resampling_factor))
-            mini_trace = signal.convolve(self.trace.data, win, mode='same') / sum(win)
+            mini_trace = self.hann_filter(data=self.trace.data)
+
         else:
             mini_trace = self.trace.data
 
@@ -953,7 +946,18 @@ class EventDetection():
         self.stride_length = stride if stride else int(self.window_size/30)
 
         self.__predict(stride)
-        self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points, rel_prom_cutoff=rel_prom_cutoff, peak_w=peak_w)
+        
+        self.start_pnts, self.end_pnts, scores = self._get_prediction_peaks(peak_w=peak_w)
+        
+        self.smth_gradient = self._make_smth_gradient()
+        
+        self.grad_threshold = self._get_grad_threshold(grad=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts)
+
+
+        self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points,
+                                                                             scores=scores,
+                                                                             rel_prom_cutoff=rel_prom_cutoff)
+
 
         if self.event_locations.shape[0] > 0:
             self.events = self.trace._extract_event_data(positions=self.event_locations, 
@@ -1145,11 +1149,10 @@ class EventDetection():
         fig = plt.figure('prediction')
         if include_data:
             ax1 = plt.subplot(211)
-        prediction_x = np.arange(0, len(self.prediction)) * self.trace.sampling * self.stride_length
         if plot_filtered_prediction:
-            plt.plot(prediction_x, maximum_filter1d(self.prediction, size=5, origin=-2), c=trace_cols)
+            plt.plot(self.trace.time_axis, maximum_filter1d(self.prediction, size=5, origin=-2), c=trace_cols)
         else:
-            plt.plot(prediction_x, self.prediction, c=trace_cols)
+            plt.plot(self.trace.time_axis, self.prediction, c=trace_cols)
         plt.axhline(self.model_threshold, ls='--', c=thresh_cols)
         plt.ylabel('probability')
 
@@ -1157,13 +1160,13 @@ class EventDetection():
             plt.tick_params('x', labelbottom=False)
             _ = plt.subplot(212, sharex=ax1)
             if plot_filtered_trace:
-                win = signal.windows.hann(int(self.convolve_win/self.resampling_factor))
-                main_trace = signal.convolve(self.trace.data, win, mode='same') / sum(win)
+                main_trace = self.hann_filter(self.trace.data)
                 main_trace[0:100] = self.trace.data[0:100]
                 main_trace[main_trace.shape[0]-100:main_trace.shape[0]] = self.trace.data[main_trace.shape[0]-100:main_trace.shape[0]]
+
                 plt.plot(self.trace.time_axis, self.trace.data, c='k', alpha=0.4)
                 plt.plot(self.trace.time_axis, main_trace, c=trace_cols)
-            
+
             else:
                 main_trace = self.trace.data
                 plt.plot(self.trace.time_axis, main_trace, c=trace_cols)
@@ -1209,11 +1212,10 @@ class EventDetection():
         '''
         fig = plt.figure('event locations')
         ax1 = plt.subplot(211)
-        prediction_x = np.arange(0, len(self.prediction)) * self.stride_length
         if plot_filtered:
-            plt.plot(prediction_x, maximum_filter1d(self.prediction, size=5, origin=-2))
+            plt.plot(self.trace.time_axis, maximum_filter1d(self.prediction, size=5, origin=-2))
         else:
-            plt.plot(prediction_x, self.prediction)
+            plt.plot(self.trace.time_axis, self.prediction)
         plt.axhline(self.model_threshold, color='orange', ls='--')
         plt.ylabel('probability')
         plt.tick_params('x', labelbottom=False)
@@ -1262,6 +1264,28 @@ class EventDetection():
             plt.savefig(save_fig, format='svg')
             plt.close()
             return
+        plt.show()
+
+    def plot_gradient_search(self):
+        fig, axs = plt.subplots(3, sharex=True)
+
+        mini_trace = self.trace.data - np.mean(self.trace.data)
+        filtered_trace = self.hann_filter(self.trace.data - np.mean(self.trace.data))
+
+        axs[0].plot(self.prediction)
+        axs[0].scatter(self.start_pnts, self.prediction[self.start_pnts], c='red', zorder=2)
+        axs[0].scatter(self.end_pnts, self.prediction[self.end_pnts],  c='green', zorder=2)
+
+        axs[1].plot(mini_trace, c='k', alpha=0.4)
+        axs[1].plot(filtered_trace, c='k', alpha=0.4)
+
+        axs[1].scatter(self.event_locations, mini_trace[self.event_locations], c='orange', zorder=2)
+        axs[1].scatter(self.start_pnts, mini_trace[self.start_pnts], c='red', zorder=2)
+        axs[1].scatter(self.end_pnts, mini_trace[self.end_pnts],  c='green', zorder=2)
+
+        axs[2].plot(self.smth_gradient)
+        axs[2].axhline(self.grad_threshold, c='r', ls='--')
+
         plt.show()
 
 
