@@ -602,8 +602,8 @@ class EventDetection():
         self.model_threshold = threshold
         print(f'Model loaded from {filepath}')
 
-    def hann_filter(self, data):
-        win = signal.windows.hann(self.convolve_win)    
+    def hann_filter(self, data, filter_size):
+        win = signal.windows.hann(filter_size)    
         return signal.convolve(data, win, mode='same') / sum(win)
 
 
@@ -666,10 +666,10 @@ class EventDetection():
 
     def _make_smth_gradient(self):
         # filter raw data trace, calculate gradient and filter first derivative trace        
-        trace_convolved = self.hann_filter(data=self.trace.data - np.mean(self.trace.data))
+        trace_convolved = self.hann_filter(data=self.trace.data - np.mean(self.trace.data), filter_size=self.convolve_win)
         trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
         gradient = np.gradient(trace_convolved, self.trace.sampling)
-        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient))
+        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.convolve_win*2)
         return smth_gradient
     
     def _get_grad_threshold(self, grad, start_pnts, end_pnts):
@@ -755,7 +755,7 @@ class EventDetection():
             raise ValueError('Cannot extract time windows exceeding input data size.')
 
         if filter:
-            mini_trace = self.hann_filter(data=self.trace.data)
+            mini_trace = self.hann_filter(data=self.trace.data, filter_size=self.convolve_win)
 
         else:
             mini_trace = self.trace.data
@@ -1160,7 +1160,7 @@ class EventDetection():
             plt.tick_params('x', labelbottom=False)
             _ = plt.subplot(212, sharex=ax1)
             if plot_filtered_trace:
-                main_trace = self.hann_filter(self.trace.data)
+                main_trace = self.hann_filter(self.trace.data, filter_size=self.convolve_win)
                 main_trace[0:100] = self.trace.data[0:100]
                 main_trace[main_trace.shape[0]-100:main_trace.shape[0]] = self.trace.data[main_trace.shape[0]-100:main_trace.shape[0]]
 
@@ -1270,14 +1270,14 @@ class EventDetection():
         fig, axs = plt.subplots(3, sharex=True)
 
         mini_trace = self.trace.data - np.mean(self.trace.data)
-        filtered_trace = self.hann_filter(self.trace.data - np.mean(self.trace.data))
+        filtered_trace = self.hann_filter(self.trace.data - np.mean(self.trace.data), filter_size=self.convolve_win)
 
         axs[0].plot(self.prediction)
         axs[0].scatter(self.start_pnts, self.prediction[self.start_pnts], c='red', zorder=2)
         axs[0].scatter(self.end_pnts, self.prediction[self.end_pnts],  c='green', zorder=2)
 
         axs[1].plot(mini_trace, c='k', alpha=0.4)
-        axs[1].plot(filtered_trace, c='k', alpha=0.4)
+        axs[1].plot(filtered_trace, c='#014182')
 
         axs[1].scatter(self.event_locations, mini_trace[self.event_locations], c='orange', zorder=2)
         axs[1].scatter(self.start_pnts, mini_trace[self.start_pnts], c='red', zorder=2)
