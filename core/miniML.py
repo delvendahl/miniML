@@ -607,30 +607,28 @@ class EventDetection():
         return signal.convolve(data, win, mode='same') / sum(win)
 
 
-    def __predict(self, stride: int) -> None:
+    def __predict(self) -> None:
         '''
         Performs prediction on a data trace using a sliding window of size `window_size` with a stride size given by `stride`.
         The prediction is performed on the data using the miniML model.
         Speed of prediction depends on batch size of model.predict(), but too high batch sizes will give low precision results.
-        stride: int
-            Stride length in samples for prediction. Must be a positive integer smaller than the window size.
         Raises  
             ValueError when stride is below 1 or above window length
         '''
         # resample values for prediction:
-        trace = signal.resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
+        data = signal.resample(self.trace.data, round(len(self.trace.data)*self.resampling_factor))
 
         # invert the trace if event_direction and training_direction are different.
         if self.event_direction != self.training_direction:
-            trace *= -1
+            data *= -1
 
-        win_size = self.window_size*self.resampling_factor
-        stride = self.stride_length*self.resampling_factor
+        win_size = round(self.window_size*self.resampling_factor)
+        stride = round(self.stride_length*self.resampling_factor)
 
-        if stride <= 0 or stride > self.window_size:
+        if stride <= 0 or stride > win_size:
             raise ValueError('Invalid stride')
         
-        ds = tf.keras.utils.timeseries_dataset_from_array(data=np.expand_dims(trace, axis=1).astype(np.float32), 
+        ds = tf.keras.utils.timeseries_dataset_from_array(data=np.expand_dims(data, axis=1).astype(np.float32), 
                                                           targets=None, 
                                                           sequence_length=win_size, 
                                                           sequence_stride=stride,
@@ -642,12 +640,36 @@ class EventDetection():
         ds = ds.prefetch(tf.data.AUTOTUNE)
         self.prediction = tf.squeeze(self.model.predict(ds, verbose=1, callbacks=self.callbacks))
         
-        # Linear interpolation of prediction trace to match the original data.
-        x = np.arange(0, self.prediction.shape[0])
-        x_interpol = np.linspace(0, self.prediction.shape[0], self.trace.data.shape[0])
-        self.interpol_factor = len(x_interpol) / len(x)
-        self.prediction = np.interp(x_interpol, x, self.prediction, left=None, right=None, period=None)
+    def _linear_interpolation(self, data:np.ndarray, interpol_to_len:int):
+        '''
+        linear interpolation of a data stretch to match the indicated number of points.
 
+        returns
+        -----------
+        data_interpolated:
+            the interpolated data
+        interpol_factor:
+            the factor by which the data was up or downsampled
+        '''        
+        x = np.arange(0, data.shape[0])
+        x_interpol = np.linspace(0, data.shape[0], interpol_to_len)
+        
+        interpol_factor = len(x_interpol) / len(x)
+        data_interpolated = np.interp(x_interpol, x, data, left=None, right=None, period=None)
+        return data_interpolated, interpol_factor
+
+    def _interpolate_prediction_trace(self):
+        '''
+        Interpolate the prediction trace such that it corresponds 1:1 to the raw data before resampling.
+        Last few points of the data will not have prediction values because the data is shorter than the
+        required window size.
+        '''
+        stride = round(self.stride_length*self.resampling_factor)
+        pn = len(self.prediction) - 1 
+        pn_mapped = pn * stride
+        pn_in_raw_data = round(pn_mapped/self.resampling_factor)
+        resampled_prediction, interpol_factor = self._linear_interpolation(data=self.prediction, interpol_to_len=pn_in_raw_data)
+        return resampled_prediction, interpol_factor
 
     def _get_prediction_peaks(self, peak_w:int=10):
         '''
@@ -668,38 +690,53 @@ class EventDetection():
         # filter raw data trace, calculate gradient and filter first derivative trace        
         trace_convolved = self.hann_filter(data=self.trace.data - np.mean(self.trace.data), filter_size=self.convolve_win)
         trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
+        
         gradient = np.gradient(trace_convolved, self.trace.sampling)
-        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.convolve_win*2)
+        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.convolve_win)
         return smth_gradient
-    
+
     def _get_grad_threshold(self, grad, start_pnts, end_pnts):
-        # get threshold based on standard deviation of the derivative of event-free data sections
+        '''
+        Get threshold based on standard deviation of the derivative of event-free data sections.
+        '''
         split_data = np.split(grad, np.vstack((start_pnts, end_pnts)).ravel('F'))
         event_free_data = np.concatenate(split_data[::2]).ravel()
         grad_threshold = int(4 * np.std(event_free_data))
         return grad_threshold
-
 
     def _find_event_locations(self, limit: int, scores, rel_prom_cutoff: float=0.25):
         '''
         Find approximate event positions based on negative threshold crossings in prediction trace. Extract
         segment of peak windows in prediction trace and search for peaks in first derivative. If no peak is found,
         the maximum first derivate is used as peak localization.
-        Returns trace indices and scores of events            
+
+        Parameters
+        ------
         limit: int
             Right trace limit to make sure events at the very border are not picked up.
-            Prevents problems with downstream analysis.
         rel_prom_cutoff: float
             Relative prominence cutoff. Determines the minimum relative prominence for detection of overlapping events
         peak_w: int
             Minimum peak width for detection peaks to be accepted
+
+        Returns
+        ------
+        event_locations: numpy array
+            Location of steepest rise of the events
+        event_scores: numpy array
+            Prediction value for the events           
+
         '''
 
         event_locations, event_scores = [], []
 
         for i, position in enumerate(self.start_pnts): 
-            if position < self.window_size:
+            if position < self.window_size or self.end_pnts[i] > self.prediction.shape[0]:
+                self.end_pnts = np.delete(self.end_pnts, i)
+                self.start_pnts = np.delete(self.start_pnts, i)
+                scores = np.delete(scores, i)
                 continue
+            
             peaks, peak_params = signal.find_peaks(x=self.smth_gradient[self.start_pnts[i]:self.end_pnts[i]], 
                                                    height=self.grad_threshold, prominence=self.grad_threshold)
             
@@ -720,16 +757,22 @@ class EventDetection():
                     event_locations.append(self.start_pnts[i] + peak)
                     event_scores.append(scores[i])
 
-        ### Check for duplicates:
-        event_locations, event_scores = np.array(event_locations), np.array(event_scores)        
-        unique_indices = np.unique(event_locations, return_index=True)[1]
-        event_locations, event_scores = event_locations[unique_indices], event_scores[unique_indices]
-                
-        remove = list(np.argwhere(np.diff(event_locations)<self.window_size/100).flatten() + 1)
-        event_locations = np.delete(event_locations, remove)
-        event_scores = np.delete(event_scores, remove)
+        return np.array(event_locations), np.array(event_scores)       
 
-        return np.asarray(event_locations, dtype=np.int64), event_scores
+    def _remove_duplicate_locations(self):
+        '''
+        Remove event locations and associated scores that have potentially been picked up by
+        overlapping start-/ end-points of different detection peaks.
+        '''
+        
+        ### Check for duplicates:
+        unique_indices = np.unique(self.event_locations, return_index=True)[1]
+        self.event_locations, self.event_scores = self.event_locations[unique_indices], self.event_scores[unique_indices]
+        
+        remove = list(np.argwhere(np.diff(self.event_locations)<self.window_size/100).flatten() + 1)
+        self.event_locations = np.delete(self.event_locations, remove)
+        self.event_scores = np.delete(self.event_scores, remove)
+        self.event_locations = np.asarray(self.event_locations, dtype=np.int64)
 
 
     def _get_event_properties(self, filter: bool=True) -> dict:
@@ -737,6 +780,9 @@ class EventDetection():
         Find more detailed event location properties required for analysis. Namely, baseline, event onset,
         peak half-decay and 10 & 90% rise positions. Also extracts the actual event properties, such as
         amplitude or half-decay time.
+        
+        Parameters
+        ------
         filter: bool
             If true, properties are extracted from the filtered data.
         '''
@@ -774,6 +820,7 @@ class EventDetection():
                 data_unfiltered = data
             
             event_peak = get_event_peak(data=data,event_num=ix,add_points=add_points,window_size=self.window_size,diffs=diffs)
+            
             self.event_peak_locations[ix] = int(event_peak)
             self.event_peak_values[ix] = data[event_peak]
             peak_spacer = int(self.window_size/100)
@@ -918,7 +965,7 @@ class EventDetection():
         Wrapper function to perform event detection, extraction and analysis
         
         Parameters
-        ----------
+        ------
         stride: int, default = None
             The stride used during prediction. If not specified, it will be set to 1/30 of the window size
         eval: bool, default = False
@@ -939,14 +986,18 @@ class EventDetection():
             self.resampling_factor = 600/self.window_size
         else:
             self.resampling_factor = 1
+        
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
         self.add_points = int(self.window_size/3)
-        self.stride_length = stride if stride else int(self.window_size/30)
+        self.stride_length = stride if stride else self.window_size/30
 
-        self.__predict(stride)
+        self.__predict()
         
+        # Linear interpolation of prediction trace to match the original data.
+        self.prediction, self.interpol_factor = self._interpolate_prediction_trace()
+                
         self.start_pnts, self.end_pnts, scores = self._get_prediction_peaks(peak_w=peak_w)
         
         self.smth_gradient = self._make_smth_gradient()
@@ -957,6 +1008,9 @@ class EventDetection():
         self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points,
                                                                              scores=scores,
                                                                              rel_prom_cutoff=rel_prom_cutoff)
+
+        self._remove_duplicate_locations()
+
 
 
         if self.event_locations.shape[0] > 0:
@@ -993,10 +1047,28 @@ class EventDetection():
         return fit[1]
 
 
-    def _fit_event(self, data, amplitude, t_rise, t_decay, x_offset) -> dict:
+    def _fit_event(self, data:np.ndarray, amplitude:float=1, t_rise:float=1, t_decay:float=1, x_offset:float=1) -> dict:
         '''
-        Performs a rudimentary fit to input event.
-        time constants and offsets are in time domain.
+        Performs a rudimentary fit to input event. If not starting values are provided, the data is fitted with
+        all starting values set to one.
+        
+        Parameters
+        ------
+        data: np.ndarray
+            The data to be fitted.
+        amplitude: float
+            Amplitude estimate
+        t_rise: float
+            Rise Tau estimate
+        t_decay: float
+            Decay Tau estimate
+        x_offset: float
+            Baseline period estimate
+
+        Returns
+        ------
+        results: dict
+            Dictionary containing the fitted parameters.
         '''
         x = np.arange(0, data.shape[0]) * self.trace.sampling
         try:
@@ -1090,6 +1162,8 @@ class EventDetection():
         Generates two files, one with averages and one with the values for the individual events.
         Filename is automatically generated.
         
+        Parameters
+        ------
         path: str
             path or directory where the file is saved
         '''
@@ -1141,6 +1215,9 @@ class EventDetection():
     def save_to_pickle(self, filename: str='', include_prediction:bool=True, include_data:bool=True) -> None:
         ''' 
         Save detection results to a .pickle file.         
+
+        Parameters
+        ------
         filename: str
             Name and if desired directory in which to save the file
         include_prediction: bool

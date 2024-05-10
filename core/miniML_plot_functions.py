@@ -114,10 +114,11 @@ class miniML_plots():
         fig = plt.figure('prediction')
         if include_data:
             ax1 = plt.subplot(211)
+        prediction_x = np.arange(0, self.detection.prediction.shape[0]) * self.detection.trace.sampling
         if plot_filtered_prediction:
-            plt.plot(self.detection.trace.time_axis, maximum_filter1d(self.detection.prediction, size=5, origin=-2), c=self.main_trace_color)
+            plt.plot(prediction_x, maximum_filter1d(self.detection.prediction, size=5, origin=-2), c=self.main_trace_color)
         else:
-            plt.plot(self.detection.trace.time_axis, self.detection.prediction, c=self.main_trace_color)
+            plt.plot(prediction_x, self.detection.prediction, c=self.main_trace_color)
         plt.axhline(self.detection.model_threshold, ls='--', c=self.orange_color)
         plt.ylabel('probability')
 
@@ -132,13 +133,15 @@ class miniML_plots():
                 main_trace[main_trace.shape[0]-int(self.detection.window_size/6):main_trace.shape[0]] = self.detection.trace.data[main_trace.shape[0]-int(self.detection.window_size/6):main_trace.shape[0]]
 
                 plt.plot(self.detection.trace.time_axis, self.detection.trace.data, c='k', alpha=0.4)
-                plt.plot(self.detection.trace.time_axis, main_trace, c=self.main_trace_color)
 
             else:
                 main_trace = self.detection.trace.data
-                plt.plot(self.detection.trace.time_axis, main_trace, c=self.main_trace_color)
+
+            plt.plot(self.detection.trace.time_axis, main_trace, c=self.main_trace_color)
+            
             try:
                 plt.scatter(self.detection.event_peak_times, main_trace[self.detection.event_peak_locations], c=self.orange_color, s=20, zorder=2, label='peak positions')
+                
                 if plot_event_params:
                     plt.scatter(self.detection.event_start_times, main_trace[self.detection.event_start], c=self.red_color, s=20, zorder=2, label='event onset')
                     
@@ -179,16 +182,18 @@ class miniML_plots():
         '''
         fig = plt.figure('event locations')
         ax1 = plt.subplot(211)
+
         if plot_filtered:
-            plt.plot(self.detection.trace.time_axis, maximum_filter1d(self.detection.prediction, size=5, origin=-2), c=self.main_trace_color)
+            plt.plot(maximum_filter1d(self.detection.prediction, size=5, origin=-2), c=self.main_trace_color)
         else:
-            plt.plot(self.detection.trace.time_axis, self.detection.prediction, c=self.main_trace_color)
+            plt.plot(self.detection.prediction, c=self.main_trace_color)
 
         plt.axhline(self.detection.model_threshold, color=self.orange_color, ls='--')
         plt.ylabel('probability')
         plt.tick_params('x', labelbottom=False)
+
         ax2 = plt.subplot(212, sharex=ax1)
-        plt.plot(self.detection.trace.data)
+        plt.plot(self.detection.trace.data, c=self.main_trace_color)
         
         try:
             plt.scatter(self.detection.event_locations, self.detection.trace.data[self.detection.event_locations], c=self.orange_color, s=20, zorder=2)
