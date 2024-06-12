@@ -5,7 +5,6 @@ import os
 from miniML import EventDetection, mEPSC_template
 from scipy.ndimage import maximum_filter1d
 
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
@@ -72,7 +71,6 @@ class miniML_plots():
         plt.legend()
         plt.show()
 
-
     def plot_event_histogram(self, plot: str='amplitude', cumulative: bool=False) -> None:
         ''' Plot event amplitude or frequency histogram '''
         if not self.detection.events_present():
@@ -92,7 +90,6 @@ class miniML_plots():
         plt.ylabel(ylab_str)
         plt.xlabel(xlab_str)
         plt.show()
-
 
     def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, plot_filtered_trace: bool=False, save_fig: str='') -> None:
         ''' 
@@ -169,7 +166,6 @@ class miniML_plots():
             plt.close()
             return
         plt.show()
-    
 
     def plot_event_locations(self, plot_filtered: bool=False, save_fig: str='') -> None:
         ''' 
@@ -214,7 +210,6 @@ class miniML_plots():
             plt.close()
         else:
             plt.show()
-
 
     def plot_detection(self, save_fig: str='') -> None:
         ''' 

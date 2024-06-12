@@ -692,7 +692,7 @@ class EventDetection():
         trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
         
         gradient = np.gradient(trace_convolved, self.trace.sampling)
-        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.convolve_win)
+        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.convolve_win*2)
         return smth_gradient
 
     def _get_grad_threshold(self, grad, start_pnts, end_pnts):
@@ -727,16 +727,20 @@ class EventDetection():
             Prediction value for the events           
 
         '''
+        # Remove indices at left and right borders to prevent boundary issues.
+        mask = []
+        for i, position in enumerate(self.start_pnts): 
+            if position <= self.window_size or self.end_pnts[i] >= self.prediction.shape[0]:
+                mask.append(False)
+            else:
+                mask.append(True)
+        
+        self.end_pnts = self.end_pnts[mask]
+        self.start_pnts = self.start_pnts[mask]
+        scores = scores[mask]
 
         event_locations, event_scores = [], []
-
         for i, position in enumerate(self.start_pnts): 
-            if position < self.window_size or self.end_pnts[i] > self.prediction.shape[0]:
-                self.end_pnts = np.delete(self.end_pnts, i)
-                self.start_pnts = np.delete(self.start_pnts, i)
-                scores = np.delete(scores, i)
-                continue
-            
             peaks, peak_params = signal.find_peaks(x=self.smth_gradient[self.start_pnts[i]:self.end_pnts[i]], 
                                                    height=self.grad_threshold, prominence=self.grad_threshold)
             
@@ -814,6 +818,7 @@ class EventDetection():
         for ix, position in enumerate(positions):
             indices = position + np.arange(-add_points, after)
             data = mini_trace[indices]
+            
             if filter:
                 data_unfiltered = self.trace.data[indices]*self.event_direction
             else:
@@ -1010,8 +1015,6 @@ class EventDetection():
                                                                              rel_prom_cutoff=rel_prom_cutoff)
 
         self._remove_duplicate_locations()
-
-
 
         if self.event_locations.shape[0] > 0:
             self.events = self.trace._extract_event_data(positions=self.event_locations, 
