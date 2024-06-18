@@ -5,6 +5,7 @@ import pyqtgraph as pg
 import numpy as np
 import os
 import sys
+sys.path.append('./core/')
 from miniML import MiniTrace, EventDetection
 from miniML_settings import MinimlSettings
 from qt_material import build_stylesheet
@@ -14,8 +15,16 @@ import tensorflow as tf
 
 # ------- Functions ------- #
 def get_available_models():
-    ''' Returns list of available models in /models folder '''
-    models = [f for f in os.listdir(os.path.join(os.path.dirname(__file__), 'models')) if not f.startswith('.')]
+    ''' Returns list of available models in /models folder searching for .h5 files recursively. 
+    list only contains relative paths. '''
+
+    models = []
+
+    for root, dirs, files in os.walk(os.path.join(os.path.dirname(__file__), 'models')):
+        for file in files:
+            if file.endswith('.h5'):
+                models.append(os.path.relpath(os.path.join(root, file), os.path.join(os.path.dirname(__file__), 'models')))
+    # models = [f for f in os.listdir(os.path.join(os.path.dirname(__file__), 'models')) if not f.startswith('.')]
 
     return models
 

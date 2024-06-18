@@ -5,7 +5,7 @@ class MinimlSettings():
     def __init__(self, 
                  stride: int=20, 
                  event_length: int=600,
-                 model: str='gc_model',
+                 model: str='GC_lstm_model.h5',
                  event_threshold: float=0.5,
                  direction: str='negative',
                  batch_size: int=512):
@@ -48,7 +48,7 @@ class MinimlSettings():
 
     @model_path.setter
     def model_path(self, value) -> None:
-        model_path = f'models/{value}/model_{value}.h5'
+        model_path = f'models/{value}'
         if not os.path.exists(model_path):
             raise FileNotFoundError('Model file not found')
 
