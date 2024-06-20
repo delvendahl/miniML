@@ -420,6 +420,7 @@ class minimlGuiMain(QMainWindow):
                                             window_size=self.settings.event_window,
                                             batch_size=self.settings.batch_size,
                                             event_direction=self.settings.direction,
+                                            verbose=0,
                                             callbacks=CustomCallback())
 
             self.detection.detect_events(stride=self.settings.stride, eval=True)
