@@ -190,8 +190,6 @@ class MiniTrace():
                 raise FileNotFoundError('Trace not found in file')
             data = f[path][:] * scaling
 
-        print(f'Data loaded from {filename} with shape {data.shape}')
-
         return cls(data=data, sampling_interval=sampling, y_unit=unit, filename=os.path.split(filename)[-1])
 
 
@@ -547,13 +545,14 @@ class EventDetection():
     event_stats: EventStats object
         Contains event statistics
     '''
-    def __init__(self, data: MiniTrace, window_size: int=600, event_direction: str='negative', training_direction: str='negative',
+    def __init__(self, data: MiniTrace, window_size: int=600, event_direction: str='negative', training_direction: str='negative', verbose=1,
                  batch_size: int=128, model_path: str='', model_threshold: float=0.5, compile_model=True, callbacks: list=[]) -> None:
         self.trace = data
         self.prediction = None
         self.window_size = window_size
         self.event_direction = event_direction
         self.training_direction = training_direction
+        self.verbose = verbose
         self.event_locations = np.array([])
         self.event_scores = np.array([])
         self.events = np.array([])
@@ -600,7 +599,8 @@ class EventDetection():
         ''' Loads trained miniML model from hdf5 file '''
         self.model = tf.keras.models.load_model(filepath, compile=compile)
         self.model_threshold = threshold
-        print(f'Model loaded from {filepath}')
+        if self.verbose:
+            print(f'Model loaded from {filepath}')
 
 
     def __predict(self, stride: int) -> None:
@@ -636,7 +636,7 @@ class EventDetection():
         ds = ds.map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.batch(self.batch_size, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.prefetch(tf.data.AUTOTUNE)
-        self.prediction = tf.squeeze(self.model.predict(ds, verbose=1, callbacks=self.callbacks))
+        self.prediction = tf.squeeze(self.model.predict(ds, verbose=self.verbose, callbacks=self.callbacks))
 
 
     def _find_event_locations(self, limit: int, rel_prom_cutoff: float=0.25, peak_w:int=10):
@@ -919,8 +919,8 @@ class EventDetection():
         return results
 
 
-    def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, peak_w:int=5,
-                      rel_prom_cutoff: float=0.25, convolve_win: int=20, resample_to_600: bool=True) -> None:
+    def detect_events(self, stride: int=None, eval: bool=False, peak_w:int=5, rel_prom_cutoff: float=0.25, 
+                      convolve_win: int=20, resample_to_600: bool=True) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -930,8 +930,6 @@ class EventDetection():
             The stride used during prediction. If not specified, it will be set to 1/30 of the window size
         eval: bool, default = False
             Whether to evaluate detected events.
-        verbose: bool, default = True
-            Whether to print the output. 
         peak_w: int, default = 5
             The minimum prediction peak width.
         rel_prom_cutoff: int, float = 0.25
@@ -975,7 +973,7 @@ class EventDetection():
                 x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)
 
             if eval:
-                self._eval_events(verbose=verbose)
+                self._eval_events()
 
 
     def _get_average_event_decay(self) -> float:
@@ -1009,7 +1007,7 @@ class EventDetection():
         return results
 
 
-    def _eval_events(self, verbose: bool=True) -> None:
+    def _eval_events(self) -> None:
         ''' Evaluates events. Calculates mean, std and median of amplitudes & charge, as well as decay tau and
         frequency of events. Results are stored as EventStats object in self.event_stats.
         In addition, times of event peaks, onset and half decay are calculated. 
@@ -1031,7 +1029,7 @@ class EventDetection():
         self.half_decay_times = self.half_decay * self.trace.sampling
         self.interevent_intervals = np.diff(self.event_peak_times)
 
-        if verbose:
+        if self.verbose:
             self.event_stats.print()
 
 
@@ -1466,8 +1464,8 @@ class EventAnalysis(EventDetection):
     eval_events: 
         Perform event analysis.
     '''
-    def __init__(self, trace, window_size, event_direction, event_positions, convolve_win, resampling_factor):
-        super().__init__(data=trace, window_size=window_size, event_direction=event_direction, convolve_win=convolve_win)
+    def __init__(self, trace, window_size, event_direction, verbose, event_positions, convolve_win, resampling_factor):
+        super().__init__(data=trace, window_size=window_size, event_direction=event_direction, verbose=verbose, convolve_win=convolve_win)
         self.add_points = int(self.window_size/3)
         self.resampling_factor = resampling_factor
         self.event_locations = event_positions[np.logical_and(
@@ -1477,8 +1475,8 @@ class EventAnalysis(EventDetection):
         self.events = self.trace._extract_event_data(self.event_locations, before=self.add_points, 
                                                      after=self.window_size + self.add_points)
 
-    def eval_events(self, filter: bool=True, verbose: bool=True) -> None:
+    def eval_events(self, filter: bool=True) -> None:
         if self.event_locations.shape[0] > 0:
             super()._get_event_properties(filter=filter)
             self.events = self.events - self.event_bsls[:, None]
-            super()._eval_events(verbose=verbose)
+            super()._eval_events()

@@ -155,7 +155,7 @@ class minimlGuiMain(QMainWindow):
     def _create_table(self):
         self.tableWidget = QTableWidget()
         self.tableWidget.verticalHeader().setDefaultSectionSize(10)
-        self.tableWidget.horizontalHeader().setDefaultSectionSize(100)
+        self.tableWidget.horizontalHeader().setDefaultSectionSize(90)
         self.tableWidget.setRowCount(0) 
         self.tableWidget.setColumnCount(5)
         self.tableWidget.setHorizontalHeaderLabels(("Position;Amplitude;Charge;Risetime;Decay").split(";"))
@@ -361,7 +361,7 @@ class minimlGuiMain(QMainWindow):
             self.load_args = {'filename': self.filename,
                               'rectype': rectype,
                               'group': int(group_no),
-                              'series_range': series_list,
+                              'exclude_series': series_list,
                               'scaling': float(panel.e2.text()),
                               'unit': panel.e3.text() if (panel.e3.text() != '') else None}
 
@@ -419,7 +419,7 @@ class minimlGuiMain(QMainWindow):
                                             model_threshold=self.settings.event_threshold,
                                             window_size=self.settings.event_window,
                                             batch_size=self.settings.batch_size,
-                                            direction=self.settings.direction,
+                                            event_direction=self.settings.direction,
                                             callbacks=CustomCallback())
 
             self.detection.detect_events(stride=self.settings.stride, eval=True)
@@ -564,7 +564,7 @@ class LoadDatPanel(QDialog):
         self.layout.addRow('Import group:', self.group)
         self.layout.addRow('Import series:', self.series)
         self.layout.addRow('Import all series of this type:', self.load_option)
-        self.layout.addRow('Import selected series:', self.e1)
+        self.layout.addRow('Exclude selected series:', self.e1)
         self.layout.addRow('Scaling factor:', self.e2)
         self.layout.addRow('Data unit:', self.e3)
 
