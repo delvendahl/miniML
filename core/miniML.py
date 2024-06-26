@@ -16,7 +16,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 #  --------------------------------------------------  #
-#  general functions                                    #
+#  general functions                                   #
 def exp_fit(x: np.ndarray, amp: float, tau: float, offset: float) -> np.ndarray:
     """
     Fits an exponential curve to the given data.
@@ -56,26 +56,6 @@ def mEPSC_template(x: np.ndarray, amplitude: float, t_rise: float, t_decay: floa
     y[x < x0] = 0
 
     return y
-
-
-def lowpass_filter(data: np.ndarray, sampling_rate: float, lowpass: float=500, order: int=4) -> np.ndarray:
-    """
-    Apply a lowpass filter to the input data.
-
-    Parameters:
-        data (np.ndarray): The input data to be filtered.
-        sampling_rate (float): The sampling rate of the input data.
-        lowpass (float, optional): The cutoff frequency for the lowpass filter. Defaults to 500.
-        order (int, optional): The order of the filter. Defaults to 4.
-
-    Returns:
-        np.ndarray: The filtered data.
-
-    """
-    nyq = sampling_rate * 0.5
-    sos = signal.butter(order, lowpass / nyq, btype='low', output='sos')
-
-    return signal.sosfiltfilt(sos, data)
 
 
 @tf.function
