@@ -15,31 +15,30 @@ import tensorflow as tf
 
 # ------- Functions ------- #
 def get_available_models():
-    ''' Returns list of available models in /models folder searching for .h5 files recursively. 
-    list only contains relative paths. '''
-
-    models = []
-
-    for root, dirs, files in os.walk(os.path.join(os.path.dirname(__file__), 'models')):
-        for file in files:
-            if file.endswith('.h5'):
-                models.append(os.path.relpath(os.path.join(root, file), os.path.join(os.path.dirname(__file__), 'models')))
-    # models = [f for f in os.listdir(os.path.join(os.path.dirname(__file__), 'models')) if not f.startswith('.')]
-
+    """
+    Returns a list of available model paths in the /models folder.
+    The list only contains relative paths.
+    """
+    models_dir = os.path.join(os.path.dirname(__file__), 'models')
+    models = [os.path.relpath(os.path.join(root, file), models_dir)
+              for root, dirs, files in os.walk(models_dir)
+              for file in files
+              if file.endswith('.h5')]
+    
     return models
 
 
-def load_trace_from_file(type: str, function_args: dict):
-    if type == 'HEKA DAT':
-        trace = MiniTrace.from_heka_file(**function_args)
-    elif type == 'AXON ABF':
-        trace = MiniTrace.from_axon_file(**function_args)
-    elif type == 'HDF5':
-        trace = MiniTrace.from_h5_file(**function_args)
-    else:
+def load_trace_from_file(file_type: str, file_args: dict) -> MiniTrace:
+    file_loader = {
+        'HEKA DAT': MiniTrace.from_heka_file,
+        'AXON ABF': MiniTrace.from_axon_file,
+        'HDF5': MiniTrace.from_h5_file,
+    }.get(file_type, None)
+
+    if file_loader is None:
         raise ValueError('Unsupported file type.')
 
-    return trace
+    return file_loader(**file_args)
 
 
 def finalize_dialog_window(window: QDialog, title: str='new window', cancel: bool=True):
