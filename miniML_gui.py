@@ -74,6 +74,12 @@ class minimlGuiMain(QMainWindow):
         self.tracePlot.showGrid(x=True, y=True)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', '')
+        
+        self.predictionPlot = pg.PlotWidget()
+        self.predictionPlot.setBackground('w')
+        self.predictionPlot.showGrid(x=True, y=True)
+        self.predictionPlot.setLabel('left', 'Confidence', '')
+        self.predictionPlot.setXLink(self.tracePlot)
 
         self.eventPlot = pg.PlotWidget()
         self.eventPlot.setBackground('w')
@@ -89,9 +95,10 @@ class minimlGuiMain(QMainWindow):
         self.splitter1.setSizes([250,250,250])
         
         self.splitter2 = QSplitter(Qt.Vertical)
+        self.splitter2.addWidget(self.predictionPlot)
         self.splitter2.addWidget(self.tracePlot)
         self.splitter2.addWidget(self.splitter1)
-        self.splitter2.setSizes([300,200])
+        self.splitter2.setSizes([130,270,150])
         
         self.splitter3 = QSplitter(Qt.Horizontal)
         self.splitter3.addWidget(self.splitter2)
@@ -104,7 +111,7 @@ class minimlGuiMain(QMainWindow):
         self.setCentralWidget(self.splitter3)
         QApplication.setStyle(QStyleFactory.create('Cleanlooks'))
         
-        self.setGeometry(150, 150, 1150, 650)
+        self.setGeometry(150, 150, 1150, 700)
         self.setWindowTitle('miniML')
         self.show()
 		
@@ -125,6 +132,10 @@ class minimlGuiMain(QMainWindow):
         self.tb.addAction(self.resetAction)
         self.analyseAction = QAction(QIcon("core/icons/rocket_launch_24px_blue.svg"), "Analyse", self)
         self.tb.addAction(self.analyseAction)
+        self.predictionAction = QAction(QIcon("core/icons/ssid_chart_24px_blue.svg"), "Prediction", self)
+        self.tb.addAction(self.predictionAction)
+        self.summaryAction = QAction(QIcon("core/icons/functions_24px_blue.svg"), "Summary", self)
+        self.tb.addAction(self.summaryAction)
         self.plotAction = QAction(QIcon("core/icons/insert_chart_24px_blue.svg"), "Plot", self)
         self.tb.addAction(self.plotAction)
         self.tableAction = QAction(QIcon("core/icons/table_24px_blue.svg"), "Table", self)
@@ -144,6 +155,8 @@ class minimlGuiMain(QMainWindow):
         self.cutAction.triggered.connect(self.cut_data)
         self.resetAction.triggered.connect(self.reload_data)
         self.analyseAction.triggered.connect(self.run_analysis)
+        self.predictionAction.triggered.connect(self.toggle_prediction_win)
+        self.summaryAction.triggered.connect(self.summary_window)
         self.plotAction.triggered.connect(self.toggle_plot_win)
         self.tableAction.triggered.connect(self.toggle_table_win)
         self.settingsAction.triggered.connect(self.settings_window)
@@ -287,11 +300,19 @@ class minimlGuiMain(QMainWindow):
 
 
     def toggle_plot_win(self):
-        if 0 in self.splitter2.sizes():
+        if self.splitter2.sizes()[-1] == 0:
             self.splitter2.setSizes(self._store_size)
         else:
             self._store_size = self.splitter2.sizes()
-            self.splitter2.setSizes([np.sum(self.splitter2.sizes()), 0])    
+            self.splitter2.setSizes([self.splitter2.sizes()[0], np.sum(self.splitter2.sizes()[0:-1]), 0])
+
+
+    def toggle_prediction_win(self):
+        if self.splitter2.sizes()[0] == 0:
+            self.splitter2.setSizes(self._store_size)
+        else:
+            self._store_size = self.splitter2.sizes()
+            self.splitter2.setSizes([0, np.sum(self.splitter2.sizes()[0:-1]), self.splitter2.sizes()[2]])
 
 
     def reload_data(self):
@@ -308,6 +329,7 @@ class minimlGuiMain(QMainWindow):
             self.eventPlot.clear()
             self.histogramPlot.clear()
             self.averagePlot.clear()
+            self.predictionPlot.clear()
 
 
     def new_file(self):
@@ -381,6 +403,13 @@ class minimlGuiMain(QMainWindow):
         info_win.exec_()
     
 
+    def summary_window(self):
+        if not hasattr(self, 'trace'):
+            return
+
+        summary_win = SummaryPanel(self)
+        summary_win.exec_()
+
     def settings_window(self):
         settings_win = SettingsPanel(self)
         settings_win.exec_()
@@ -423,6 +452,13 @@ class minimlGuiMain(QMainWindow):
                                             callbacks=CustomCallback())
 
             self.detection.detect_events(stride=self.settings.stride, eval=True)
+
+            self.predictionPlot.clear()
+            pen = pg.mkPen(color=self.settings.colors[3], width=1)
+            prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling * self.detection.stride_length
+            self.plotPrediction = self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen)
+            # self.predictionPlot.setLabel('left', 'Confidence', '')
+            
 
         if self.detection.event_locations.shape[0] > 0:
             ev_positions = self.detection.event_peak_times
@@ -609,6 +645,46 @@ class FileInfoPanel(QDialog):
         finalize_dialog_window(self, title='File info', cancel=False)
 
 
+class SummaryPanel(QDialog):
+    def __init__(self, parent=None):
+        super(SummaryPanel, self).__init__(parent)
+
+        self.filename = QLineEdit(parent.trace.filename)
+        self.filename.setReadOnly(True)
+        self.filename.setFixedWidth(300)
+        self.eventNum = QLineEdit(str(parent.detection.event_stats.event_count))
+        self.eventNum.setReadOnly(True)
+        self.frequency = QLineEdit(f'{parent.detection.event_stats.frequency():.4f}')
+        self.frequency.setReadOnly(True)
+        self.average = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.amplitudes):.4f}')
+        self.average.setReadOnly(True)
+        self.median = QLineEdit(f'{parent.detection.event_stats.median(parent.detection.event_stats.amplitudes):.4f}')
+        self.median.setReadOnly(True)
+        self.varcoeff = QLineEdit(f'{parent.detection.event_stats.cv(parent.detection.event_stats.amplitudes):.4f}')
+        self.varcoeff.setReadOnly(True)
+        self.area = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.charges):.4f}')
+        self.area.setReadOnly(True)
+        self.risetime = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.risetimes)*1000:.4f}')
+        self.risetime.setReadOnly(True)
+        self.decaytime = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1000:.4f}')
+        self.decaytime.setReadOnly(True)
+        self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1000:.4f}')
+        self.decay_tau.setReadOnly(True)
+        
+        self.layout = QFormLayout(self)
+        self.layout.addRow('Filename:', self.filename)
+        self.layout.addRow('Events found:', self.eventNum)
+        self.layout.addRow('Event frequency (Hz)', self.frequency)
+        self.layout.addRow(f'Average amplitude ({parent.detection.trace.y_unit}):', self.average)
+        self.layout.addRow(f'Median amplitude ({parent.detection.trace.y_unit}):', self.median)
+        self.layout.addRow(f'Average area ({parent.detection.trace.y_unit}*s):', self.area)
+        self.layout.addRow(f'Coefficient of variation:', self.varcoeff)
+        self.layout.addRow(f'Average risetime (ms):', self.risetime)
+        self.layout.addRow(f'Average 50% decay time (ms):', self.decaytime)
+        self.layout.addRow('Decay time constant (ms):', self.decay_tau)
+
+        finalize_dialog_window(self, title='Summary', cancel=False)
+
 class SettingsPanel(QDialog):
     def __init__(self, parent=None):
         super(SettingsPanel, self).__init__(parent)
@@ -630,7 +706,7 @@ class SettingsPanel(QDialog):
         self.layout = QFormLayout(self)
         self.layout.addRow('Stride length (samples)', self.stride)
         self.layout.addRow('Event length (samples)', self.ev_len)
-        self.layout.addRow('Detection threshold', self.thresh)
+        self.layout.addRow('Min. peak height (0-1)', self.thresh)
         self.layout.addRow('Model', self.model)
         self.layout.addRow('Event direction', self.direction)
         self.layout.addRow('Batch size', self.batchsize)
