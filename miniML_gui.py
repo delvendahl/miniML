@@ -295,26 +295,32 @@ class minimlGuiMain(QMainWindow):
 
     def toggle_table_win(self):
         if 0 in self.splitter3.sizes():
-            self.splitter3.setSizes(self._store_size)
+            self.splitter3.setSizes(self._store_size_a)
         else:
-            self._store_size = self.splitter3.sizes()
+            self._store_size_a = self.splitter3.sizes()
             self.splitter3.setSizes([np.sum(self.splitter3.sizes()), 0])
 
 
     def toggle_plot_win(self):
         if self.splitter2.sizes()[-1] == 0:
-            self.splitter2.setSizes(self._store_size)
+            self.splitter2.setSizes(self._store_size_b)
         else:
-            self._store_size = self.splitter2.sizes()
-            self.splitter2.setSizes([self.splitter2.sizes()[0], np.sum(self.splitter2.sizes()[0:-1]), 0])
+            self._store_size_b = self.splitter2.sizes()
+            if self.splitter2.sizes()[0] == 0:
+                self.splitter2.setSizes([np.sum(self.splitter2.sizes()), 0, 0])
+            else:
+                self.splitter2.setSizes([self.splitter2.sizes()[0], np.sum(self.splitter2.sizes()[0:-1]), 0])
 
 
     def toggle_prediction_win(self):
         if self.splitter2.sizes()[0] == 0:
-            self.splitter2.setSizes(self._store_size)
+            self.splitter2.setSizes(self._store_size_c)
         else:
-            self._store_size = self.splitter2.sizes()
-            self.splitter2.setSizes([0, np.sum(self.splitter2.sizes()[0:-1]), self.splitter2.sizes()[2]])
+            self._store_size_c = self.splitter2.sizes()
+            if self.splitter2.sizes()[2] == 0:
+                self.splitter2.setSizes([0, np.sum(self.splitter2.sizes()), 0])
+            else:
+                self.splitter2.setSizes([0, np.sum(self.splitter2.sizes()[0:-1]), self.splitter2.sizes()[2]])
 
 
     def reload_data(self):
@@ -651,44 +657,45 @@ class SummaryPanel(QDialog):
     def __init__(self, parent=None):
         super(SummaryPanel, self).__init__(parent)
 
-        self.filename = QLineEdit(parent.trace.filename)
-        self.filename.setReadOnly(True)
-        self.filename.setFixedWidth(300)
-        self.eventNum = QLineEdit(str(parent.detection.event_stats.event_count))
-        self.eventNum.setReadOnly(True)
-        self.frequency = QLineEdit(f'{parent.detection.event_stats.frequency():.5f}')
-        self.frequency.setReadOnly(True)
-        self.score = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.event_scores):.5f}')
-        self.score.setReadOnly(True)
-        self.average = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.amplitudes):.5f}')
-        self.average.setReadOnly(True)
-        self.median = QLineEdit(f'{parent.detection.event_stats.median(parent.detection.event_stats.amplitudes):.5f}')
-        self.median.setReadOnly(True)
-        self.varcoeff = QLineEdit(f'{parent.detection.event_stats.cv(parent.detection.event_stats.amplitudes):.5f}')
-        self.varcoeff.setReadOnly(True)
-        self.area = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.charges):.5f}')
-        self.area.setReadOnly(True)
-        self.risetime = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.risetimes)*1000:.5f}')
-        self.risetime.setReadOnly(True)
-        self.decaytime = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1000:.5f}')
-        self.decaytime.setReadOnly(True)
-        self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1000:.5f}')
-        self.decay_tau.setReadOnly(True)
-        
-        self.layout = QFormLayout(self)
+        self.populate_fields(parent)
         self.layout.addRow('Filename:', self.filename)
-        self.layout.addRow('Events found:', self.eventNum)
-        self.layout.addRow('Event frequency (Hz)', self.frequency)
-        self.layout.addRow('Average score:', self.score)
-        self.layout.addRow(f'Average amplitude ({parent.detection.trace.y_unit}):', self.average)
-        self.layout.addRow(f'Median amplitude ({parent.detection.trace.y_unit}):', self.median)
-        self.layout.addRow(f'Coefficient of variation:', self.varcoeff)
-        self.layout.addRow(f'Average area ({parent.detection.trace.y_unit}*s):', self.area)
-        self.layout.addRow(f'Average risetime (ms):', self.risetime)
-        self.layout.addRow(f'Average 50% decay time (ms):', self.decaytime)
+        self.layout.addRow('Events found:', self.event_count)
+        self.layout.addRow('Event frequency (Hz):', self.event_frequency)
+        self.layout.addRow('Average score:', self.average_score)
+        self.layout.addRow(f'Average amplitude ({parent.detection.trace.y_unit}):', self.average_amplitude)
+        self.layout.addRow(f'Median amplitude ({parent.detection.trace.y_unit}):', self.median_amplitude)
+        self.layout.addRow('Coefficient of variation:', self.amplitude_cv)
+        self.layout.addRow(f'Average area ({parent.detection.trace.y_unit}*s):', self.average_area)
+        self.layout.addRow('Average risetime (ms):', self.average_rise_time)
+        self.layout.addRow(f'Average 50% decay time (ms):', self.average_decay_time)
         self.layout.addRow('Decay time constant (ms):', self.decay_tau)
 
         finalize_dialog_window(self, title='Summary', cancel=False)
+
+    def populate_fields(self, parent):
+        self.filename = QLineEdit(parent.trace.filename)
+        self.filename.setReadOnly(True)
+        self.event_count = QLineEdit(str(parent.detection.event_stats.event_count))
+        self.event_count.setReadOnly(True)
+        self.event_frequency = QLineEdit(f'{parent.detection.event_stats.frequency():.5f}')
+        self.event_frequency.setReadOnly(True)
+        self.average_score = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.event_scores):.5f}')
+        self.average_score.setReadOnly(True)
+        self.average_amplitude = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.amplitudes):.5f}')
+        self.average_amplitude.setReadOnly(True)
+        self.median_amplitude = QLineEdit(f'{parent.detection.event_stats.median(parent.detection.event_stats.amplitudes):.5f}')
+        self.median_amplitude.setReadOnly(True)
+        self.amplitude_cv = QLineEdit(f'{parent.detection.event_stats.cv(parent.detection.event_stats.amplitudes):.5f}')
+        self.amplitude_cv.setReadOnly(True)
+        self.average_area = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.charges):.5f}')
+        self.average_area.setReadOnly(True)
+        self.average_rise_time = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.risetimes)*1000:.5f}')
+        self.average_rise_time.setReadOnly(True)
+        self.average_decay_time = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1000:.5f}')
+        self.average_decay_time.setReadOnly(True)
+        self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1000:.5f}')
+        self.decay_tau.setReadOnly(True)
+        self.layout = QFormLayout(self)
 
 
 class SettingsPanel(QDialog):
