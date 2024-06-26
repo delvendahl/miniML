@@ -256,6 +256,8 @@ class minimlGuiMain(QMainWindow):
             return
 
         if panel.detrend.isChecked():
+            self.trace = self.trace.detrend(num_segments = int(panel.num_segments.text()))
+        if panel.highpass.isChecked():
             self.trace = self.trace.filter(highpass=float(panel.high.text()), order=int(panel.order.text()))
         if panel.notch.isChecked():
             self.trace = self.trace.filter(notch=float(panel.notch_freq.text()))
@@ -654,36 +656,40 @@ class SummaryPanel(QDialog):
         self.filename.setFixedWidth(300)
         self.eventNum = QLineEdit(str(parent.detection.event_stats.event_count))
         self.eventNum.setReadOnly(True)
-        self.frequency = QLineEdit(f'{parent.detection.event_stats.frequency():.4f}')
+        self.frequency = QLineEdit(f'{parent.detection.event_stats.frequency():.5f}')
         self.frequency.setReadOnly(True)
-        self.average = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.amplitudes):.4f}')
+        self.score = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.event_scores):.5f}')
+        self.score.setReadOnly(True)
+        self.average = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.amplitudes):.5f}')
         self.average.setReadOnly(True)
-        self.median = QLineEdit(f'{parent.detection.event_stats.median(parent.detection.event_stats.amplitudes):.4f}')
+        self.median = QLineEdit(f'{parent.detection.event_stats.median(parent.detection.event_stats.amplitudes):.5f}')
         self.median.setReadOnly(True)
-        self.varcoeff = QLineEdit(f'{parent.detection.event_stats.cv(parent.detection.event_stats.amplitudes):.4f}')
+        self.varcoeff = QLineEdit(f'{parent.detection.event_stats.cv(parent.detection.event_stats.amplitudes):.5f}')
         self.varcoeff.setReadOnly(True)
-        self.area = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.charges):.4f}')
+        self.area = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.charges):.5f}')
         self.area.setReadOnly(True)
-        self.risetime = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.risetimes)*1000:.4f}')
+        self.risetime = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.risetimes)*1000:.5f}')
         self.risetime.setReadOnly(True)
-        self.decaytime = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1000:.4f}')
+        self.decaytime = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1000:.5f}')
         self.decaytime.setReadOnly(True)
-        self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1000:.4f}')
+        self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1000:.5f}')
         self.decay_tau.setReadOnly(True)
         
         self.layout = QFormLayout(self)
         self.layout.addRow('Filename:', self.filename)
         self.layout.addRow('Events found:', self.eventNum)
         self.layout.addRow('Event frequency (Hz)', self.frequency)
+        self.layout.addRow('Average score:', self.score)
         self.layout.addRow(f'Average amplitude ({parent.detection.trace.y_unit}):', self.average)
         self.layout.addRow(f'Median amplitude ({parent.detection.trace.y_unit}):', self.median)
-        self.layout.addRow(f'Average area ({parent.detection.trace.y_unit}*s):', self.area)
         self.layout.addRow(f'Coefficient of variation:', self.varcoeff)
+        self.layout.addRow(f'Average area ({parent.detection.trace.y_unit}*s):', self.area)
         self.layout.addRow(f'Average risetime (ms):', self.risetime)
         self.layout.addRow(f'Average 50% decay time (ms):', self.decaytime)
         self.layout.addRow('Decay time constant (ms):', self.decay_tau)
 
         finalize_dialog_window(self, title='Summary', cancel=False)
+
 
 class SettingsPanel(QDialog):
     def __init__(self, parent=None):
@@ -741,6 +747,9 @@ class FilterPanel(QDialog):
                 self.low.setEnabled(True)
 
         self.detrend = QCheckBox('')
+        self.num_segments = QLineEdit('1')
+        self.num_segments.setValidator(QIntValidator(1,99))
+        self.highpass = QCheckBox('')
         self.high = QLineEdit('0.5')
         self.high.setValidator(QDoubleValidator(0.01,99.99,2))
         self.notch = QCheckBox('')
@@ -761,6 +770,8 @@ class FilterPanel(QDialog):
         
         self.layout = QFormLayout(self)
         self.layout.addRow('Detrend data', self.detrend)
+        self.layout.addRow('Number of segments', self.num_segments)
+        self.layout.addRow('High-pass filter', self.highpass)
         self.layout.addRow('High-pass (Hz)', self.high)
         self.layout.addRow('Notch filter', self.notch)
         self.layout.addRow('Notch frequency (Hz)', self.notch_freq)        

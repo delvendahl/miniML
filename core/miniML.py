@@ -315,9 +315,9 @@ class MiniTrace():
 
     def detrend(self, detrend_type: str='linear', num_segments: int=0) -> MiniTrace:
         ''' Detrend the data. '''
-        num_data = self.trace.data.shape[0]
+        num_data = self.data.shape[0]
         breaks = np.arange(num_data/num_segments, num_data, num_data/num_segments, dtype=np.int64) if num_segments > 1 else 0
-        detrended = signal.detrend(self.trace.data, bp=breaks, type=detrend_type)
+        detrended = signal.detrend(self.data, bp=breaks, type=detrend_type)
 
         return MiniTrace(detrended, self.sampling, y_unit=self.y_unit, filename=self.filename)
 
