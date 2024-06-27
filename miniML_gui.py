@@ -487,7 +487,10 @@ class minimlGuiMain(QMainWindow):
             self.predictionPlot.clear()
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
             prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling * self.detection.stride_length
-            self.plotPrediction = self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen)           
+            self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen)
+            self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
+                                     pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))
+
 
         if self.detection.event_locations.shape[0] > 0:
             ev_positions = self.detection.event_peak_times
