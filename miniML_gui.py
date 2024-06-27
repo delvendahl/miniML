@@ -474,9 +474,7 @@ class minimlGuiMain(QMainWindow):
             self.predictionPlot.clear()
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
             prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling * self.detection.stride_length
-            self.plotPrediction = self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen)
-            # self.predictionPlot.setLabel('left', 'Confidence', '')
-            
+            self.plotPrediction = self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen)           
 
         if self.detection.event_locations.shape[0] > 0:
             ev_positions = self.detection.event_peak_times
@@ -524,7 +522,7 @@ class minimlGuiMain(QMainWindow):
         self.eventPlot.setLabel('left', 'Amplitude', 'pA')
 
         y, x = np.histogram(self.detection.event_stats.amplitudes, bins='auto')
-        curve = pg.PlotCurveItem(x, y, stepMode=True, fillLevel=0, brush=self.settings.colors[3])
+        curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
         self.histogramPlot.clear()
         self.histogramPlot.setTitle("Amplitude histogram")
         self.histogramPlot.addItem(curve)
