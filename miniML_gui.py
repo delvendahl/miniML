@@ -343,11 +343,18 @@ class minimlGuiMain(QMainWindow):
         if answer == msgbox.Yes:
             self.trace = load_trace_from_file(self.filetype, self.load_args)
             self.update_main_plot()
-            self.tableWidget.clear()
-            self.eventPlot.clear()
-            self.histogramPlot.clear()
-            self.averagePlot.clear()
-            self.predictionPlot.clear()
+            self.reset_windows()
+            self.was_analyzed = False
+            self.detection = EventDetection(self.trace)
+
+
+    def reset_windows(self):
+        ''' clear plot and table windows '''
+        self.tableWidget.setRowCount(0)
+        self.eventPlot.clear()
+        self.histogramPlot.clear()
+        self.averagePlot.clear()
+        self.predictionPlot.clear()
 
 
     def new_file(self):
@@ -406,10 +413,8 @@ class minimlGuiMain(QMainWindow):
 
         self.trace = load_trace_from_file(self.filetype, self.load_args)
         self.update_main_plot()
-        self.tableWidget.setRowCount(0)
-        self.eventPlot.clear()
-        self.histogramPlot.clear()
-        self.averagePlot.clear()
+        self.reset_windows()
+        self.was_analyzed = False
         self.detection = EventDetection(self.trace)
         
     
@@ -447,6 +452,13 @@ class minimlGuiMain(QMainWindow):
         if not hasattr(self, 'trace'):
             return
         
+        if self.was_analyzed:
+            msgbox = QMessageBox
+            answer = msgbox.question(self,'', "Do you want to reanalyze this trace?", msgbox.Yes | msgbox.No)
+
+            if answer == msgbox.No:
+                return
+
         n_batches = np.ceil((self.trace.data.shape[0] - self.settings.event_window) / (self.settings.stride * self.settings.batch_size)).astype(int)
         n_batches = np.floor(n_batches/5)
         tf.get_logger().setLevel("ERROR")
@@ -471,6 +483,7 @@ class minimlGuiMain(QMainWindow):
 
             self.detection.detect_events(stride=self.settings.stride, eval=True)
 
+            self.was_analyzed = True
             self.predictionPlot.clear()
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
             prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling * self.detection.stride_length
