@@ -303,34 +303,34 @@ class minimlGuiMain(QMainWindow):
 
     def toggle_plot_win(self):
         sizes = self.splitter2.sizes()
-        if sizes[2] == 0:
-            if sizes[0] == 0:
-                self.splitter2.setSizes([0, np.sum(sizes) - self._store_size_b, self._store_size_b])
-            else:
-                self.splitter2.setSizes([self._store_size[0], self._store_size[1], self._store_size_b])
-        else:
+        if sizes[2] == 0: # panel is hidden
+            sizes[0] = 0 if sizes[0] == 0 else self._store_size[0]
+            sizes[1] = (np.sum(sizes[0:3]) - self._store_size_b) if sizes[0] == 0 else (self._store_size[1] - self._store_size_b)
+            sizes[2] = self._store_size_b
+            self._store_size = sizes
+        else: # panel is shown
             self._store_size = sizes
             self._store_size_b = sizes[2]
-            if sizes[0] == 0:
-                self.splitter2.setSizes([0, np.sum(sizes), 0])
-            else:
-                self.splitter2.setSizes([sizes[0], np.sum(sizes[1:3]), 0])
+            sizes[0] = 0 if sizes[0] == 0 else sizes[0]
+            sizes[1] = np.sum(sizes[0:3]) if sizes[0] == 0 else np.sum(sizes[1:3])
+            sizes[2] = 0
+        self.splitter2.setSizes(sizes)
 
 
     def toggle_prediction_win(self):
         sizes = self.splitter2.sizes()
-        if sizes[0] == 0:
-            if sizes[2] == 0:
-                self.splitter2.setSizes([self._store_size_a, np.sum(sizes) - self._store_size_a, 0])
-            else:
-                self.splitter2.setSizes([self._store_size_a, self._store_size[1], self._store_size[2]])
-        else:
+        if sizes[0] == 0: # panel is hidden
+            sizes[0] = self._store_size_a
+            sizes[1] = (np.sum(sizes[0:3]) - self._store_size_a) if sizes[2] == 0 else (self._store_size[1] - self._store_size_a)
+            sizes[2] = 0 if sizes[2] == 0 else self._store_size[2]
+            self._store_size = sizes
+        else: # panel is shown
             self._store_size = sizes
             self._store_size_a = sizes[0]
-            if sizes[2] == 0:
-                self.splitter2.setSizes([0, np.sum(sizes), 0])
-            else:
-                self.splitter2.setSizes([0, np.sum(sizes[0:2]), sizes[2]])
+            sizes[1] = np.sum(sizes[0:3]) if sizes[2] == 0 else np.sum(sizes[0:2])
+            sizes[2] = 0 if sizes[2] == 0 else sizes[2]
+            sizes[0] = 0
+        self.splitter2.setSizes(sizes)
 
 
     def reload_data(self):
