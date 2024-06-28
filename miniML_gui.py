@@ -13,8 +13,11 @@ import FileImport.HekaReader as heka
 import tensorflow as tf
 
 
+
+# ------- GUI config ------- #
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
+
 
 
 # ------- Functions ------- #
@@ -56,6 +59,7 @@ def finalize_dialog_window(window: QDialog, title: str='new window', cancel: boo
     window.layout.addRow(window.buttonBox)
     window.setWindowTitle(title)
     window.setWindowModality(pg.QtCore.Qt.ApplicationModal)
+
 
 
 # ------- Classes ------- #
@@ -235,7 +239,7 @@ class minimlGuiMain(QMainWindow):
             self.detection.events = np.delete(self.detection.events, row, axis=0)
             self.detection.event_scores = np.delete(self.detection.event_scores, row, axis=0)
 
-            self.detection._eval_events(verbose=False)
+            self.detection._eval_events()
             
             self.update_main_plot()
             ev_positions = self.detection.event_peak_times
