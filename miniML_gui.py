@@ -8,6 +8,7 @@ import pyqtgraph as pg
 import numpy as np
 import tensorflow as tf
 import os
+import h5py
 from qt_material import build_stylesheet
 import sys
 sys.path.append('./core/')
@@ -24,7 +25,7 @@ pg.setConfigOption('foreground', 'k')
 
 
 # ------- Functions ------- #
-def get_available_models():
+def get_available_models() -> list:
     """
     Returns a list of available model paths in the /models folder.
     The list only contains relative paths.
@@ -36,6 +37,11 @@ def get_available_models():
               if file.endswith('.h5')]
     
     return models
+
+
+def get_hdf_keys(filepath: str) -> list:
+    with h5py.File(filepath, 'r') as f:
+        return list(f.keys())
 
 
 def load_trace_from_file(file_type: str, file_args: dict) -> MiniTrace:
@@ -380,7 +386,7 @@ class minimlGuiMain(QMainWindow):
 
             self.filetype = 'HDF5'
             self.load_args = {'filename': self.filename,
-                              'tracename': panel.e1.text(),
+                              'tracename': panel.e1.currentText(),
                               'sampling': float(panel.e2.text()),
                               'scaling': float(panel.e3.text()), 
                               'unit': panel.e4.text()}
@@ -582,10 +588,17 @@ class LoadHdfPanel(QDialog):
     def __init__(self, parent=None):
         super(LoadHdfPanel, self).__init__(parent)
         
-        self.e1 = QLineEdit('mini_data')
+        self.e1 = QComboBox()
+        self.e1.setMinimumWidth(200)
+        self.e1.addItems(get_hdf_keys(parent.filename))
+
+        # self.e1 = QLineEdit('mini_data')
         self.e2 = QLineEdit('2e-5')
+        self.e2.setMinimumWidth(200)
         self.e3 = QLineEdit('1e12')
+        self.e3.setMinimumWidth(200)
         self.e4 = QLineEdit('pA')
+        self.e4.setMinimumWidth(200)
         
         self.layout = QFormLayout(self)
         self.layout.addRow('Dataset name:', self.e1)
