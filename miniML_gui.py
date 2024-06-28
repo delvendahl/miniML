@@ -13,6 +13,10 @@ import FileImport.HekaReader as heka
 import tensorflow as tf
 
 
+pg.setConfigOption('background', 'w')
+pg.setConfigOption('foreground', 'k')
+
+
 # ------- Functions ------- #
 def get_available_models():
     """
@@ -70,48 +74,46 @@ class minimlGuiMain(QMainWindow):
         self.statusbar.setSizeGripEnabled(False)
 
         self.tracePlot = pg.PlotWidget()
-        self.tracePlot.setBackground('w')
-        self.tracePlot.showGrid(x=True, y=True)
+        # self.tracePlot.showGrid(x=True, y=True)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', '')
         
         self.predictionPlot = pg.PlotWidget()
-        self.predictionPlot.setBackground('w')
-        self.predictionPlot.showGrid(x=True, y=True)
+        # self.predictionPlot.showGrid(x=True, y=True)
         self.predictionPlot.setLabel('left', 'Confidence', '')
         self.predictionPlot.setXLink(self.tracePlot)
 
         self.eventPlot = pg.PlotWidget()
-        self.eventPlot.setBackground('w')
         self.histogramPlot = pg.PlotWidget()
-        self.histogramPlot.setBackground('w')
         self.averagePlot = pg.PlotWidget()
-        self.averagePlot.setBackground('w')
         
         self.splitter1 = QSplitter(Qt.Horizontal)
+        self.splitter1.setHandleWidth(12)
         self.splitter1.addWidget(self.eventPlot)
         self.splitter1.addWidget(self.histogramPlot)
         self.splitter1.addWidget(self.averagePlot)
         self.splitter1.setSizes([250,250,250])
         
         self.splitter2 = QSplitter(Qt.Vertical)
+        self.splitter2.setHandleWidth(12)
         self.splitter2.addWidget(self.predictionPlot)
         self.splitter2.addWidget(self.tracePlot)
         self.splitter2.addWidget(self.splitter1)
         self.splitter2.setSizes([130,270,150])
         
         self.splitter3 = QSplitter(Qt.Horizontal)
+        self.splitter3.setHandleWidth(12)
         self.splitter3.addWidget(self.splitter2)
 
         self._create_table()
 
         self.splitter3.addWidget(self.tableWidget)
-        self.splitter3.setSizes([780, 320])
+        self.splitter3.setSizes([750, 400])
 
         self.setCentralWidget(self.splitter3)
         QApplication.setStyle(QStyleFactory.create('Cleanlooks'))
         
-        self.setGeometry(150, 150, 1150, 700)
+        self.setGeometry(100, 100, 1150, 750)
         self.setWindowTitle('miniML')
         self.show()
 		
@@ -820,8 +822,10 @@ if __name__ == '__main__':
 
     pg.setConfigOption('leftButtonPan', False)
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('core/minML_icon.png'))
+    app.setWindowIcon(QIcon('minML_icon.png'))
     main = minimlGuiMain()
-    app.setStyleSheet(build_stylesheet(theme='light_blue.xml', template='core/miniml.css.template'))
+    extra = {'density_scale': '-1',}
+    app.setStyleSheet(build_stylesheet(theme='light_blue.xml', invert_secondary=False, 
+                                       extra=extra, template='core/miniml.css.template'))
     main.show()
     sys.exit(app.exec_())
