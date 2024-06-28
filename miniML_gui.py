@@ -1,16 +1,19 @@
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+# ------- Imports ------- #
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction, 
+                             QTableWidget, QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog,
+                             QLineEdit, QFormLayout, QCheckBox, QTableWidgetItem, QComboBox)
+from PyQt5.QtCore import Qt, QEvent, pyqtSlot
+from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator
 import pyqtgraph as pg
 import numpy as np
+import tensorflow as tf
 import os
+from qt_material import build_stylesheet
 import sys
 sys.path.append('./core/')
 from miniML import MiniTrace, EventDetection
 from miniML_settings import MinimlSettings
-from qt_material import build_stylesheet
 import FileImport.HekaReader as heka
-import tensorflow as tf
 
 
 
