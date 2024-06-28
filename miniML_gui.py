@@ -448,14 +448,15 @@ class minimlGuiMain(QMainWindow):
         summary_win = SummaryPanel(self)
         summary_win.exec_()
 
+
     def settings_window(self):
         settings_win = SettingsPanel(self)
         settings_win.exec_()
         if settings_win.result() == 0:
             return
 
-        self.settings.stride = int(settings_win.stride.text())
         self.settings.event_window = int(settings_win.ev_len.text())
+        self.settings.stride = int(settings_win.stride.text())
         self.settings.model_path = str(settings_win.model.currentText())
         self.settings.model_name = str(settings_win.model.currentText())
         self.settings.event_threshold = float(settings_win.thresh.text())
@@ -591,8 +592,6 @@ class LoadHdfPanel(QDialog):
         self.e1 = QComboBox()
         self.e1.setMinimumWidth(200)
         self.e1.addItems(get_hdf_keys(parent.filename))
-
-        # self.e1 = QLineEdit('mini_data')
         self.e2 = QLineEdit('2e-5')
         self.e2.setMinimumWidth(200)
         self.e3 = QLineEdit('1e12')
