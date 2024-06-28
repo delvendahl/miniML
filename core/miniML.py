@@ -617,7 +617,7 @@ class EventDetection():
         '''
         # resample values for prediction:
         data = signal.resample(self.trace.data, round(len(self.trace.data)*self.resampling_factor))
-
+        
         # invert the trace if event_direction and training_direction are different.
         if self.event_direction != self.training_direction:
             data *= -1
