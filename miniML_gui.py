@@ -40,6 +40,9 @@ def get_available_models() -> list:
 
 
 def get_hdf_keys(filepath: str) -> list:
+    """ 
+    Returns a list of keys in an hdf5 file. 
+    """
     with h5py.File(filepath, 'r') as f:
         return list(f.keys())
 
@@ -57,7 +60,18 @@ def load_trace_from_file(file_type: str, file_args: dict) -> MiniTrace:
     return file_loader(**file_args)
 
 
-def finalize_dialog_window(window: QDialog, title: str='new window', cancel: bool=True):
+def finalize_dialog_window(window: QDialog, title: str='new window', cancel: bool=True) -> None:
+    """
+    Finalizes a dialog window by adding a OK/Cancel button box to it and setting the window title.
+
+    Args:
+        window (QDialog): The dialog window to finalize.
+        title (str, optional): The title of the window. Defaults to 'new window'.
+        cancel (bool, optional): Whether to include a cancel button. Defaults to True.
+
+    Returns:
+        None
+    """
     QBtn = (QDialogButtonBox.Ok | QDialogButtonBox.Cancel) if cancel else QDialogButtonBox.Close
     window.buttonBox = QDialogButtonBox(QBtn)
     if cancel:
@@ -185,7 +199,7 @@ class minimlGuiMain(QMainWindow):
         self.tableWidget.horizontalHeader().setDefaultSectionSize(90)
         self.tableWidget.setRowCount(0) 
         self.tableWidget.setColumnCount(5)
-        self.tableWidget.setHorizontalHeaderLabels(("Position;Amplitude;Charge;Risetime;Decay").split(";"))
+        self.tableWidget.setHorizontalHeaderLabels(("Position;Amplitude;Area;Risetime;Decay").split(";"))
         self.tableWidget.viewport().installEventFilter(self)
         self.tableWidget.setSelectionBehavior(QTableView.SelectRows)
 
@@ -204,7 +218,10 @@ class minimlGuiMain(QMainWindow):
         return super().eventFilter(source, event)
 
 
-    def contextMenuEvent(self, event):
+    def contextMenuEvent(self, event) -> None:
+        """
+        Create a context menu for the selected event.
+        """
         gp = event.globalPos()
         vp_pos = self.tableWidget.viewport().mapFromGlobal(gp)
         row = self.tableWidget.rowAt(vp_pos.y())
@@ -221,8 +238,10 @@ class minimlGuiMain(QMainWindow):
             self.menu.popup(QCursor.pos())
 
 
-    def inspect_event(self, event, row):
-        ''' zoom in onto selected event in main plot window '''
+    def inspect_event(self, event, row) -> None:
+        """
+        Zoom in onto the selected event in main plot window. 
+        """
         xstart = int(self.detection.event_locations[row] - self.detection.window_size/2)
         xend = int(self.detection.event_locations[row] + self.detection.window_size)
         ymin = np.amin(self.detection.trace.data[xstart:xend]) * 1.05
@@ -231,7 +250,20 @@ class minimlGuiMain(QMainWindow):
         self.tracePlot.setYRange(ymin, ymax)
 
 
-    def delete_event(self, event, row):
+    def delete_event(self, event, row) -> None:
+        """
+        Deletes an event from the detection object.
+
+        Args:
+            event (QEvent): The event that triggered the deletion.
+            row (int): The index of the event to be deleted.
+
+        Returns:
+            None
+
+        This function prompts the user with a confirmation dialog to delete an event. 
+        After deleting the event, the function updates the main plot, plots the detected events, and tabulates the results.
+        """
         msgbox = QMessageBox
         answer = msgbox.question(self,'', "Do you really want to delete this event?", msgbox.Yes | msgbox.No)
 
@@ -261,7 +293,13 @@ class minimlGuiMain(QMainWindow):
             self.plot_events()
 
 
-    def filter_data(self):
+    def filter_data(self) -> None:
+        """
+        A function that filters data based on the selected filter options in the FilterPanel.
+        Otherwise, it applies various filters (detrend, highpass, notch, lowpass) to the trace data based on the user-selected options in the FilterPanel.
+        The function then updates the main plot with the filtered data.
+        """
+
         if not hasattr(self, 'trace'):
             return
 
@@ -285,7 +323,10 @@ class minimlGuiMain(QMainWindow):
         self.update_main_plot()
 
         
-    def cut_data(self):
+    def cut_data(self) -> None:
+        """
+        Display the CutPanel window for slicing the data trace.
+        """
         if not hasattr(self, 'trace'):
             return
         cut_win = CutPanel(self)
@@ -300,7 +341,10 @@ class minimlGuiMain(QMainWindow):
         self.update_main_plot()
 
 
-    def update_main_plot(self):
+    def update_main_plot(self) -> None:
+        """
+        Updates the main plot with the data trace.
+        """
         self.tracePlot.clear()
         pen = pg.mkPen(color=self.settings.colors[3], width=1)
         self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen)
@@ -308,7 +352,7 @@ class minimlGuiMain(QMainWindow):
         self.tracePlot.setLabel('left', 'Imon', self.trace.y_unit)
     
 
-    def toggle_table_win(self):
+    def toggle_table_win(self) -> None:
         if 0 in self.splitter3.sizes():
             self.splitter3.setSizes(self._store_size_c)
         else:
@@ -316,7 +360,7 @@ class minimlGuiMain(QMainWindow):
             self.splitter3.setSizes([np.sum(self.splitter3.sizes()), 0])
 
 
-    def toggle_plot_win(self):
+    def toggle_plot_win(self) -> None:
         sizes = self.splitter2.sizes()
         if sizes[2] == 0: # panel is hidden
             sizes[0] = 0 if sizes[0] == 0 else self._store_size[0]
@@ -332,7 +376,7 @@ class minimlGuiMain(QMainWindow):
         self.splitter2.setSizes(sizes)
 
 
-    def toggle_prediction_win(self):
+    def toggle_prediction_win(self) -> None:
         sizes = self.splitter2.sizes()
         if sizes[0] == 0: # panel is hidden
             sizes[0] = self._store_size_a
@@ -348,7 +392,10 @@ class minimlGuiMain(QMainWindow):
         self.splitter2.setSizes(sizes)
 
 
-    def reload_data(self):
+    def reload_data(self) -> None:
+        """
+        Reload the data from file and reset all windows.
+        """
         if not hasattr(self, 'filename'):
             return
 
@@ -363,8 +410,10 @@ class minimlGuiMain(QMainWindow):
             self.detection = EventDetection(self.trace)
 
 
-    def reset_windows(self):
-        ''' clear plot and table windows '''
+    def reset_windows(self) -> None:
+        """
+        Clear all plot and table windows.
+        """
         self.tableWidget.setRowCount(0)
         self.eventPlot.clear()
         self.histogramPlot.clear()
@@ -372,7 +421,10 @@ class minimlGuiMain(QMainWindow):
         self.predictionPlot.clear()
 
 
-    def new_file(self):
+    def new_file(self) -> None:
+        """
+        Open a new file via OS dialog and load data from it. Plots the data and initiates a detection object.
+        """
         self.filename = QFileDialog.getOpenFileName(self, 'Open file', '', 'HDF, DAT, or ABF files (*.h5 *.hdf *.hdf5 *.dat *.abf)')[0]
         if self.filename == '':
             return
@@ -433,7 +485,7 @@ class minimlGuiMain(QMainWindow):
         self.detection = EventDetection(self.trace)
         
     
-    def info_window(self):
+    def info_window(self) -> None:
         if not hasattr(self, 'trace'):
             return
 
@@ -441,7 +493,7 @@ class minimlGuiMain(QMainWindow):
         info_win.exec_()
     
 
-    def summary_window(self):
+    def summary_window(self) -> None:
         if not hasattr(self, 'trace'):
             return
 
@@ -449,7 +501,7 @@ class minimlGuiMain(QMainWindow):
         summary_win.exec_()
 
 
-    def settings_window(self):
+    def settings_window(self) -> None:
         settings_win = SettingsPanel(self)
         settings_win.exec_()
         if settings_win.result() == 0:
@@ -464,7 +516,10 @@ class minimlGuiMain(QMainWindow):
         self.settings.batch_size = int(settings_win.batchsize.text())
 
 
-    def run_analysis(self):
+    def run_analysis(self) -> None:
+        """
+        Run the miniML analysis on the loaded trace.
+        """
         if not hasattr(self, 'trace'):
             return
         
@@ -521,7 +576,7 @@ class minimlGuiMain(QMainWindow):
             print('no events detected.')
             
 
-    def save_as_csv(self):
+    def save_as_csv(self) -> None:
         if not hasattr(self, 'detection'):
             return
 
@@ -532,7 +587,7 @@ class minimlGuiMain(QMainWindow):
         self.detection.save_to_csv(path=folder_path)
 
 
-    def save_as_hdf(self):
+    def save_as_hdf(self) -> None:
         if not hasattr(self, 'detection'):
             return    
 
@@ -574,7 +629,7 @@ class minimlGuiMain(QMainWindow):
     def tabulate_results(self):
         self.tableWidget.clear()
         n_events = len(self.detection.event_stats.amplitudes)
-        self.tableWidget.setHorizontalHeaderLabels(['Location', 'Amplitude', 'Charge', 'Risetime', 'Decay'])
+        self.tableWidget.setHorizontalHeaderLabels(['Location', 'Amplitude', 'Area', 'Risetime', 'Decay'])
         self.tableWidget.setRowCount(n_events)
         for i in range(n_events):
             self.tableWidget.setItem(i, 0, QTableWidgetItem(f'{self.detection.event_locations[i] * self.detection.trace.sampling :.5f}'))
@@ -659,6 +714,7 @@ class LoadDatPanel(QDialog):
 
         finalize_dialog_window(self, title='Load HEKA .dat file')
 
+
     @pyqtSlot(str)
     def on_comboBoxParent_currentIndexChanged(self, index):
         group_no, _ = index.split(' - ')
@@ -716,6 +772,7 @@ class SummaryPanel(QDialog):
         self.layout.addRow('Decay time constant (ms):', self.decay_tau)
 
         finalize_dialog_window(self, title='Summary', cancel=False)
+
 
     def populate_fields(self, parent):
         self.filename = QLineEdit(parent.trace.filename)
