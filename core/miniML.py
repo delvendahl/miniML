@@ -267,12 +267,12 @@ class MiniTrace():
 
 
     @classmethod
-    def from_axon_file(cls, filepath: str, channel: int=0, scaling: float=1.0, unit: str=None) -> MiniTrace:
+    def from_axon_file(cls, filename: str, channel: int=0, scaling: float=1.0, unit: str=None) -> MiniTrace:
         ''' Loads data from an AXON .abf file.
 
         Parameters
         ----------
-        filepath: string
+        filename: string
             Path of a .abf file.
         channel: int, default: 0
             The recording channel to load
@@ -291,18 +291,18 @@ class MiniTrace():
         IndexError
             When the selected channel does not exist in the file.
         '''
-        if not os.path.splitext(filepath)[-1].lower() == '.abf':
+        if not os.path.splitext(filename)[-1].lower() == '.abf':
             raise Exception('Incompatible file type. Method only loads .abf files.')
 
         import pyabf
-        abf_file = pyabf.ABF(filepath)
+        abf_file = pyabf.ABF(filename)
         if channel not in abf_file.channelList:
             raise IndexError('Selected channel does not exist.')
 
         data_unit = unit if unit is not None else abf_file.adcUnits[channel]
 
         return cls(data=abf_file.data[channel] * scaling, sampling_interval=1/abf_file.sampleRate, 
-                    y_unit=data_unit, filename=os.path.split(filepath)[-1])
+                    y_unit=data_unit, filename=os.path.split(filename)[-1])
 
 
     def plot_trace(self) -> None:

@@ -21,7 +21,7 @@ import FileImport.HekaReader as heka
 # ------- GUI config ------- #
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
-
+pg.setConfigOption('leftButtonPan', False)
 
 
 # ------- Functions ------- #
@@ -451,7 +451,7 @@ class minimlGuiMain(QMainWindow):
                 return
 
             self.filetype = 'AXON ABF'
-            self.load_args = {'filepath': self.filename,
+            self.load_args = {'filename': self.filename,
                               'channel': int(panel.e1.text()),
                               'scaling': float(panel.e2.text()), 
                               'unit': panel.e3.text() if (panel.e3.text() != '') else None}
@@ -896,7 +896,6 @@ class FilterPanel(QDialog):
 
 if __name__ == '__main__':
 
-    pg.setConfigOption('leftButtonPan', False)
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon('minML_icon.png'))
     main = minimlGuiMain()
