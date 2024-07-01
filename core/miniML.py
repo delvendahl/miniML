@@ -197,7 +197,7 @@ class MiniTrace():
 
     @classmethod
     def from_heka_file(cls, filename: str, rectype: str, group: int=1, exclude_series:list=[], exclude_sweeps:dict={},
-                        scaling: float=1e12, unit: str=None, resample: bool=True) -> MiniTrace:
+                        scaling: float=1, unit: str=None, resample: bool=True) -> MiniTrace:
         ''' Loads data from a HEKA .dat file. Name of the PGF sequence needs to be specified.
 
         Parameters
@@ -278,7 +278,7 @@ class MiniTrace():
             else:
                 data = np.append(data, dat[0])
         
-        data_unit = unit if unit is not None else bundle.pul[group][series[0]][0][0].YUnit
+        data_unit = unit if unit is not None else bundle.pul[group][series_list[0]][0][0].YUnit
 
         MiniTrace.excluded_sweeps = exclude_sweeps
         MiniTrace.exlucded_series = exclude_series
@@ -1291,7 +1291,7 @@ class EventDetection():
             'events':self.events}
 
         if include_prediction:
-            results['prediction']=self.prediction.numpy() # Save prediction as numpy array
+            results['prediction']=self.prediction # Save prediction as numpy array
 
         if include_data:
             results['mini_trace']=self.trace.data
