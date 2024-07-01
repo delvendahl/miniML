@@ -606,6 +606,23 @@ class EventDetection():
         win = signal.windows.hann(filter_size)    
         return signal.convolve(data, win, mode='same') / sum(win)
 
+    def _linear_interpolation(self, data:np.ndarray, interpol_to_len:int):
+        '''
+        linear interpolation of a data stretch to match the indicated number of points.
+
+        returns
+        -----------
+        data_interpolated:
+            the interpolated data
+        interpol_factor:
+            the factor by which the data was up or downsampled
+        '''        
+        x = np.arange(0, data.shape[0])
+        x_interpol = np.linspace(0, data.shape[0], interpol_to_len)
+        
+        interpol_factor = len(x_interpol) / len(x)
+        data_interpolated = np.interp(x_interpol, x, data, left=None, right=None, period=None)
+        return data_interpolated, interpol_factor
 
     def __predict(self) -> None:
         '''
@@ -640,24 +657,6 @@ class EventDetection():
         ds = ds.prefetch(tf.data.AUTOTUNE)
         self.prediction = tf.squeeze(self.model.predict(ds, verbose=1, callbacks=self.callbacks))
         
-    def _linear_interpolation(self, data:np.ndarray, interpol_to_len:int):
-        '''
-        linear interpolation of a data stretch to match the indicated number of points.
-
-        returns
-        -----------
-        data_interpolated:
-            the interpolated data
-        interpol_factor:
-            the factor by which the data was up or downsampled
-        '''        
-        x = np.arange(0, data.shape[0])
-        x_interpol = np.linspace(0, data.shape[0], interpol_to_len)
-        
-        interpol_factor = len(x_interpol) / len(x)
-        data_interpolated = np.interp(x_interpol, x, data, left=None, right=None, period=None)
-        return data_interpolated, interpol_factor
-
     def _interpolate_prediction_trace(self):
         '''
         Interpolate the prediction trace such that it corresponds 1:1 to the raw data before resampling.
@@ -996,7 +995,7 @@ class EventDetection():
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
         self.add_points = int(self.window_size/3)
-        self.stride_length = stride if stride else self.window_size/30
+        self.stride_length = stride if stride else round(self.window_size/30)
 
         self.__predict()
         
