@@ -680,7 +680,7 @@ class EventDetection():
         _, peak_properties = signal.find_peaks(x=filtered_prediction, height=self.model_threshold,
                                                prominence=self.model_threshold, width=peak_w*self.interpol_factor)
 
-        start_pnts = np.array(peak_properties['left_ips'] - self.window_size/4, dtype=np.int64)
+        start_pnts = np.array(peak_properties['left_ips'] + self.window_size/4, dtype=np.int64)
         end_pnts =  np.array(peak_properties['right_ips'] + self.window_size/2, dtype=np.int64)
         scores = peak_properties['peak_heights']
         return start_pnts, end_pnts, scores
@@ -805,7 +805,6 @@ class EventDetection():
 
         if filter:
             mini_trace = self.hann_filter(data=self.trace.data, filter_size=self.convolve_win)
-
         else:
             mini_trace = self.trace.data
 
@@ -882,7 +881,7 @@ class EventDetection():
 
                 if calculate_charge:
                     endpoint_in_trace = positions[ix] + (self.event_peak_locations[ix] - add_points) + delta_peak_endpoint
-                    charge = get_event_charge(trace_data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
+                    charge = get_event_charge(data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
                     
             else: # Handle the last event
                 if num_combined_charge_events == 1: # define onset position for charge calculation
@@ -897,7 +896,7 @@ class EventDetection():
                 if endpoint_in_trace > mini_trace.shape[0]:
                     endpoint_in_trace = mini_trace.shape[0]
 
-                charge = get_event_charge(trace_data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
+                charge = get_event_charge(data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
                 calculate_charge = True
             if calculate_charge: # Charge was caclulated; check how many potentially overlapping events contributed.
                 charge = [charge/num_combined_charge_events]*num_combined_charge_events
@@ -945,7 +944,7 @@ class EventDetection():
 
         halfdecay_position, halfdecay_time = get_event_halfdecay_time(data=data,peak_position=event_peak, baseline=baseline)        
         endpoint = int(event_peak + factor_charge*halfdecay_position)
-        charge = get_event_charge(trace_data=data, start_point=onset_position, end_point=endpoint, baseline=baseline, sampling=self.trace.sampling)
+        charge = get_event_charge(data=data, start_point=onset_position, end_point=endpoint, baseline=baseline, sampling=self.trace.sampling)
 
         results = {'amplitude': event_peak_value - baseline,
                    'baseline': baseline * self.event_direction,
@@ -963,8 +962,8 @@ class EventDetection():
         return results
 
 
-    def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, peak_w:int=5,
-                      rel_prom_cutoff: float=0.25, convolve_win: int=20, resample_to_600: bool=True) -> None:
+    def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, resample_to_600: bool=True,
+                      peak_w:int=5, rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win:int=None) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -982,20 +981,22 @@ class EventDetection():
             The relative prominence cutoff. Overlapping events are separated based on a peak-finding in the first derivative. To be considered
             an event, any detected peak must have at least 25% prominence of the largest detected prominence.
         convolve_win: int, default = 20
-            Window size for the hanning window used to filter the data and derivative for event analysis.
+            Window size for the hanning window used to filter the data for event analysis.
+        gradient_convolve_win: int, default = None
+            Window size for the hanning window used to filter the derivative for event analysis
         resample_to_600: bool, default = True
             Whether to resample the the data to match a 600 point window. Should always be true, unless a model was trained with a different window size.
         '''
-        if resample_to_600:
-            self.resampling_factor = 600/self.window_size
-        else:
-            self.resampling_factor = 1
-        
+                
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
         self.add_points = int(self.window_size/3)
+        
         self.stride_length = stride if stride else round(self.window_size/30)
+        self.gradient_convolve_win = gradient_convolve_win if gradient_convolve_win else self.convolve_win * 2        
+        self.resampling_factor = 600/self.window_size if resample_to_600 else 1
+
 
         self.__predict()
         
