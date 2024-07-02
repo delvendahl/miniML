@@ -35,9 +35,10 @@ class miniML_plots():
         axs[1].plot(mini_trace, c='k', alpha=0.4)
         axs[1].plot(filtered_trace, c=self.main_trace_color)
 
-        axs[1].scatter(self.detection.event_locations, mini_trace[self.detection.event_locations], c=self.orange_color, zorder=2)
-        axs[1].scatter(self.detection.start_pnts, mini_trace[self.detection.start_pnts], c=self.red_color, zorder=2)
-        axs[1].scatter(self.detection.end_pnts, mini_trace[self.detection.end_pnts],  c=self.green_color, zorder=2)
+        axs[1].scatter(self.detection.event_locations, filtered_trace[self.detection.event_locations], c=self.orange_color, zorder=2, label='event locations')
+        axs[1].scatter(self.detection.start_pnts, filtered_trace[self.detection.start_pnts], c=self.red_color, zorder=2)
+        axs[1].scatter(self.detection.end_pnts, filtered_trace[self.detection.end_pnts],  c=self.green_color, zorder=2)
+        axs[1].legend(loc='upper right')
 
         axs[2].plot(self.detection.gradient, c='k', alpha=0.4, label='gradient')
         axs[2].plot(self.detection.smth_gradient, self.main_trace_color, label='filtered gradient')
