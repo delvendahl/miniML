@@ -216,7 +216,7 @@ class minimlGuiMain(QMainWindow):
         self.closeAction = QAction(QIcon("core/icons/cancel_24px_blue"), 'Close Window', self)
         self.closeAction.setShortcut('Ctrl+W')
         # self.tb.addAction(self.closeAction)
-        self.aboutAction = QAction(QIcon("core/icons/info_24px_blue.svg"), "miniML info", self)
+        self.aboutAction = QAction(QIcon("core/icons/info_24px_blue.svg"), "About", self)
         self.aboutAction.setShortcut('Ctrl+H')
         # self.tb.addAction(self.aboutAction)
         
@@ -825,7 +825,7 @@ class AboutPanel(QDialog):
         self.layout.addRow(logo)
 
         # display miniML version
-        self.version = QLabel('miniML version 0.1.0')
+        self.version = QLabel('miniML version 1.0.0')
         self.layout.addRow(self.version)
 
         # display miniML author
@@ -833,9 +833,17 @@ class AboutPanel(QDialog):
         self.layout.addRow(self.author)
 
         # display miniML website
-        self.website = QLabel('Website: https://github.com/delvendahl/miniML')
+        urlLink="Website: <a href=\"https://github.com/delvendahl/miniML\">miniML GitHub repository</a>"
+        self.website = QLabel(urlLink)
+        self.website.setOpenExternalLinks(True)
         self.layout.addRow(self.website)
-  
+
+        # display miniML publication
+        urlLink2="Publication: <a href=\"https://doi.org/10.7554/eLife.98485.1\">miniML eLife paper 2024</a>"
+        self.paper = QLabel(urlLink2)
+        self.paper.setOpenExternalLinks(True)
+        self.layout.addRow(self.paper)
+
         finalize_dialog_window(self, title='About miniML', cancel=False)
 
 
