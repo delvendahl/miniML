@@ -691,8 +691,8 @@ class EventDetection():
         trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
         
         gradient = np.gradient(trace_convolved, self.trace.sampling)
-        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.convolve_win*2)
-        return smth_gradient
+        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.convolve_win)
+        return gradient, smth_gradient
 
     def _get_grad_threshold(self, grad, start_pnts, end_pnts):
         '''
@@ -1004,7 +1004,7 @@ class EventDetection():
                 
         self.start_pnts, self.end_pnts, scores = self._get_prediction_peaks(peak_w=peak_w)
         
-        self.smth_gradient = self._make_smth_gradient()
+        self.gradient, self.smth_gradient = self._make_smth_gradient()
         
         self.grad_threshold = self._get_grad_threshold(grad=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts)
 

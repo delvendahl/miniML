@@ -39,6 +39,7 @@ class miniML_plots():
         axs[1].scatter(self.detection.start_pnts, mini_trace[self.detection.start_pnts], c=self.red_color, zorder=2)
         axs[1].scatter(self.detection.end_pnts, mini_trace[self.detection.end_pnts],  c=self.green_color, zorder=2)
 
+        axs[2].plot(self.detection.gradient, c='k', alpha=0.4, label='gradient')
         axs[2].plot(self.detection.smth_gradient, self.main_trace_color, label='filtered gradient')
         axs[2].axhline(self.detection.grad_threshold, c=self.orange_color, ls='--', label='threshold (4x std of noise)')
         axs[2].legend(loc='upper right')
@@ -113,7 +114,7 @@ class miniML_plots():
             ax1 = plt.subplot(211)
         prediction_x = np.arange(0, self.detection.prediction.shape[0]) * self.detection.trace.sampling
         if plot_filtered_prediction:
-            plt.plot(prediction_x, maximum_filter1d(self.detection.prediction, size=5, origin=-2), c=self.main_trace_color)
+            plt.plot(prediction_x, maximum_filter1d(self.detection.prediction, size=int(5*self.detection.interpol_factor), origin=-2), c=self.main_trace_color)
         else:
             plt.plot(prediction_x, self.detection.prediction, c=self.main_trace_color)
         plt.axhline(self.detection.model_threshold, ls='--', c=self.orange_color)
@@ -180,7 +181,7 @@ class miniML_plots():
         ax1 = plt.subplot(211)
 
         if plot_filtered:
-            plt.plot(maximum_filter1d(self.detection.prediction, size=5, origin=-2), c=self.main_trace_color)
+            plt.plot(maximum_filter1d(self.detection.prediction, size=int(5*self.detection.interpol_factor), origin=-2), c=self.main_trace_color)
         else:
             plt.plot(self.detection.prediction, c=self.main_trace_color)
 
