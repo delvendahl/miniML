@@ -1,9 +1,9 @@
 # ------- Imports ------- #
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction, 
                              QTableWidget, QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog,
-                             QLineEdit, QFormLayout, QCheckBox, QTableWidgetItem, QComboBox)
-from PyQt5.QtCore import Qt, QEvent, pyqtSlot
-from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator
+                             QLineEdit, QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel)
+from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
+from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
 import pyqtgraph as pg
 import numpy as np
 import tensorflow as tf
@@ -92,6 +92,7 @@ class minimlGuiMain(QMainWindow):
         self.initUI()
         self._create_toolbar()
         self._connect_actions()
+        self._create_menubar()
         self.info_dialog = None
         self.settings = MinimlSettings()
 
@@ -143,23 +144,58 @@ class minimlGuiMain(QMainWindow):
         self.setGeometry(100, 100, 1150, 750)
         self.setWindowTitle('miniML')
         self.show()
-		
+	
+
+    def _create_menubar(self):
+
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('File')
+        editMenu = menubar.addMenu('Edit')
+        viewMenu = menubar.addMenu('View')
+        runMenu = menubar.addMenu('Run')
+        helpMenu = menubar.addMenu('Help')
+
+        fileMenu.addAction(self.openAction)
+        fileMenu.addAction(self.resetAction)
+        fileMenu.addAction(self.textsaveAction)
+        fileMenu.addAction(self.closeAction)
+
+        editMenu.addAction(self.filterAction)
+        editMenu.addAction(self.cutAction)
+        editMenu.addAction(self.infoAction)
+
+        viewMenu.addAction(self.plotAction)
+        viewMenu.addAction(self.tableAction)
+        viewMenu.addAction(self.predictionAction)
+
+        runMenu.addAction(self.settingsAction)
+        runMenu.addAction(self.analyseAction)
+        runMenu.addAction(self.summaryAction)
+
+        helpMenu.addAction(self.aboutAction)
+
 
     def _create_toolbar(self):
         self.tb = self.addToolBar("Menu")
         self.tb.setMovable(False)
 
         self.openAction = QAction(QIcon("core/icons/load_file_24px_blue.svg"), "Open...", self)
+        self.openAction.setShortcut('Ctrl+O')
         self.tb.addAction(self.openAction)
         self.filterAction = QAction(QIcon("core/icons/filter_24px_blue.svg"), "Filter", self)
+        self.filterAction.setShortcut('Ctrl+F')
         self.tb.addAction(self.filterAction)
-        self.infoAction = QAction(QIcon("core/icons/info_24px_blue.svg"), "Info", self)
+        self.infoAction = QAction(QIcon("core/icons/troubleshoot_24px_blue.svg"), "Info", self)
+        self.infoAction.setShortcut('Ctrl+I')
         self.tb.addAction(self.infoAction)
         self.cutAction = QAction(QIcon("core/icons/content_cut_24px_blue.svg"), "Cut trace", self)
+        self.cutAction.setShortcut('Ctrl+X')
         self.tb.addAction(self.cutAction)
         self.resetAction = QAction(QIcon("core/icons/restore_page_24px_blue.svg"), "Reload", self)
+        self.resetAction.setShortcut('Ctrl+R')
         self.tb.addAction(self.resetAction)
         self.analyseAction = QAction(QIcon("core/icons/rocket_launch_24px_blue.svg"), "Analyse", self)
+        self.analyseAction.setShortcut('Ctrl+A')
         self.tb.addAction(self.analyseAction)
         self.predictionAction = QAction(QIcon("core/icons/ssid_chart_24px_blue.svg"), "Prediction", self)
         self.tb.addAction(self.predictionAction)
@@ -170,12 +206,20 @@ class minimlGuiMain(QMainWindow):
         self.tableAction = QAction(QIcon("core/icons/table_24px_blue.svg"), "Table", self)
         self.tb.addAction(self.tableAction)
         self.textsaveAction = QAction(QIcon("core/icons/textfile_24px_blue.svg"), "Save as TXT", self)
+        self.textsaveAction.setShortcut('Ctrl+S')
         self.tb.addAction(self.textsaveAction)
         self.saveAction = QAction(QIcon("core/icons/save_24px_blue.svg"), "Save as HDF5", self)
         self.tb.addAction(self.saveAction)
         self.settingsAction = QAction(QIcon("core/icons/settings_24px_blue.svg"), "Settings", self)
+        self.settingsAction.setShortcut('Ctrl+P')
         self.tb.addAction(self.settingsAction)
-
+        self.closeAction = QAction(QIcon("core/icons/cancel_24px_blue"), 'Close Window', self)
+        self.closeAction.setShortcut('Ctrl+W')
+        # self.tb.addAction(self.closeAction)
+        self.aboutAction = QAction(QIcon("core/icons/info_24px_blue.svg"), "miniML info", self)
+        self.aboutAction.setShortcut('Ctrl+H')
+        # self.tb.addAction(self.aboutAction)
+        
 
     def _connect_actions(self):
         self.openAction.triggered.connect(self.new_file)
@@ -191,6 +235,8 @@ class minimlGuiMain(QMainWindow):
         self.settingsAction.triggered.connect(self.settings_window)
         self.textsaveAction.triggered.connect(self.save_as_csv)
         self.saveAction.triggered.connect(self.save_as_hdf)
+        self.closeAction.triggered.connect(self.close_gui)
+        self.aboutAction.triggered.connect(self.about_win)
 
 
     def _create_table(self):
@@ -419,6 +465,19 @@ class minimlGuiMain(QMainWindow):
         self.histogramPlot.clear()
         self.averagePlot.clear()
         self.predictionPlot.clear()
+
+
+
+    def close_gui(self) -> None:
+        self.close()
+    
+
+    def about_win(self) -> None:
+        """
+        Display the About window.
+        """
+        about = AboutPanel(self)
+        about.exec_()
 
 
     def new_file(self) -> None:
@@ -752,6 +811,33 @@ class FileInfoPanel(QDialog):
         self.layout.addRow('Sampling rate (Hz):', self.sampling)
 
         finalize_dialog_window(self, title='File info', cancel=False)
+
+
+class AboutPanel(QDialog):
+    def __init__(self, parent=None):
+        super(AboutPanel, self).__init__(parent)
+
+        self.layout = QFormLayout(self)
+
+        # display miniML logo
+        logo = QLabel()
+        logo.setPixmap(QPixmap('minML_icon.png').scaled(QSize(100, 100)))
+        self.layout.addRow(logo)
+
+        # display miniML version
+        self.version = QLabel('miniML version 0.1.0')
+        self.layout.addRow(self.version)
+
+        # display miniML author
+        self.author = QLabel('Authors: Philipp O\'Neill, Martin Baccino Calace, Igor Delvendahl')
+        self.layout.addRow(self.author)
+
+        # display miniML website
+        self.website = QLabel('Website: https://github.com/delvendahl/miniML')
+        self.layout.addRow(self.website)
+  
+        finalize_dialog_window(self, title='About miniML', cancel=False)
+
 
 
 class SummaryPanel(QDialog):
