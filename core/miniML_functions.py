@@ -4,21 +4,19 @@ import numpy as np
 
 # - - - - - - - - - - - - - - - - - - - - - - -
 # functions for evaluation of individual events
-def get_event_peak(data, event_num, add_points, window_size, diffs):
+def get_event_peak(data:np.ndarray, event_num, add_points, window_size, diffs):
     """
     A function that calculates the peak position of an event in a given dataset.
 
     Parameters:
-    - data: The dataset containing the event.
-    - event_num: The index of the event in the dataset.
+    - data: The data containing the event.
+    - event_num: The index of the event in the data.
     - add_points: The number of points to add to the event index.
     - window_size: The size of the window to consider when calculating the peak position.
-    - diffs: The differences between the events in the dataset.
+    - diffs: The differences between the events in the data.
 
     Returns:
-    - peak_position: The index of the peak position in the dataset.
-
-    Note: This function assumes that the dataset is a numpy array.
+    - peak_position: The index of the peak position in the data.
     """
 
     if diffs[event_num] < window_size:
@@ -171,9 +169,9 @@ def get_event_halfdecay_time(data, peak_position, baseline):
     return halfdecay_position, halfdecay_time
 
 
-def get_event_charge(trace_data, start_point, end_point, baseline, sampling):
+def get_event_charge(data, start_point, end_point, baseline, sampling):
     '''Calculate charge in a give trace between start and endpoint'''
-    integrate_array = (trace_data[start_point:end_point]) - baseline
+    integrate_array = (data[start_point:end_point]) - baseline
     charge = np.trapz(integrate_array, dx=sampling)
 
     return charge
