@@ -12,6 +12,17 @@ O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and 
 (2024) Deep learning-based synaptic event detection. _eLife_ ([doi:10.7554/eLife.98485.1](https://doi.org/10.7554/eLife.98485.1))  
 
 
+------------
+### Update 03.07.2024:
+
+
+Part of the downstream processing as well as parts of the plot functionality was changed. If you have been using miniML things should work as per usual, with the following exceptions:
+- Plot functionalities now are in a separate class and need to be generated slightly different. Please refer to the section "Inspect the results" in the tutorial.ipynb file for details.
+- The quantitative results for amplitude etc. may differ slightly from the previous version. Reason is the way we process the data as well as the filtering (see below). Previously, event location, event peak etc. were determined in resampled data (if win_size was not 600) and then mapped to the raw data. Now we work with the raw data in this step. Therefore, the exact values may differ.
+- The convolve_win parameter may need to be adjusted. Filtering was previously done in resampled data, so you may need to adjust the filter settings. You can visually check for good settings using the plot_gradient_search() method. See also section "Inspect the results" in the tutorial.ipynb file for details.
+- The save_to_csv() method has been updated to be consistent with the other file formats. It previously took a path as argument, now it takes a filename.
+------------
+
 ### 🧠 ABOUT
 
 miniML is a deep-learning-based tool to detect synaptic events in 1d timeseries data. It uses a CNN-LSTM network architecture that was trained using a large dataset of synaptic events from cerebellar mossy fiber to granule cell synapses. 
