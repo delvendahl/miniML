@@ -1159,21 +1159,19 @@ class EventDetection():
         print(f'Events saved to {filename}')
 
 
-    def save_to_csv(self, path: str='', overwrite: bool=False) -> None:
+    def save_to_csv(self, filename: str='') -> None:
         ''' 
         Save detection results to a .csv file. 
         Generates two files, one with averages and one with the values for the individual events.
         Filename is automatically generated.
         
-        Parameters
-        ------
-        path: str
-            path or directory where the file is saved
-        '''
-        path += '/'
-        filename = self.trace.filename
-        filename = filename.rsplit('.', maxsplit=1)[0]
 
+        filename: str
+            filename, including path. Results will be split into "filename + _avgs.csv" and "filename + _individual.csv"
+        '''
+        if filename.endswith('.csv'):
+            filename = filename.removesuffix('.csv')
+        
         if not hasattr(self, 'event_stats'):
             self._eval_events()
             if not hasattr(self, 'event_stats'):
@@ -1202,18 +1200,9 @@ class EventDetection():
         individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime'], columns=colnames)
         avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'frequency'])
         
-        if overwrite:
-            individual.to_csv(f'{path}{filename}_individual.csv')
-            avgs.to_csv(f'{path}{filename}_avgs.csv', header=False)
-            print(f'events saved to {path}{filename}')
-        else:
-            if filename+'_individual.csv' in os.listdir(path) or filename+'_avgs.csv' in os.listdir(path):
-                print(f'WARNING: file {filename} already exists. For overwriting existing files, set "overwrite = True"')
-            else:
-                individual.to_csv(f'{path}{filename}_individual.csv')
-                avgs.to_csv(f'{path}{filename}_avgs.csv', header=False)
-                print(f'events saved to {path}{filename}')
-
+        individual.to_csv(f'{filename}_individual.csv')
+        avgs.to_csv(f'{filename}_avgs.csv', header=False)
+        print(f'events saved to {filename}_avgs.csv and {filename}_individual.csv')
 
     def save_to_pickle(self, filename: str='', include_prediction:bool=True, include_data:bool=True) -> None:
         ''' 
