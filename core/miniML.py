@@ -16,7 +16,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 #  --------------------------------------------------  #
-#  general functions                                    #
+#  general functions                                   #
 def exp_fit(x: np.ndarray, amp: float, tau: float, offset: float) -> np.ndarray:
     """
     Fits an exponential curve to the given data.
@@ -56,26 +56,6 @@ def mEPSC_template(x: np.ndarray, amplitude: float, t_rise: float, t_decay: floa
     y[x < x0] = 0
 
     return y
-
-
-def lowpass_filter(data: np.ndarray, sampling_rate: float, lowpass: float=500, order: int=4) -> np.ndarray:
-    """
-    Apply a lowpass filter to the input data.
-
-    Parameters:
-        data (np.ndarray): The input data to be filtered.
-        sampling_rate (float): The sampling rate of the input data.
-        lowpass (float, optional): The cutoff frequency for the lowpass filter. Defaults to 500.
-        order (int, optional): The order of the filter. Defaults to 4.
-
-    Returns:
-        np.ndarray: The filtered data.
-
-    """
-    nyq = sampling_rate * 0.5
-    sos = signal.butter(order, lowpass / nyq, btype='low', output='sos')
-
-    return signal.sosfiltfilt(sos, data)
 
 
 @tf.function
@@ -190,8 +170,6 @@ class MiniTrace():
                 raise FileNotFoundError('Trace not found in file')
             data = f[path][:] * scaling
 
-        print(f'Data loaded from {filename} with shape {data.shape}')
-
         return cls(data=data, sampling_interval=sampling, y_unit=unit, filename=os.path.split(filename)[-1])
 
 
@@ -289,12 +267,12 @@ class MiniTrace():
 
 
     @classmethod
-    def from_axon_file(cls, filepath: str, channel: int=0, scaling: float=1.0, unit: str=None) -> MiniTrace:
+    def from_axon_file(cls, filename: str, channel: int=0, scaling: float=1.0, unit: str=None) -> MiniTrace:
         ''' Loads data from an AXON .abf file.
 
         Parameters
         ----------
-        filepath: string
+        filename: string
             Path of a .abf file.
         channel: int, default: 0
             The recording channel to load
@@ -313,18 +291,18 @@ class MiniTrace():
         IndexError
             When the selected channel does not exist in the file.
         '''
-        if not os.path.splitext(filepath)[-1].lower() == '.abf':
+        if not os.path.splitext(filename)[-1].lower() == '.abf':
             raise Exception('Incompatible file type. Method only loads .abf files.')
 
         import pyabf
-        abf_file = pyabf.ABF(filepath)
+        abf_file = pyabf.ABF(filename)
         if channel not in abf_file.channelList:
             raise IndexError('Selected channel does not exist.')
 
         data_unit = unit if unit is not None else abf_file.adcUnits[channel]
 
         return cls(data=abf_file.data[channel] * scaling, sampling_interval=1/abf_file.sampleRate, 
-                    y_unit=data_unit, filename=os.path.split(filepath)[-1])
+                    y_unit=data_unit, filename=os.path.split(filename)[-1])
 
 
     def plot_trace(self) -> None:
@@ -337,9 +315,9 @@ class MiniTrace():
 
     def detrend(self, detrend_type: str='linear', num_segments: int=0) -> MiniTrace:
         ''' Detrend the data. '''
-        num_data = self.trace.data.shape[0]
+        num_data = self.data.shape[0]
         breaks = np.arange(num_data/num_segments, num_data, num_data/num_segments, dtype=np.int64) if num_segments > 1 else 0
-        detrended = signal.detrend(self.trace.data, bp=breaks, type=detrend_type)
+        detrended = signal.detrend(self.data, bp=breaks, type=detrend_type)
 
         return MiniTrace(detrended, self.sampling, y_unit=self.y_unit, filename=self.filename)
 
@@ -547,13 +525,14 @@ class EventDetection():
     event_stats: EventStats object
         Contains event statistics
     '''
-    def __init__(self, data: MiniTrace, window_size: int=600, event_direction: str='negative', training_direction: str='negative',
+    def __init__(self, data: MiniTrace, window_size: int=600, event_direction: str='negative', training_direction: str='negative', verbose=1,
                  batch_size: int=128, model_path: str='', model_threshold: float=0.5, compile_model=True, callbacks: list=[]) -> None:
         self.trace = data
         self.prediction = None
         self.window_size = window_size
         self.event_direction = event_direction
         self.training_direction = training_direction
+        self.verbose = verbose
         self.event_locations = np.array([])
         self.event_scores = np.array([])
         self.events = np.array([])
@@ -600,7 +579,8 @@ class EventDetection():
         ''' Loads trained miniML model from hdf5 file '''
         self.model = tf.keras.models.load_model(filepath, compile=compile)
         self.model_threshold = threshold
-        print(f'Model loaded from {filepath}')
+        if self.verbose:
+            print(f'Model loaded from {filepath}')
 
     def hann_filter(self, data, filter_size):
         win = signal.windows.hann(filter_size)    
@@ -655,7 +635,8 @@ class EventDetection():
         ds = ds.map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.batch(self.batch_size, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.prefetch(tf.data.AUTOTUNE)
-        self.prediction = tf.squeeze(self.model.predict(ds, verbose=1, callbacks=self.callbacks))
+
+        self.prediction = tf.squeeze(self.model.predict(ds, verbose=self.verbose, callbacks=self.callbacks))
         
     def _interpolate_prediction_trace(self):
         '''
@@ -684,6 +665,7 @@ class EventDetection():
         end_pnts =  np.array(peak_properties['right_ips'] + self.window_size/2, dtype=np.int64)
         scores = peak_properties['peak_heights']
         return start_pnts, end_pnts, scores
+
 
     def _make_smth_gradient(self):
         # filter raw data trace, calculate gradient and filter first derivative trace        
@@ -962,8 +944,9 @@ class EventDetection():
         return results
 
 
-    def detect_events(self, stride: int=None, eval: bool=False, verbose: bool=True, resample_to_600: bool=True,
-                      peak_w:int=5, rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win:int=None) -> None:
+
+    def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w:int=5, 
+                      rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win:int=None) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -973,8 +956,6 @@ class EventDetection():
             The stride used during prediction. If not specified, it will be set to 1/30 of the window size
         eval: bool, default = False
             Whether to evaluate detected events.
-        verbose: bool, default = True
-            Whether to print the output. 
         peak_w: int, default = 5
             The minimum prediction peak width.
         rel_prom_cutoff: int, float = 0.25
@@ -1036,7 +1017,7 @@ class EventDetection():
                 x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)
 
             if eval:
-                self._eval_events(verbose=verbose)
+                self._eval_events()
 
 
     def _get_average_event_decay(self) -> float:
@@ -1088,7 +1069,7 @@ class EventDetection():
         return results
 
 
-    def _eval_events(self, verbose: bool=True) -> None:
+    def _eval_events(self) -> None:
         ''' Evaluates events. Calculates mean, std and median of amplitudes & charge, as well as decay tau and
         frequency of events. Results are stored as EventStats object in self.event_stats.
         In addition, times of event peaks, onset and half decay are calculated. 
@@ -1110,7 +1091,7 @@ class EventDetection():
         self.half_decay_times = self.half_decay * self.trace.sampling
         self.interevent_intervals = np.diff(self.event_peak_times)
 
-        if verbose:
+        if self.verbose:
             self.event_stats.print()
 
 
@@ -1309,8 +1290,8 @@ class EventAnalysis(EventDetection):
     eval_events: 
         Perform event analysis.
     '''
-    def __init__(self, trace, window_size, event_direction, event_positions, convolve_win, resampling_factor):
-        super().__init__(data=trace, window_size=window_size, event_direction=event_direction, convolve_win=convolve_win)
+    def __init__(self, trace, window_size, event_direction, verbose, event_positions, convolve_win, resampling_factor):
+        super().__init__(data=trace, window_size=window_size, event_direction=event_direction, verbose=verbose, convolve_win=convolve_win)
         self.add_points = int(self.window_size/3)
         self.resampling_factor = resampling_factor
         self.event_locations = event_positions[np.logical_and(
@@ -1320,8 +1301,9 @@ class EventAnalysis(EventDetection):
         self.events = self.trace._extract_event_data(self.event_locations, before=self.add_points, 
                                                      after=self.window_size + self.add_points)
 
-    def eval_events(self, filter: bool=True, verbose: bool=True) -> None:
+    def eval_events(self, filter: bool=True) -> None:
         if self.event_locations.shape[0] > 0:
             super()._get_event_properties(filter=filter)
             self.events = self.events - self.event_bsls[:, None]
-            super()._eval_events(verbose=verbose)
+            super()._eval_events()
+
