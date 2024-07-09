@@ -28,7 +28,9 @@ class miniML_plots():
         mini_trace = self.detection.trace.data - np.mean(self.detection.trace.data)
         filtered_trace = self.detection.hann_filter(self.detection.trace.data - np.mean(self.detection.trace.data), filter_size=self.detection.convolve_win)
 
-        axs[0].plot(self.detection.prediction, self.main_trace_color)
+        filtered_prediction = maximum_filter1d(self.detection.prediction, size=int(5*self.detection.interpol_factor), origin=-2)
+
+        axs[0].plot(filtered_prediction, self.main_trace_color)
         axs[0].scatter(self.detection.start_pnts, self.detection.prediction[self.detection.start_pnts], c=self.red_color, zorder=2, label='start points')
         axs[0].scatter(self.detection.end_pnts, self.detection.prediction[self.detection.end_pnts],  c=self.green_color, zorder=2, label='end points')
         axs[0].legend(loc='upper right')
