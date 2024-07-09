@@ -7,7 +7,7 @@ from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
 import pyqtgraph as pg
 import numpy as np
 import tensorflow as tf
-import os
+from pathlib import Path
 import h5py
 from qt_material import build_stylesheet
 import sys
@@ -29,12 +29,9 @@ def get_available_models() -> list:
     Returns a list of available model paths in the /models folder.
     The list only contains relative paths.
     """
-    models_dir = os.path.join(os.path.split(os.path.dirname(__file__))[0], 'models')
-    models = [os.path.relpath(os.path.join(root, file), models_dir)
-              for root, dirs, files in os.walk(models_dir)
-              for file in files
-              if file.endswith('.h5')]
-    
+    models_dir = Path(__file__).parent.parent / 'models'
+    models = [str(p.relative_to(models_dir)) for p in models_dir.glob('**/*.h5')]
+
     return models
 
 
