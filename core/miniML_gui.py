@@ -11,7 +11,6 @@ import os
 import h5py
 from qt_material import build_stylesheet
 import sys
-sys.path.append('./core/')
 from miniML import MiniTrace, EventDetection
 from miniML_settings import MinimlSettings
 import FileImport.HekaReader as heka
@@ -30,7 +29,7 @@ def get_available_models() -> list:
     Returns a list of available model paths in the /models folder.
     The list only contains relative paths.
     """
-    models_dir = os.path.join(os.path.dirname(__file__), 'models')
+    models_dir = os.path.join(os.path.split(os.path.dirname(__file__))[0], 'models')
     models = [os.path.relpath(os.path.join(root, file), models_dir)
               for root, dirs, files in os.walk(models_dir)
               for file in files
