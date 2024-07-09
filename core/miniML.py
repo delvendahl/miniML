@@ -582,31 +582,50 @@ class EventDetection():
         if self.verbose:
             print(f'Model loaded from {filepath}')
 
+    def hann_filter(self, data, filter_size):
+        win = signal.windows.hann(filter_size)    
+        return signal.convolve(data, win, mode='same') / sum(win)
 
-    def __predict(self, stride: int) -> None:
+    def _linear_interpolation(self, data:np.ndarray, interpol_to_len:int):
+        '''
+        linear interpolation of a data stretch to match the indicated number of points.
+
+        returns
+        -----------
+        data_interpolated:
+            the interpolated data
+        interpol_factor:
+            the factor by which the data was up or downsampled
+        '''        
+        x = np.arange(0, data.shape[0])
+        x_interpol = np.linspace(0, data.shape[0], interpol_to_len)
+        
+        interpol_factor = len(x_interpol) / len(x)
+        data_interpolated = np.interp(x_interpol, x, data, left=None, right=None, period=None)
+        return data_interpolated, interpol_factor
+
+    def __predict(self) -> None:
         '''
         Performs prediction on a data trace using a sliding window of size `window_size` with a stride size given by `stride`.
         The prediction is performed on the data using the miniML model.
         Speed of prediction depends on batch size of model.predict(), but too high batch sizes will give low precision results.
-        stride: int
-            Stride length in samples for prediction. Must be a positive integer smaller than the window size.
         Raises  
             ValueError when stride is below 1 or above window length
         '''
         # resample values for prediction:
-        trace = signal.resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
-
+        data = signal.resample(self.trace.data, round(len(self.trace.data)*self.resampling_factor))
+        
         # invert the trace if event_direction and training_direction are different.
         if self.event_direction != self.training_direction:
-            trace *= -1
+            data *= -1
 
-        win_size = self.window_size*self.resampling_factor
-        stride = self.stride_length*self.resampling_factor
+        win_size = round(self.window_size*self.resampling_factor)
+        stride = round(self.stride_length*self.resampling_factor)
 
-        if stride <= 0 or stride > self.window_size:
+        if stride <= 0 or stride > win_size:
             raise ValueError('Invalid stride')
         
-        ds = tf.keras.utils.timeseries_dataset_from_array(data=np.expand_dims(trace, axis=1).astype(np.float32), 
+        ds = tf.keras.utils.timeseries_dataset_from_array(data=np.expand_dims(data, axis=1).astype(np.float32), 
                                                           targets=None, 
                                                           sequence_length=win_size, 
                                                           sequence_stride=stride,
@@ -616,58 +635,95 @@ class EventDetection():
         ds = ds.map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.batch(self.batch_size, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.prefetch(tf.data.AUTOTUNE)
+
         self.prediction = tf.squeeze(self.model.predict(ds, verbose=self.verbose, callbacks=self.callbacks))
+        
+    def _interpolate_prediction_trace(self):
+        '''
+        Interpolate the prediction trace such that it corresponds 1:1 to the raw data before resampling.
+        Last few points of the data will not have prediction values because the data is shorter than the
+        required window size.
+        '''
+        stride = round(self.stride_length*self.resampling_factor)
+        pn = len(self.prediction) - 1 
+        pn_mapped = pn * stride
+        pn_in_raw_data = round(pn_mapped/self.resampling_factor)
+        resampled_prediction, interpol_factor = self._linear_interpolation(data=self.prediction, interpol_to_len=pn_in_raw_data)
+        return resampled_prediction, interpol_factor
+
+    def _get_prediction_peaks(self, peak_w:int=10):
+        '''
+        Find peaks in prediction trace and extracted start- and endpoints of event areas based on left 
+        and right ips respectively.
+        '''
+        filtered_prediction = maximum_filter1d(self.prediction, size=int(5*self.interpol_factor), origin=-2)
+        
+        _, peak_properties = signal.find_peaks(x=filtered_prediction, height=self.model_threshold,
+                                               prominence=self.model_threshold, width=peak_w*self.interpol_factor)
+
+        start_pnts = np.array(peak_properties['left_ips'] + self.window_size/4, dtype=np.int64)
+        end_pnts =  np.array(peak_properties['right_ips'] + self.window_size/2, dtype=np.int64)
+        scores = peak_properties['peak_heights']
+        return start_pnts, end_pnts, scores
 
 
-    def _find_event_locations(self, limit: int, rel_prom_cutoff: float=0.25, peak_w:int=10):
+    def _make_smth_gradient(self):
+        # filter raw data trace, calculate gradient and filter first derivative trace        
+        trace_convolved = self.hann_filter(data=self.trace.data - np.mean(self.trace.data), filter_size=self.convolve_win)
+        trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
+        
+        gradient = np.gradient(trace_convolved, self.trace.sampling)
+        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.gradient_convolve_win)
+        return gradient, smth_gradient
+
+    def _get_grad_threshold(self, grad, start_pnts, end_pnts):
+        '''
+        Get threshold based on standard deviation of the derivative of event-free data sections.
+        '''
+        split_data = np.split(grad, np.vstack((start_pnts, end_pnts)).ravel('F'))
+        event_free_data = np.concatenate(split_data[::2]).ravel()
+        grad_threshold = int(4 * np.std(event_free_data))
+        return grad_threshold
+
+    def _find_event_locations(self, limit: int, scores, rel_prom_cutoff: float=0.25):
         '''
         Find approximate event positions based on negative threshold crossings in prediction trace. Extract
         segment of peak windows in prediction trace and search for peaks in first derivative. If no peak is found,
         the maximum first derivate is used as peak localization.
-        Returns trace indices and scores of events            
+
+        Parameters
+        ------
         limit: int
             Right trace limit to make sure events at the very border are not picked up.
-            Prevents problems with downstream analysis.
         rel_prom_cutoff: float
             Relative prominence cutoff. Determines the minimum relative prominence for detection of overlapping events
         peak_w: int
             Minimum peak width for detection peaks to be accepted
+
+        Returns
+        ------
+        event_locations: numpy array
+            Location of steepest rise of the events
+        event_scores: numpy array
+            Prediction value for the events           
+
         '''
-        # set all values for resampling traces
-        data_trace = signal.resample(self.trace.data, int(len(self.trace.data)*self.resampling_factor))
-        data_trace *= self.event_direction # (-1 = 'negative', 1 else)
+        # Remove indices at left and right borders to prevent boundary issues.
+        mask = []
+        for i, position in enumerate(self.start_pnts): 
+            if position <= self.window_size or self.end_pnts[i] >= self.prediction.shape[0]:
+                mask.append(False)
+            else:
+                mask.append(True)
         
-        win_size = int(self.window_size*self.resampling_factor)
-        stride = int(self.stride_length*self.resampling_factor)
-        sampling = self.trace.sampling/self.resampling_factor
-        add_points = int(win_size/3)
-        limit = win_size + add_points
-
-        filtered_prediction = maximum_filter1d(self.prediction, size=5, origin=-2)
-        _, peak_properties = signal.find_peaks(x=filtered_prediction, height=self.model_threshold,
-                                               prominence=self.model_threshold, width=peak_w)
-
-        start_pnts = np.array(peak_properties['left_ips'] * stride + win_size/4, dtype=np.int64)
-        end_pnts =  np.array(peak_properties['right_ips'] * stride + win_size/2, dtype=np.int64)
-
-        # filter raw data trace, calculate gradient and filter first derivative trace
-        win = signal.windows.hann(self.convolve_win)    
-        trace_convolved = signal.convolve(data_trace-np.mean(data_trace), win, mode='same') / sum(win)
-        gradient = np.gradient(trace_convolved, sampling)
-        smth_gradient = signal.convolve(gradient-np.mean(gradient), win, mode='same') / sum(win)
-
-        # get threshold based on standard deviation of the derivative of event-free data sections
-        split_data = np.split(smth_gradient, np.vstack((start_pnts, end_pnts)).ravel('F'))
-        event_free_data = np.concatenate(split_data[::2]).ravel()
-        threshold = int(4 * np.std(event_free_data))
+        self.end_pnts = self.end_pnts[mask]
+        self.start_pnts = self.start_pnts[mask]
+        scores = scores[mask]
 
         event_locations, event_scores = [], []
-
-        for i, position in enumerate(peak_properties['right_ips'] * stride): 
-            if position < win_size:
-                continue
-            peaks, peak_params = signal.find_peaks(x=smth_gradient[start_pnts[i]:end_pnts[i]], 
-                                                   height=threshold, prominence=threshold)
+        for i, position in enumerate(self.start_pnts): 
+            peaks, peak_params = signal.find_peaks(x=self.smth_gradient[self.start_pnts[i]:self.end_pnts[i]], 
+                                                   height=self.grad_threshold, prominence=self.grad_threshold)
             
             if peaks.shape[0] > 1: # If > 1 peak found; apply relative prominence cutoff of .25
                 rel_prom = peak_params['prominences']/np.max(peak_params['prominences'])
@@ -677,46 +733,31 @@ class EventDetection():
                     peak_params[my_param] = peak_params[my_param][inds]
             
             if not len(peaks): # If no peak found: default argmax finding
-                peaks = np.array([np.argmax(smth_gradient[start_pnts[i]:end_pnts[i]])])
+                peaks = np.array([np.argmax(self.smth_gradient[self.start_pnts[i]:self.end_pnts[i]])])
 
             for peak in peaks:
-                if (start_pnts[i] + peak) >= (data_trace.shape[0] - limit):
+                if (self.start_pnts[i] + peak) >= (self.trace.data.shape[0] - limit):
                     continue
-                if start_pnts[i] + peak not in event_locations:
-                    event_locations.append(start_pnts[i] + peak)
-                    event_scores.append(peak_properties['peak_heights'][i])
+                if self.start_pnts[i] + peak not in event_locations:
+                    event_locations.append(self.start_pnts[i] + peak)
+                    event_scores.append(scores[i])
 
+        return np.array(event_locations), np.array(event_scores)       
+
+    def _remove_duplicate_locations(self):
+        '''
+        Remove event locations and associated scores that have potentially been picked up by
+        overlapping start-/ end-points of different detection peaks.
+        '''
+        
         ### Check for duplicates:
-        if np.array(event_locations).shape[0] != np.unique(np.array(event_locations)).shape[0]:
-            print('removed duplicates')
-
-        event_locations, event_scores = np.array(event_locations), np.array(event_scores)        
-        unique_indices = np.unique(event_locations, return_index=True)[1]
-
-        event_locations = event_locations[unique_indices]
-        event_scores = event_scores[unique_indices]
-
-        num_locations = event_locations.shape[0]
+        unique_indices = np.unique(self.event_locations, return_index=True)[1]
+        self.event_locations, self.event_scores = self.event_locations[unique_indices], self.event_scores[unique_indices]
         
-        remove = []
-        for ind, i in enumerate(event_locations):
-            close = event_locations[np.isclose(i, event_locations, atol=win_size/100)]
-            if close.shape[0] > 1:
-                for ind, removal in enumerate(close):
-                    if ind > 0:
-                        remove.append(removal)
-        remove = np.unique(np.array(remove))
-        for i in remove:
-            remaining_indices = np.argwhere(event_locations != i).flatten()
-            event_locations = event_locations[remaining_indices]
-            event_scores = event_scores[remaining_indices]
-        
-        if event_locations.shape[0] != num_locations:
-            print('removed event locations via atol criterium')
-        
-        event_locations = (event_locations / self.resampling_factor).astype(int)
-
-        return np.asarray(event_locations, dtype=np.int64), event_scores
+        remove = list(np.argwhere(np.diff(self.event_locations)<self.window_size/100).flatten() + 1)
+        self.event_locations = np.delete(self.event_locations, remove)
+        self.event_scores = np.delete(self.event_scores, remove)
+        self.event_locations = np.asarray(self.event_locations, dtype=np.int64)
 
 
     def _get_event_properties(self, filter: bool=True) -> dict:
@@ -724,6 +765,9 @@ class EventDetection():
         Find more detailed event location properties required for analysis. Namely, baseline, event onset,
         peak half-decay and 10 & 90% rise positions. Also extracts the actual event properties, such as
         amplitude or half-decay time.
+        
+        Parameters
+        ------
         filter: bool
             If true, properties are extracted from the filtered data.
         '''
@@ -742,8 +786,7 @@ class EventDetection():
             raise ValueError('Cannot extract time windows exceeding input data size.')
 
         if filter:
-            win = signal.windows.hann(int(self.convolve_win/self.resampling_factor))
-            mini_trace = signal.convolve(self.trace.data, win, mode='same') / sum(win)
+            mini_trace = self.hann_filter(data=self.trace.data, filter_size=self.convolve_win)
         else:
             mini_trace = self.trace.data
 
@@ -755,12 +798,14 @@ class EventDetection():
         for ix, position in enumerate(positions):
             indices = position + np.arange(-add_points, after)
             data = mini_trace[indices]
+            
             if filter:
                 data_unfiltered = self.trace.data[indices]*self.event_direction
             else:
                 data_unfiltered = data
             
             event_peak = get_event_peak(data=data,event_num=ix,add_points=add_points,window_size=self.window_size,diffs=diffs)
+            
             self.event_peak_locations[ix] = int(event_peak)
             self.event_peak_values[ix] = data[event_peak]
             peak_spacer = int(self.window_size/100)
@@ -818,7 +863,7 @@ class EventDetection():
 
                 if calculate_charge:
                     endpoint_in_trace = positions[ix] + (self.event_peak_locations[ix] - add_points) + delta_peak_endpoint
-                    charge = get_event_charge(trace_data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
+                    charge = get_event_charge(data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
                     
             else: # Handle the last event
                 if num_combined_charge_events == 1: # define onset position for charge calculation
@@ -833,7 +878,7 @@ class EventDetection():
                 if endpoint_in_trace > mini_trace.shape[0]:
                     endpoint_in_trace = mini_trace.shape[0]
 
-                charge = get_event_charge(trace_data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
+                charge = get_event_charge(data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
                 calculate_charge = True
             if calculate_charge: # Charge was caclulated; check how many potentially overlapping events contributed.
                 charge = [charge/num_combined_charge_events]*num_combined_charge_events
@@ -881,7 +926,7 @@ class EventDetection():
 
         halfdecay_position, halfdecay_time = get_event_halfdecay_time(data=data,peak_position=event_peak, baseline=baseline)        
         endpoint = int(event_peak + factor_charge*halfdecay_position)
-        charge = get_event_charge(trace_data=data, start_point=onset_position, end_point=endpoint, baseline=baseline, sampling=self.trace.sampling)
+        charge = get_event_charge(data=data, start_point=onset_position, end_point=endpoint, baseline=baseline, sampling=self.trace.sampling)
 
         results = {'amplitude': event_peak_value - baseline,
                    'baseline': baseline * self.event_direction,
@@ -899,13 +944,14 @@ class EventDetection():
         return results
 
 
-    def detect_events(self, stride: int=None, eval: bool=False, peak_w:int=5, rel_prom_cutoff: float=0.25, 
-                      convolve_win: int=20, resample_to_600: bool=True) -> None:
+
+    def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w:int=5, 
+                      rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win:int=None) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
         Parameters
-        ----------
+        ------
         stride: int, default = None
             The stride used during prediction. If not specified, it will be set to 1/30 of the window size
         eval: bool, default = False
@@ -916,22 +962,40 @@ class EventDetection():
             The relative prominence cutoff. Overlapping events are separated based on a peak-finding in the first derivative. To be considered
             an event, any detected peak must have at least 25% prominence of the largest detected prominence.
         convolve_win: int, default = 20
-            Window size for the hanning window used to filter the data and derivative for event analysis.
+            Window size for the hanning window used to filter the data for event analysis.
+        gradient_convolve_win: int, default = None
+            Window size for the hanning window used to filter the derivative for event analysis
         resample_to_600: bool, default = True
             Whether to resample the the data to match a 600 point window. Should always be true, unless a model was trained with a different window size.
         '''
-        if resample_to_600:
-            self.resampling_factor = 600/self.window_size
-        else:
-            self.resampling_factor = 1
+                
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
         self.add_points = int(self.window_size/3)
-        self.stride_length = stride if stride else int(self.window_size/30)
+        
+        self.stride_length = stride if stride else round(self.window_size/30)
+        self.gradient_convolve_win = gradient_convolve_win if gradient_convolve_win else self.convolve_win * 2        
+        self.resampling_factor = 600/self.window_size if resample_to_600 else 1
 
-        self.__predict(stride)
-        self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points, rel_prom_cutoff=rel_prom_cutoff, peak_w=peak_w)
+
+        self.__predict()
+        
+        # Linear interpolation of prediction trace to match the original data.
+        self.prediction, self.interpol_factor = self._interpolate_prediction_trace()
+                
+        self.start_pnts, self.end_pnts, scores = self._get_prediction_peaks(peak_w=peak_w)
+        
+        self.gradient, self.smth_gradient = self._make_smth_gradient()
+        
+        self.grad_threshold = self._get_grad_threshold(grad=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts)
+
+
+        self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points,
+                                                                             scores=scores,
+                                                                             rel_prom_cutoff=rel_prom_cutoff)
+
+        self._remove_duplicate_locations()
 
         if self.event_locations.shape[0] > 0:
             self.events = self.trace._extract_event_data(positions=self.event_locations, 
@@ -967,10 +1031,28 @@ class EventDetection():
         return fit[1]
 
 
-    def _fit_event(self, data, amplitude, t_rise, t_decay, x_offset) -> dict:
+    def _fit_event(self, data:np.ndarray, amplitude:float=1, t_rise:float=1, t_decay:float=1, x_offset:float=1) -> dict:
         '''
-        Performs a rudimentary fit to input event.
-        time constants and offsets are in time domain.
+        Performs a rudimentary fit to input event. If not starting values are provided, the data is fitted with
+        all starting values set to one.
+        
+        Parameters
+        ------
+        data: np.ndarray
+            The data to be fitted.
+        amplitude: float
+            Amplitude estimate
+        t_rise: float
+            Rise Tau estimate
+        t_decay: float
+            Decay Tau estimate
+        x_offset: float
+            Baseline period estimate
+
+        Returns
+        ------
+        results: dict
+            Dictionary containing the fitted parameters.
         '''
         x = np.arange(0, data.shape[0]) * self.trace.sampling
         try:
@@ -1012,235 +1094,6 @@ class EventDetection():
         if self.verbose:
             self.event_stats.print()
 
-
-    def plot_single_event(self, event_num: int=0) -> None:
-        ''' Plot a single events '''
-        if event_num > self.events.shape[0]:
-            print('Plot error: Event does not exist')
-            return
-        fig = plt.figure('Event')
-        plt.plot(self.events[event_num])
-        plt.show()
-
-
-    def plot_events(self, save_fig: str='') -> None:
-        ''' Plot all events (overlaid) '''
-        if not self.events_present():
-            return
-        fig = plt.figure('Events')
-        plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, self.events.T)
-        plt.ylabel(f'{self.trace.y_unit}')
-        plt.xlabel('time (s)')
-
-        if save_fig:
-            if not save_fig.endswith('.svg'):
-                save_fig = save_fig + '.svg'
-            plt.savefig(save_fig, format='svg')
-            plt.close()
-            return
-        plt.show()
-
-
-    def plot_event_average(self) -> None:
-        ''' plot the average event waveform '''
-        if not self.events_present():
-            return
-        fig = plt.figure('Event average')
-        ev_average = np.mean(self.events, axis=0)
-        plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, ev_average)
-        plt.ylabel(f'{self.trace.y_unit}')
-        plt.xlabel('time (s)')
-        plt.show()
-
-
-    def plot_event_overlay(self) -> None:
-        '''
-        plot the average event waveform overlayed on top of the individual events
-        plus the fitted event.
-        '''
-        if not self.events_present():
-            return
-        fig = plt.figure('Event average and fit')
-        plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, self.events.T, c='#014182', alpha=0.3)
-        
-        # average
-        ev_average = np.mean(self.events, axis=0)
-        plt.plot(np.arange(0, self.events.shape[1]) * self.trace.sampling, ev_average, c='#a90308',linewidth='3', label='average event')
-        
-        # fit
-        fitted_ev = mEPSC_template(np.arange(0, self.events.shape[1]-int(self.window_size/6)) * self.trace.sampling, 
-                                   *self.fitted_avg_event.values())
-
-        plt.plot(np.arange(int(self.window_size/6), self.events.shape[1]) * self.trace.sampling,
-                 fitted_ev, c='#f0833a', ls='--', label='fit')
-
-        plt.ylabel(f'{self.trace.y_unit}')
-        plt.xlabel('time (s)')
-        plt.legend()
-        plt.show()
-
-
-    def plot_event_histogram(self, plot: str='amplitude', cumulative: bool=False) -> None:
-        ''' Plot event amplitude or frequency histogram '''
-        if not self.events_present():
-            return
-        if plot == 'frequency':
-            data = np.diff(self.event_locations * self.trace.sampling, prepend=0)
-            xlab_str = 'inter-event interval (s)'
-        elif plot == 'amplitude':
-            data = self.event_stats.amplitudes
-            xlab_str = f'amplitude ({self.trace.y_unit})'
-        else:
-            return
-        histtype = 'step' if cumulative else 'bar'
-        ylab_str = 'cumulative frequency' if cumulative else 'count'
-        fig = plt.figure(f'{plot}_histogram')
-        plt.hist(data, bins='auto', cumulative=cumulative, density=cumulative, histtype=histtype)
-        plt.ylabel(ylab_str)
-        plt.xlabel(xlab_str)
-        plt.show()
-
-
-    def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, plot_filtered_trace: bool=False, save_fig: str='') -> None:
-        ''' 
-        Plot prediction trace, optionally together with data and detection result.
-        
-        include_data: bool
-            Boolean whether to include data and detected event peaks in the plot.
-        plot_event_params: bool
-            Boolean whether to plot event onset and half decay points.
-        plot_filtered_prediction: bool
-            Boolean whether to plot filtered prediction trace (maximum filter).
-        plot_filtered_trace: bool
-            Boolean whether to plot filtered prediction trace (hann window). If
-            True, the first and last 100 points remain unchanged, to mask edge artifacts.
-        save_fig: str
-            Filename to save the figure to (in SVG format). If provided, plot will not be shown.
-        '''
-        trace_cols = '#014182'
-        thresh_cols = '#f0833a'
-                
-        fig = plt.figure('prediction')
-        if include_data:
-            ax1 = plt.subplot(211)
-        prediction_x = np.arange(0, len(self.prediction)) * self.trace.sampling * self.stride_length
-        if plot_filtered_prediction:
-            plt.plot(prediction_x, maximum_filter1d(self.prediction, size=5, origin=-2), c=trace_cols)
-        else:
-            plt.plot(prediction_x, self.prediction, c=trace_cols)
-        plt.axhline(self.model_threshold, ls='--', c=thresh_cols)
-        plt.ylabel('probability')
-
-        if include_data:
-            plt.tick_params('x', labelbottom=False)
-            _ = plt.subplot(212, sharex=ax1)
-            if plot_filtered_trace:
-                win = signal.windows.hann(int(self.convolve_win/self.resampling_factor))
-                main_trace = signal.convolve(self.trace.data, win, mode='same') / sum(win)
-                main_trace[0:100] = self.trace.data[0:100]
-                main_trace[main_trace.shape[0]-100:main_trace.shape[0]] = self.trace.data[main_trace.shape[0]-100:main_trace.shape[0]]
-                plt.plot(self.trace.time_axis, self.trace.data, c='k', alpha=0.4)
-                plt.plot(self.trace.time_axis, main_trace, c=trace_cols)
-            
-            else:
-                main_trace = self.trace.data
-                plt.plot(self.trace.time_axis, main_trace, c=trace_cols)
-            try:
-                plt.scatter(self.event_peak_times, main_trace[self.event_peak_locations], c=thresh_cols, s=20, zorder=2, label='peak positions')
-                if plot_event_params:
-                    plt.scatter(self.event_start_times, main_trace[self.event_start], c='#a90308', s=20, zorder=2, label='event onset')
-                    
-                    ### remove np.nans from halfdecay
-                    half_decay_for_plot = self.half_decay[np.argwhere(~np.isnan(self.half_decay)).flatten()].astype(np.int64)
-                    half_decay_times_for_plot = self.half_decay_times[np.argwhere(~np.isnan(self.half_decay_times)).flatten()]
-                    plt.scatter(half_decay_times_for_plot, main_trace[half_decay_for_plot], c='#287c37', s=20, zorder=2, label='half decay')
-
-                data_range = np.abs(np.max(main_trace) - np.min(main_trace))
-                dat_min = np.min(main_trace)
-                plt.eventplot(self.event_peak_times, lineoffsets=dat_min - data_range/15, 
-                              linelengths=data_range/20, color='k', lw=1.5)
-            except:
-                pass
-            plt.tick_params('x')
-            plt.ylabel(f'{self.trace.y_unit}')
-            
-        plt.xlabel('time (s)')
-        plt.legend(loc='upper right')
-        if save_fig:
-            if not save_fig.endswith('.svg'):
-                save_fig = save_fig + '.svg'
-            plt.savefig(save_fig, format='svg')
-            plt.clf()
-            plt.close()
-            return
-        plt.show()
-    
-
-    def plot_event_locations(self, plot_filtered: bool=False, save_fig: str='') -> None:
-        ''' 
-        Plot prediction trace, together with data and detected event positions (before any actual analysis is done).
-        
-        plot_filtered: bool
-            Boolean whether to plot filtered prediction trace (maximum filter).
-        save_fig: str
-            Filename to save the figure to (in SVG format). If provided, plot will not be shown.
-        '''
-        fig = plt.figure('event locations')
-        ax1 = plt.subplot(211)
-        prediction_x = np.arange(0, len(self.prediction)) * self.stride_length
-        if plot_filtered:
-            plt.plot(prediction_x, maximum_filter1d(self.prediction, size=5, origin=-2))
-        else:
-            plt.plot(prediction_x, self.prediction)
-        plt.axhline(self.model_threshold, color='orange', ls='--')
-        plt.ylabel('probability')
-        plt.tick_params('x', labelbottom=False)
-        ax2 = plt.subplot(212, sharex=ax1)
-        plt.plot(self.trace.data)
-        try:
-            plt.scatter(self.event_locations, self.trace.data[self.event_locations], c='orange', s=20, zorder=2)
-            data_range = np.abs(np.max(self.trace.data) - np.min(self.trace.data))
-            dat_min = np.min(self.trace.data)
-            plt.eventplot(self.event_locations, lineoffsets=dat_min - data_range/15, 
-                          linelengths=data_range/20, color='k', lw=1.5)
-        except IndexError as e:
-            pass
-        plt.tick_params('x')
-        plt.ylabel(f'{self.trace.y_unit}')
-        plt.xlabel('time in points')
-        if save_fig:
-            if not save_fig.endswith('.svg'):
-                save_fig = save_fig + '.svg'
-            plt.savefig(save_fig, format='svg')
-            plt.close()
-        else:
-            plt.show()
-
-
-    def plot_detection(self, save_fig: str='') -> None:
-        ''' 
-        Plot detection results together with data.
-        
-        save_fig: str
-            Filename to save the figure to (in SVG format).
-        '''
-        fig = plt.figure('detection')
-        plt.plot(self.trace.time_axis, self.trace.data, zorder=1)
-        if hasattr(self, 'event_stats'):
-            plt.scatter(self.event_peak_times, self.trace.data[self.event_peak_locations], c='orange', s=20, zorder=2)
-            dat_range = np.abs(np.max(self.trace.data) - np.min(self.trace.data))
-            dat_min = np.min(self.trace.data)
-            plt.eventplot(self.event_peak_times, lineoffsets=dat_min - dat_range/15, linelengths=dat_range/20, color='k', lw=1.5)
-
-        plt.xlabel('s')
-        plt.ylabel(f'{self.trace.y_unit}')
-        if save_fig:
-            if not save_fig.endswith('.svg'):
-                save_fig = save_fig + '.svg'
-            plt.savefig(save_fig, format='svg')
-            plt.close()
-            return
-        plt.show()
 
     def save_to_h5(self, filename: str, include_prediction: bool=False) -> None:
         ''' 
@@ -1293,6 +1146,7 @@ class EventDetection():
         Generates two files, one with averages and one with the values for the individual events.
         Filename is automatically generated.
         
+
         filename: str
             filename, including path. Results will be split into "filename + _avgs.csv" and "filename + _individual.csv"
         '''
@@ -1334,6 +1188,9 @@ class EventDetection():
     def save_to_pickle(self, filename: str='', include_prediction:bool=True, include_data:bool=True) -> None:
         ''' 
         Save detection results to a .pickle file.         
+
+        Parameters
+        ------
         filename: str
             Name and if desired directory in which to save the file
         include_prediction: bool
@@ -1405,7 +1262,7 @@ class EventDetection():
             'events':self.events}
 
         if include_prediction:
-            results['prediction']=self.prediction.numpy() # Save prediction as numpy array
+            results['prediction']=self.prediction # Save prediction as numpy array
 
         if include_data:
             results['mini_trace']=self.trace.data
@@ -1449,3 +1306,4 @@ class EventAnalysis(EventDetection):
             super()._get_event_properties(filter=filter)
             self.events = self.events - self.event_bsls[:, None]
             super()._eval_events()
+
