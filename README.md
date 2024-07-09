@@ -2,14 +2,14 @@
 
 # miniML: A deep learning framework for synaptic event detection
 
-[![minimal Python version](https://img.shields.io/badge/Python%E2%89%A5-3.9-grey.svg?style=for-the-badge&logo=python&labelColor=3670A0&logoColor=white)](https://www.anaconda.com/download/)
+[![minimal Python version](https://img.shields.io/badge/Python-3.9_3.10-grey.svg?style=for-the-badge&logo=python&labelColor=3670A0&logoColor=white)](https://www.anaconda.com/download/)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-%23FF6F00.svg?style=for-the-badge&logo=TensorFlow&logoColor=white)](https://www.tensorflow.org)
 [![DOI](https://img.shields.io/badge/DOI-10.1101/2023.11.02.565316-grey.svg?style=for-the-badge&logo=doi&labelColor=green&logoColor=white)](https://www.biorxiv.org/content/10.1101/2023.11.02.565316)
 
 
 This repository contains the code described in the following publication:  
 O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and Delvendahl, I. 
-(2023) Deep learning-based synaptic event detection. _bioRxiv_ ([doi:10.1101/2023.11.02.565316](https://www.biorxiv.org/content/10.1101/2023.11.02.565316))  
+(2024) Deep learning-based synaptic event detection. _eLife_ ([doi:10.7554/eLife.98485.1](https://doi.org/10.7554/eLife.98485.1))  
 
 
 ### 🧠 ABOUT
