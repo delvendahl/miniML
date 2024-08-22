@@ -114,8 +114,8 @@ class minimlGuiMain(QMainWindow):
         self.splitter1 = QSplitter(Qt.Horizontal)
         self.splitter1.setHandleWidth(12)
         self.splitter1.addWidget(self.eventPlot)
-        self.splitter1.addWidget(self.histogramPlot)
         self.splitter1.addWidget(self.averagePlot)
+        self.splitter1.addWidget(self.histogramPlot)
         self.splitter1.setSizes([250,250,250])
         
         self.splitter2 = QSplitter(Qt.Vertical)
