@@ -524,7 +524,7 @@ class minimlGuiMain(QMainWindow):
             try:
                 series_list = [int(s) for s in panel.e1.text().replace(',', ';').split(';')]
             except ValueError:
-                series_list = None if panel.load_option.isChecked() else [int(series_no)]
+                series_list = [] if panel.load_option.isChecked() else [int(series_no)]
             
             self.load_args = {'filename': self.filename,
                               'rectype': rectype,
