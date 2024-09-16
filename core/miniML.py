@@ -1295,7 +1295,7 @@ class EventAnalysis(EventDetection):
         Perform event analysis.
     '''
     def __init__(self, trace, window_size, event_direction, verbose, event_positions, convolve_win, resampling_factor):
-        super().__init__(data=trace, window_size=window_size, event_direction=event_direction, verbose=verbose, convolve_win=convolve_win)
+        super().__init__(data=trace, window_size=window_size, event_direction=event_direction, verbose=verbose)
         self.add_points = int(self.window_size/3)
         self.resampling_factor = resampling_factor
         self.event_locations = event_positions[np.logical_and(
@@ -1304,7 +1304,8 @@ class EventAnalysis(EventDetection):
         self.event_locations = self.event_locations.astype(np.int64)
         self.events = self.trace._extract_event_data(self.event_locations, before=self.add_points, 
                                                      after=self.window_size + self.add_points)
-
+        self.convolve_win = convolve_win
+        
     def eval_events(self, filter: bool=True) -> None:
         if self.event_locations.shape[0] > 0:
             super()._get_event_properties(filter=filter)
