@@ -546,6 +546,7 @@ class EventDetection():
         if model:
             self.model = model
             self.model_threshold = model_threshold
+            self.callbacks = callbacks
         elif model_path:
             self.load_model(filepath=model_path, threshold=model_threshold, compile=compile_model)
             self.callbacks = callbacks
