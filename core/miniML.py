@@ -529,7 +529,7 @@ class EventDetection():
         Contains event statistics
     '''
     def __init__(self, data: MiniTrace, window_size: int=600, event_direction: str='negative', training_direction: str='negative', verbose=1,
-                 batch_size: int=128, model_path: str='', model_threshold: float=0.5, compile_model=True, callbacks: list=[]) -> None:
+                 batch_size: int=128, model: tf.keras.Model=None, model_path: str='', model_threshold: float=0.5, compile_model=True, callbacks: list=[]) -> None:
         self.trace = data
         self.prediction = None
         self.window_size = window_size
@@ -543,10 +543,13 @@ class EventDetection():
         self.model_path = model_path
         self.model = None
         self.model_threshold = None
-        if model_path:
+        if model:
+            self.model = model
+            self.model_threshold = model_threshold
+        elif model_path:
             self.load_model(filepath=model_path, threshold=model_threshold, compile=compile_model)
             self.callbacks = callbacks
-
+        
     @property
     def event_direction(self):
         return self._event_direction
