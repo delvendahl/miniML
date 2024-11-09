@@ -1,9 +1,9 @@
-scikit-learn
-matplotlib
-h5py
-pandas
-numpy
-scipy
+scikit-learn==1.5.1
+matplotlib==3.6.3
+h5py==3.11.0
+pandas==1.5.3
+numpy==1.23.5
+scipy==1.9.3
 tensorflow>=2.12.0,<2.16.0
-pyabf
-PyQt5
+pyabf==2.3.8
+PyQt5>=5.15.10
