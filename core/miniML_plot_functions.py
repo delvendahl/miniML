@@ -28,7 +28,9 @@ class miniML_plots():
         mini_trace = self.detection.trace.data - np.mean(self.detection.trace.data)
         filtered_trace = self.detection.hann_filter(self.detection.trace.data - np.mean(self.detection.trace.data), filter_size=self.detection.convolve_win)
 
-        axs[0].plot(self.detection.prediction, self.main_trace_color)
+        filtered_prediction = maximum_filter1d(self.detection.prediction, size=int(5*self.detection.interpol_factor), origin=-2)
+
+        axs[0].plot(filtered_prediction, self.main_trace_color)
         axs[0].scatter(self.detection.start_pnts, self.detection.prediction[self.detection.start_pnts], c=self.red_color, zorder=2, label='start points')
         axs[0].scatter(self.detection.end_pnts, self.detection.prediction[self.detection.end_pnts],  c=self.green_color, zorder=2, label='end points')
         axs[0].legend(loc='upper right')
@@ -73,6 +75,20 @@ class miniML_plots():
         plt.xlabel('time (s)')
         plt.legend()
         plt.show()
+
+    def plot_singular_event_average(self):
+        win_time = self.detection.window_size * self.detection.trace.sampling
+        no_events_in_decay = np.where(np.diff(self.detection.event_peak_times) > win_time * 1.5)[0]
+        no_events_in_rise = (np.where(np.diff(self.detection.event_peak_times) > win_time * 0.5)[0]) + 1
+        intersection = np.intersect1d(no_events_in_rise, no_events_in_decay, assume_unique=False, return_indices=False)
+        events = self.detection.events[intersection]
+        # events = self.detection.events[no_events_in_decay]
+        # events = self.detection.events[no_events_in_rise]
+        plt.plot(events.T, c=self.main_trace_color, alpha=0.3)
+        plt.plot(np.mean(events.T, axis=1), c=self.red_color,linewidth='3', label='average event')
+        plt.show()
+
+
 
     def plot_event_histogram(self, plot: str='amplitude', cumulative: bool=False) -> None:
         ''' Plot event amplitude or frequency histogram '''

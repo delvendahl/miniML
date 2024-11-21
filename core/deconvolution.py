@@ -66,14 +66,15 @@ def deconvolution(data, kernel, threshold, sampling):
     mu, sigma = norm.fit(deconv_dat)
     detect_threshold = mu + sigma * threshold
 
-    # detect events
-    peaks = find_peaks(deconv_dat, height=detect_threshold, width=1, distance=100)
-    detected_peaks = peaks[0]
+    # peak detection in the same manner as template matching.
+    pos = np.where(deconv_dat < detect_threshold)[0] if detect_threshold < 0 else np.where(deconv_dat > detect_threshold)[0]
+    indices = pos[np.where(np.diff(pos, prepend=0) > 1)[0]] # - N//2
+    indices = indices[np.where(indices > 0)[0]] # Handle negative indices
 
     from collections import namedtuple
     result = namedtuple('DeconvolutionResult', ['indices', 'threshold', 'kernel', 'detection_trace'])
 
-    return result(indices=detected_peaks, threshold=detect_threshold, kernel=kernel, detection_trace=deconv_dat)
+    return result(indices=indices, threshold=detect_threshold, kernel=kernel, detection_trace=deconv_dat)
 
 
 if __name__ == '__main__':

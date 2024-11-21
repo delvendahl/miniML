@@ -1309,7 +1309,10 @@ class EventAnalysis(EventDetection):
     def __init__(self, trace, window_size, event_direction, verbose, event_positions, convolve_win, resampling_factor):
         super().__init__(data=trace, window_size=window_size, event_direction=event_direction, verbose=verbose)
         self.add_points = int(self.window_size/3)
+        self.event_direction = event_direction
+        self.convolve_win = convolve_win
         self.resampling_factor = resampling_factor
+
         self.event_locations = event_positions[np.logical_and(
                                                 self.add_points < event_positions, 
                                                 event_positions < len(self.trace.data) - (self.window_size + self.add_points))]
