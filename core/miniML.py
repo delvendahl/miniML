@@ -1028,6 +1028,9 @@ class EventDetection():
             fit_start = np.argmax(np.convolve(event_avg, np.ones(3) / 3, mode='valid')) + int(0.01 * self.window_size)
         else:
             fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
+        if fit_start > self.events.shape[1] - int(0.05 * self.window_size): # not a valid starting point
+            return np.nan
+        
         fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
                            p0=[np.amax(event_avg), self.events.shape[1] / 50 * self.trace.sampling, 0])
 
