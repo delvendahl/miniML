@@ -1024,7 +1024,10 @@ class EventDetection():
         ''' Returns the decay time constant of the averaged events '''
         event_x = np.arange(0, self.events.shape[1]) * self.trace.sampling
         event_avg = np.average(self.events, axis=0) * self.event_direction
-        fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
+        if self.events.shape[0] < 4:
+            fit_start = np.argmax(np.convolve(event_avg, np.ones(3) / 3, mode='valid')) + int(0.01 * self.window_size)
+        else:
+            fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
         fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
                            p0=[np.amax(event_avg), self.events.shape[1] / 50 * self.trace.sampling, 0])
 
