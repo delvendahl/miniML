@@ -6,6 +6,7 @@ import tensorflow as tf
 import os
 import pandas as pd
 import pickle as pkl
+from pathlib import Path
 from scipy import signal
 from scipy.optimize import curve_fit
 from scipy.ndimage import maximum_filter1d
@@ -170,7 +171,7 @@ class MiniTrace():
                 raise FileNotFoundError('Trace not found in file')
             data = f[path][:] * scaling
 
-        return cls(data=data, sampling_interval=sampling, y_unit=unit, filename=os.path.split(filename)[-1])
+        return cls(data=data, sampling_interval=sampling, y_unit=unit, filename=Path(filename).name)
 
 
     @classmethod
@@ -208,7 +209,7 @@ class MiniTrace():
         ValueError
             When the sampling rates of different series mismatch and resampling is set to False.
         '''
-        if not os.path.splitext(filename)[-1].lower() == '.dat':
+        if not Path(filename).suffix.lower() == '.dat':
             raise Exception('Incompatible file type. Method only loads .dat files.')
 
         import FileImport.HekaReader as heka
@@ -263,7 +264,7 @@ class MiniTrace():
         MiniTrace.Rseries = series_resistances
 
         return cls(data=data * scaling, sampling_interval=max_sampling_interval, 
-                   y_unit=data_unit, filename=os.path.split(filename)[-1])
+                   y_unit=data_unit, filename=Path(filename).name)
 
 
     @classmethod
@@ -291,7 +292,7 @@ class MiniTrace():
         IndexError
             When the selected channel does not exist in the file.
         '''
-        if not os.path.splitext(filename)[-1].lower() == '.abf':
+        if not Path(filename).suffix.lower() == '.abf':
             raise Exception('Incompatible file type. Method only loads .abf files.')
 
         import pyabf
@@ -302,7 +303,7 @@ class MiniTrace():
         data_unit = unit if unit is not None else abf_file.adcUnits[channel]
 
         return cls(data=abf_file.data[channel] * scaling, sampling_interval=1/abf_file.sampleRate, 
-                    y_unit=data_unit, filename=os.path.split(filename)[-1])
+                    y_unit=data_unit, filename=Path(filename).name)
 
 
     def plot_trace(self) -> None:
@@ -500,6 +501,8 @@ class EventDetection():
         Event direction during training. Should be 'negative' or 'positive'. All provided GitHub
         models were trained with negative events (improved TL performance). If a model is trained
         with positive events, this needs to be specified to run inference.
+    verbose: int, default=1
+        set verbose level (0 = no output, 1 = info, 2 = full)
     batch_size: int, default=128
         The batch size for the event detection (used in model.predict).
     model_path: str, default=''
@@ -526,7 +529,7 @@ class EventDetection():
         Contains event statistics
     '''
     def __init__(self, data: MiniTrace, window_size: int=600, event_direction: str='negative', training_direction: str='negative', verbose=1,
-                 batch_size: int=128, model_path: str='', model_threshold: float=0.5, compile_model=True, callbacks: list=[]) -> None:
+                 batch_size: int=128, model: tf.keras.Model=None, model_path: str='', model_threshold: float=0.5, compile_model=True, callbacks: list=[]) -> None:
         self.trace = data
         self.prediction = None
         self.window_size = window_size
@@ -540,10 +543,14 @@ class EventDetection():
         self.model_path = model_path
         self.model = None
         self.model_threshold = None
-        if model_path:
+        if model:
+            self.model = model
+            self.model_threshold = model_threshold
+            self.callbacks = callbacks
+        elif model_path:
             self.load_model(filepath=model_path, threshold=model_threshold, compile=compile_model)
             self.callbacks = callbacks
-
+        
     @property
     def event_direction(self):
         return self._event_direction
@@ -638,6 +645,7 @@ class EventDetection():
 
         self.prediction = tf.squeeze(self.model.predict(ds, verbose=self.verbose, callbacks=self.callbacks))
         
+
     def _interpolate_prediction_trace(self):
         '''
         Interpolate the prediction trace such that it corresponds 1:1 to the raw data before resampling.
@@ -649,7 +657,9 @@ class EventDetection():
         pn_mapped = pn * stride
         pn_in_raw_data = round(pn_mapped/self.resampling_factor)
         resampled_prediction, interpol_factor = self._linear_interpolation(data=self.prediction, interpol_to_len=pn_in_raw_data)
+
         return resampled_prediction, interpol_factor
+
 
     def _get_prediction_peaks(self, peak_w:int=10):
         '''
@@ -664,6 +674,7 @@ class EventDetection():
         start_pnts = np.array(peak_properties['left_ips'] + self.window_size/4, dtype=np.int64)
         end_pnts =  np.array(peak_properties['right_ips'] + self.window_size/2, dtype=np.int64)
         scores = peak_properties['peak_heights']
+
         return start_pnts, end_pnts, scores
 
 
@@ -674,7 +685,9 @@ class EventDetection():
         
         gradient = np.gradient(trace_convolved, self.trace.sampling)
         smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.gradient_convolve_win)
+
         return gradient, smth_gradient
+
 
     def _get_grad_threshold(self, grad, start_pnts, end_pnts):
         '''
@@ -683,7 +696,9 @@ class EventDetection():
         split_data = np.split(grad, np.vstack((start_pnts, end_pnts)).ravel('F'))
         event_free_data = np.concatenate(split_data[::2]).ravel()
         grad_threshold = int(4 * np.std(event_free_data))
+
         return grad_threshold
+
 
     def _find_event_locations(self, limit: int, scores, rel_prom_cutoff: float=0.25):
         '''
@@ -743,6 +758,7 @@ class EventDetection():
                     event_scores.append(scores[i])
 
         return np.array(event_locations), np.array(event_scores)       
+
 
     def _remove_duplicate_locations(self):
         '''
@@ -944,7 +960,6 @@ class EventDetection():
         return results
 
 
-
     def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w:int=5, 
                       rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win:int=None) -> None:
         '''
@@ -967,8 +982,7 @@ class EventDetection():
             Window size for the hanning window used to filter the derivative for event analysis
         resample_to_600: bool, default = True
             Whether to resample the the data to match a 600 point window. Should always be true, unless a model was trained with a different window size.
-        '''
-                
+        '''   
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
         self.convolve_win = convolve_win
@@ -978,23 +992,16 @@ class EventDetection():
         self.gradient_convolve_win = gradient_convolve_win if gradient_convolve_win else self.convolve_win * 2        
         self.resampling_factor = 600/self.window_size if resample_to_600 else 1
 
-
         self.__predict()
         
         # Linear interpolation of prediction trace to match the original data.
         self.prediction, self.interpol_factor = self._interpolate_prediction_trace()
-                
         self.start_pnts, self.end_pnts, scores = self._get_prediction_peaks(peak_w=peak_w)
-        
         self.gradient, self.smth_gradient = self._make_smth_gradient()
-        
         self.grad_threshold = self._get_grad_threshold(grad=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts)
-
-
         self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points,
                                                                              scores=scores,
                                                                              rel_prom_cutoff=rel_prom_cutoff)
-
         self._remove_duplicate_locations()
 
         if self.event_locations.shape[0] > 0:
@@ -1124,12 +1131,20 @@ class EventDetection():
             f.create_dataset('event_params/event_locations', data=np.array(self.event_locations))
             f.create_dataset('event_params/event_scores', data=np.array(self.event_scores))
             f.create_dataset('event_params/event_amplitudes', data=self.event_stats.amplitudes)
+            f.create_dataset('event_params/event_charges', data=self.event_stats.charges)
+            f.create_dataset('event_params/event_risetimes', data=self.event_stats.risetimes)
+            f.create_dataset('event_params/event_halfdecays', data=self.event_stats.halfdecays)
             f.create_dataset('event_params/event_bsls', data=np.array(self.event_bsls))
             f.create_dataset('event_statistics/amplitude_average', data=self.event_stats.mean(self.event_stats.amplitudes))
             f.create_dataset('event_statistics/amplitude_stdev', data=self.event_stats.std(self.event_stats.amplitudes))
             f.create_dataset('event_statistics/amplitude_median', data=self.event_stats.median(self.event_stats.amplitudes))
             f.create_dataset('event_statistics/charge_mean', data=self.event_stats.mean(self.event_stats.charges))
             f.create_dataset('event_statistics/charge_median', data=self.event_stats.median(self.event_stats.charges))
+            f.create_dataset('event_statistics/risetime_mean', data=self.event_stats.mean(self.event_stats.risetimes))
+            f.create_dataset('event_statistics/risetime_median', data=self.event_stats.median(self.event_stats.risetimes))
+            f.create_dataset('event_statistics/decaytime_mean', data=self.event_stats.mean(self.event_stats.halfdecays))
+            f.create_dataset('event_statistics/decaytime_median', data=self.event_stats.median(self.event_stats.halfdecays))
+            f.create_dataset('event_statistics/decay_from_fit', data=self.event_stats.avg_tau_decay)
             f.create_dataset('event_statistics/frequency', data=self.event_stats.frequency())
 
             f.attrs['amplitude_unit'] = self.trace.y_unit
@@ -1190,6 +1205,7 @@ class EventDetection():
         individual.to_csv(f'{filename}_individual.csv')
         avgs.to_csv(f'{filename}_avgs.csv', header=False)
         print(f'events saved to {filename}_avgs.csv and {filename}_individual.csv')
+
 
     def save_to_pickle(self, filename: str='', include_prediction:bool=True, include_data:bool=True) -> None:
         ''' 
@@ -1297,9 +1313,7 @@ class EventAnalysis(EventDetection):
         Perform event analysis.
     '''
     def __init__(self, trace, window_size, event_direction, verbose, event_positions, convolve_win, resampling_factor):
-        super().__init__(data=trace)
-        self.trace = trace
-        self.window_size = window_size
+        super().__init__(data=trace, window_size=window_size, event_direction=event_direction, verbose=verbose)
         self.add_points = int(self.window_size/3)
         self.event_direction = event_direction
         self.convolve_win = convolve_win
@@ -1311,7 +1325,8 @@ class EventAnalysis(EventDetection):
         self.event_locations = self.event_locations.astype(np.int64)
         self.events = self.trace._extract_event_data(self.event_locations, before=self.add_points, 
                                                      after=self.window_size + self.add_points)
-
+        self.convolve_win = convolve_win
+        
     def eval_events(self, filter: bool=True) -> None:
         if self.event_locations.shape[0] > 0:
             super()._get_event_properties(filter=filter)

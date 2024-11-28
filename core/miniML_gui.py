@@ -114,8 +114,8 @@ class minimlGuiMain(QMainWindow):
         self.splitter1 = QSplitter(Qt.Horizontal)
         self.splitter1.setHandleWidth(12)
         self.splitter1.addWidget(self.eventPlot)
-        self.splitter1.addWidget(self.histogramPlot)
         self.splitter1.addWidget(self.averagePlot)
+        self.splitter1.addWidget(self.histogramPlot)
         self.splitter1.setSizes([250,250,250])
         
         self.splitter2 = QSplitter(Qt.Vertical)
@@ -524,7 +524,7 @@ class minimlGuiMain(QMainWindow):
             try:
                 series_list = [int(s) for s in panel.e1.text().replace(',', ';').split(';')]
             except ValueError:
-                series_list = None if panel.load_option.isChecked() else [int(series_no)]
+                series_list = [] if panel.load_option.isChecked() else [int(series_no)]
             
             self.load_args = {'filename': self.filename,
                               'rectype': rectype,
@@ -612,7 +612,7 @@ class minimlGuiMain(QMainWindow):
             self.was_analyzed = True
             self.predictionPlot.clear()
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
-            prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling * self.detection.stride_length
+            prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling
             self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen)
             self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
                                      pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))
