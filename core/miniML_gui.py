@@ -9,6 +9,7 @@ import numpy as np
 import tensorflow as tf
 from pathlib import Path
 import h5py
+import pyabf
 from qt_material import build_stylesheet
 import sys
 from miniML import MiniTrace, EventDetection
@@ -391,7 +392,8 @@ class minimlGuiMain(QMainWindow):
         pen = pg.mkPen(color=self.settings.colors[3], width=1)
         self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen)
         self.tracePlot.setLabel('bottom', 'Time', 's')
-        self.tracePlot.setLabel('left', 'Imon', self.trace.y_unit)
+        label1 = 'Vmon' if self.recording_mode == 'current-clamp' else 'Imon'
+        self.tracePlot.setLabel('left', label1, self.trace.y_unit)
     
 
     def toggle_table_win(self) -> None:
@@ -463,7 +465,6 @@ class minimlGuiMain(QMainWindow):
         self.predictionPlot.clear()
 
 
-
     def close_gui(self) -> None:
         self.close()
     
@@ -492,6 +493,7 @@ class minimlGuiMain(QMainWindow):
                 return
 
             self.filetype = 'HDF5'
+            self.protocol = 'none'
             self.load_args = {'filename': self.filename,
                               'tracename': panel.e1.currentText(),
                               'sampling': float(panel.e2.text()),
@@ -506,10 +508,11 @@ class minimlGuiMain(QMainWindow):
                 return
 
             self.filetype = 'AXON ABF'
+            self.protocol = panel.protocol.text()
             self.load_args = {'filename': self.filename,
-                              'channel': int(panel.e1.text()),
-                              'scaling': float(panel.e2.text()), 
-                              'unit': panel.e3.text() if (panel.e3.text() != '') else None}
+                              'channel': int(panel.channel.currentText()),
+                              'scaling': float(panel.scale.text()), 
+                              'unit': panel.unit.text() if (panel.unit.text() != '') else None}
 
         # DAT file
         elif self.filename.endswith('dat'):
@@ -520,6 +523,7 @@ class minimlGuiMain(QMainWindow):
             
             self.filetype = 'HEKA DAT'
             series_no, rectype = panel.series.currentText().split(' - ')
+            self.protocol = rectype
             group_no, _ = panel.group.currentText().split(' - ')
             try:
                 series_list = [int(s) for s in panel.e1.text().replace(',', ';').split(';')]
@@ -532,8 +536,10 @@ class minimlGuiMain(QMainWindow):
                               'exclude_series': series_list,
                               'scaling': float(panel.e2.text()),
                               'unit': panel.e3.text() if (panel.e3.text() != '') else None}
-
+            
         self.trace = load_trace_from_file(self.filetype, self.load_args)
+        self.recording_mode = 'current-clamp' if 'V' in self.trace.y_unit else 'voltage-clamp'
+        
         self.update_main_plot()
         self.reset_windows()
         self.was_analyzed = False
@@ -566,7 +572,7 @@ class minimlGuiMain(QMainWindow):
         self.settings.stride = int(settings_win.stride.text())
         self.settings.model_path = str(settings_win.model.currentText())
         self.settings.model_name = str(settings_win.model.currentText())
-        self.settings.event_threshold = float(settings_win.thresh.text())
+        self.settings.event_threshold = float(settings_win.thresh.text()) if settings_win.thresh.hasAcceptableInput() else 0.5
         self.settings.direction = str(settings_win.direction.currentText())
         self.settings.batch_size = int(settings_win.batchsize.text())
 
@@ -722,16 +728,33 @@ class LoadAbfPanel(QDialog):
     def __init__(self, parent=None):
         super(LoadAbfPanel, self).__init__(parent)
         
-        self.e1 = QLineEdit('0')
-        self.e2 = QLineEdit('1')
-        self.e3 = QLineEdit('')
+        self.abf_file = pyabf.ABF(parent.filename)
+
+        self.channel = QComboBox()
+        self.channel.addItems([str(channel) for channel in self.abf_file.channelList])
+        self.channel.setMinimumWidth(150)
+        self.channel.currentIndexChanged[str].connect(self.on_comboBoxParent_currentChannelChanged)
+
+        self.scale = QLineEdit('1')
+        self.unit = QLineEdit(self.abf_file.adcUnits[0])
+        self.protocol = QLineEdit(self.abf_file.protocol)
+        self.protocol.setReadOnly(True)
+        self.protocol.setMinimumWidth(300)
 
         self.layout = QFormLayout(self)
-        self.layout.addRow('Recording channel:', self.e1)
-        self.layout.addRow('Scaling factor:', self.e2)
-        self.layout.addRow('Data unit:', self.e3)
+        self.layout.addRow('Recording channel:', self.channel)
+        self.layout.addRow('Scaling factor:', self.scale)
+        self.layout.addRow('Data unit:', self.unit)
+        self.layout.addRow('Protocol:', self.protocol)
 
         finalize_dialog_window(self, title='Load AXON .abf file')
+
+
+    @pyqtSlot(str)
+    def on_comboBoxParent_currentChannelChanged(self, index):
+
+        self.unit.clear()
+        self.unit.setText(self.abf_file.adcUnits[int(index)])
 
 
 class LoadDatPanel(QDialog):
@@ -796,15 +819,22 @@ class FileInfoPanel(QDialog):
         self.length.setReadOnly(True)
         self.unit = QLineEdit(parent.trace.y_unit)
         self.unit.setReadOnly(True)
+        self.mode = QLineEdit(parent.recording_mode)
+        self.mode.setReadOnly(True)
         self.sampling = QLineEdit(str(np.round(parent.trace.sampling_rate)))
         self.sampling.setReadOnly(True)
+        self.protocol = QLineEdit(parent.protocol)
+        self.protocol.setReadOnly(True)
+        self.protocol.setFixedWidth(300)
         
         self.layout = QFormLayout(self)
         self.layout.addRow('Filename:', self.filename)
         self.layout.addRow('File format:', self.format)
-        self.layout.addRow('Recording duration (s):', self.length)    
+        self.layout.addRow('Recording duration (s):', self.length)
         self.layout.addRow('Data unit', self.unit)
+        self.layout.addRow('Recording mode:', self.mode)
         self.layout.addRow('Sampling rate (Hz):', self.sampling)
+        self.layout.addRow('Protocol:', self.protocol)
 
         finalize_dialog_window(self, title='File info', cancel=False)
 
@@ -897,6 +927,10 @@ class SettingsPanel(QDialog):
         self.stride = QLineEdit(str(parent.settings.stride))
         self.ev_len = QLineEdit(str(parent.settings.event_window))
         self.thresh = QLineEdit(str(parent.settings.event_threshold))
+        validator = QDoubleValidator(0.0, 1.0, 3)
+        validator.setNotation(QDoubleValidator.StandardNotation)
+        self.thresh.setValidator(validator)
+
         self.model = QComboBox()
         self.model.addItems(get_available_models())
         index = self.model.findText(parent.settings.model_name)
@@ -905,6 +939,11 @@ class SettingsPanel(QDialog):
         self.model.setFixedWidth(200)
         self.direction = QComboBox()
         self.direction.addItems(['negative', 'positive'])
+        # set selected direction
+        if parent.settings.direction == 'negative':
+            self.direction.setCurrentIndex(0)
+        else:
+            self.direction.setCurrentIndex(1)
         self.direction.setFixedWidth(200)
         self.batchsize = QLineEdit(str(parent.settings.batch_size))
 
