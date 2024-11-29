@@ -637,11 +637,11 @@ class minimlGuiMain(QMainWindow):
         if not hasattr(self, 'detection'):
             return
 
-        folder_path = QFileDialog.getExistingDirectory(self, 'Open Directory', '')
-        if folder_path == '':
+        file_name = QFileDialog.getSaveFileName(self, 'Save file', '', 'CSV files (*.csv)')[0]
+        if file_name == '':
             return
 
-        self.detection.save_to_csv(path=folder_path)
+        self.detection.save_to_csv(filename=file_name)
 
 
     def save_as_hdf(self) -> None:
