@@ -115,8 +115,8 @@ class minimlGuiMain(QMainWindow):
         self.splitter1 = QSplitter(Qt.Horizontal)
         self.splitter1.setHandleWidth(12)
         self.splitter1.addWidget(self.eventPlot)
-        self.splitter1.addWidget(self.histogramPlot)
         self.splitter1.addWidget(self.averagePlot)
+        self.splitter1.addWidget(self.histogramPlot)
         self.splitter1.setSizes([250,250,250])
         
         self.splitter2 = QSplitter(Qt.Vertical)
@@ -176,44 +176,44 @@ class minimlGuiMain(QMainWindow):
         self.tb = self.addToolBar("Menu")
         self.tb.setMovable(False)
 
-        self.openAction = QAction(QIcon("core/icons/load_file_24px_blue.svg"), "Open...", self)
+        self.openAction = QAction(QIcon("icons/load_file_24px_blue.svg"), "Open...", self)
         self.openAction.setShortcut('Ctrl+O')
         self.tb.addAction(self.openAction)
-        self.filterAction = QAction(QIcon("core/icons/filter_24px_blue.svg"), "Filter", self)
+        self.filterAction = QAction(QIcon("icons/filter_24px_blue.svg"), "Filter", self)
         self.filterAction.setShortcut('Ctrl+F')
         self.tb.addAction(self.filterAction)
-        self.infoAction = QAction(QIcon("core/icons/troubleshoot_24px_blue.svg"), "Info", self)
+        self.infoAction = QAction(QIcon("icons/troubleshoot_24px_blue.svg"), "Info", self)
         self.infoAction.setShortcut('Ctrl+I')
         self.tb.addAction(self.infoAction)
-        self.cutAction = QAction(QIcon("core/icons/content_cut_24px_blue.svg"), "Cut trace", self)
+        self.cutAction = QAction(QIcon("icons/content_cut_24px_blue.svg"), "Cut trace", self)
         self.cutAction.setShortcut('Ctrl+X')
         self.tb.addAction(self.cutAction)
-        self.resetAction = QAction(QIcon("core/icons/restore_page_24px_blue.svg"), "Reload", self)
+        self.resetAction = QAction(QIcon("icons/restore_page_24px_blue.svg"), "Reload", self)
         self.resetAction.setShortcut('Ctrl+R')
         self.tb.addAction(self.resetAction)
-        self.analyseAction = QAction(QIcon("core/icons/rocket_launch_24px_blue.svg"), "Analyse", self)
+        self.analyseAction = QAction(QIcon("icons/rocket_launch_24px_blue.svg"), "Analyse", self)
         self.analyseAction.setShortcut('Ctrl+A')
         self.tb.addAction(self.analyseAction)
-        self.predictionAction = QAction(QIcon("core/icons/ssid_chart_24px_blue.svg"), "Prediction", self)
+        self.predictionAction = QAction(QIcon("icons/ssid_chart_24px_blue.svg"), "Prediction", self)
         self.tb.addAction(self.predictionAction)
-        self.summaryAction = QAction(QIcon("core/icons/functions_24px_blue.svg"), "Summary", self)
+        self.summaryAction = QAction(QIcon("icons/functions_24px_blue.svg"), "Summary", self)
         self.tb.addAction(self.summaryAction)
-        self.plotAction = QAction(QIcon("core/icons/insert_chart_24px_blue.svg"), "Plot", self)
+        self.plotAction = QAction(QIcon("icons/insert_chart_24px_blue.svg"), "Plot", self)
         self.tb.addAction(self.plotAction)
-        self.tableAction = QAction(QIcon("core/icons/table_24px_blue.svg"), "Table", self)
+        self.tableAction = QAction(QIcon("icons/table_24px_blue.svg"), "Table", self)
         self.tb.addAction(self.tableAction)
-        self.textsaveAction = QAction(QIcon("core/icons/textfile_24px_blue.svg"), "Save as TXT", self)
+        self.textsaveAction = QAction(QIcon("icons/textfile_24px_blue.svg"), "Save as TXT", self)
         self.textsaveAction.setShortcut('Ctrl+S')
         self.tb.addAction(self.textsaveAction)
-        self.saveAction = QAction(QIcon("core/icons/save_24px_blue.svg"), "Save as HDF5", self)
+        self.saveAction = QAction(QIcon("icons/save_24px_blue.svg"), "Save as HDF5", self)
         self.tb.addAction(self.saveAction)
-        self.settingsAction = QAction(QIcon("core/icons/settings_24px_blue.svg"), "Settings", self)
+        self.settingsAction = QAction(QIcon("icons/settings_24px_blue.svg"), "Settings", self)
         self.settingsAction.setShortcut('Ctrl+P')
         self.tb.addAction(self.settingsAction)
-        self.closeAction = QAction(QIcon("core/icons/cancel_24px_blue"), 'Close Window', self)
+        self.closeAction = QAction(QIcon("icons/cancel_24px_blue"), 'Close Window', self)
         self.closeAction.setShortcut('Ctrl+W')
         # self.tb.addAction(self.closeAction)
-        self.aboutAction = QAction(QIcon("core/icons/info_24px_blue.svg"), "About", self)
+        self.aboutAction = QAction(QIcon("icons/info_24px_blue.svg"), "About", self)
         self.aboutAction.setShortcut('Ctrl+H')
         # self.tb.addAction(self.aboutAction)
         
@@ -525,7 +525,7 @@ class minimlGuiMain(QMainWindow):
             try:
                 series_list = [int(s) for s in panel.e1.text().replace(',', ';').split(';')]
             except ValueError:
-                series_list = None if panel.load_option.isChecked() else [int(series_no)]
+                series_list = [] if panel.load_option.isChecked() else [int(series_no)]
             
             self.load_args = {'filename': self.filename,
                               'rectype': rectype,
@@ -992,6 +992,6 @@ if __name__ == '__main__':
     main = minimlGuiMain()
     extra = {'density_scale': '-1',}
     app.setStyleSheet(build_stylesheet(theme='light_blue.xml', invert_secondary=False, 
-                                       extra=extra, template='core/miniml.css.template'))
+                                       extra=extra, template='miniml.css.template'))
     main.show()
     sys.exit(app.exec_())
