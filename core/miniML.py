@@ -1032,10 +1032,10 @@ class EventDetection():
         event_x = np.arange(0, self.events.shape[1]) * self.trace.sampling
         event_avg = np.average(self.events, axis=0) * self.event_direction
         if self.events.shape[0] < 4:
-            fit_start = np.argmax(np.convolve(event_avg, np.ones(3) / 3, mode='valid')) + int(0.01 * self.window_size)
+            fit_start = np.argmax(np.convolve(event_avg, np.ones(5) / 5, mode='same')) + int(0.01 * self.window_size)
         else:
             fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
-        if fit_start > self.events.shape[1] - int(0.05 * self.window_size): # not a valid starting point
+        if fit_start > self.events.shape[1] - int(0.2 * self.window_size): # not a valid starting point
             return np.nan
         
         fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
