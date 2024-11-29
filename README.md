@@ -43,6 +43,7 @@ miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-m
 
 ### ⏱ RUNNING MINIML
 
+#### Analysis workflow in Python
 First, a miniML *MiniTrace* object needs to be created containing 1d timeseries data. Currently, miniML supports direct loading from HEKA .dat files, Axon .abf files as well as HDF .h5 files. The *Trace* object features discrete methods for loading from these file formats (e.g., **MiniTrace.from_h5_file()**). Data in other file formats need to be imported as Python objects.
 
 Next, a miniML *EventDetection* object is initiated. Here, one needs to specify a miniML model file to use as well as the *Trace* object to operate on. 
@@ -51,6 +52,9 @@ Finally, model inference can be run using the **detect_events()** method. This m
 
 Detected events are analyzed and descriptive statistics can subsequently be saved in different formats (.pickle, .h5, .csv).
 
+#### Analysis workflow via GUI
+
+miniML can also be used via a graphical user interface (GUI). To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a CSV or HDF5 file.
 
 ### 💡 EXAMPLE
 
