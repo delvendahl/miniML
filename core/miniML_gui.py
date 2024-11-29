@@ -361,7 +361,9 @@ class minimlGuiMain(QMainWindow):
                 self.trace = self.trace.filter(lowpass=float(panel.low.text()), order=int(panel.order.text()))
             else:
                 self.trace = self.trace.filter(savgol=float(panel.window.text()), order=int(panel.order.text()))
-        
+        if panel.hann.isChecked():
+                self.trace = self.trace.filter(hann=int(panel.hann_window.text()))
+
         self.update_main_plot()
 
         
@@ -965,8 +967,12 @@ class FilterPanel(QDialog):
         self.window.setValidator(QDoubleValidator(0.001,999.9,3))
         self.window.setEnabled(False)
         self.order = QLineEdit('4')
-        self.order.setValidator(QIntValidator(1,9))
-        
+        self.order.setValidator(QIntValidator(1,9))        
+        self.hann = QCheckBox('')
+        self.hann_window = QLineEdit('20')
+        self.hann_window.setValidator(QIntValidator(3,1000))
+
+
         self.layout = QFormLayout(self)
         self.layout.addRow('Detrend data', self.detrend)
         self.layout.addRow('Number of segments', self.num_segments)
@@ -979,6 +985,8 @@ class FilterPanel(QDialog):
         self.layout.addRow('Low-pass (Hz)', self.low)
         self.layout.addRow('Window (ms)', self.window)
         self.layout.addRow('Filter order', self.order)
+        self.layout.addRow('Hann filter', self.hann)
+        self.layout.addRow('Hann window size', self.hann_window)
 
         finalize_dialog_window(self, title='Filter settings')
 

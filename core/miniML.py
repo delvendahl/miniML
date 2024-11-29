@@ -324,7 +324,7 @@ class MiniTrace():
 
 
     def filter(self, notch: float=None, highpass: float=None, lowpass: float=None, order: int=4,
-               savgol: float=None) -> MiniTrace:
+               savgol: float=None, hann:int=None) -> MiniTrace:
         ''' Filters trace with a combination of notch, high- and lowpass filters.
         If both lowpass and savgol arguments are passed, only the lowpass filter is applied. 
         notch: float, default=None
@@ -357,6 +357,10 @@ class MiniTrace():
             filtered_data = signal.sosfiltfilt(sos, filtered_data)
         elif savgol:
             filtered_data = signal.savgol_filter(filtered_data, int(savgol/1000/self.sampling), polyorder=order)
+        
+        if hann:
+            win = signal.windows.hann(hann)    
+            filtered_data = signal.convolve(filtered_data, win, mode='same') / sum(win)
 
         return MiniTrace(filtered_data, sampling_interval=self.sampling, y_unit=self.y_unit, filename=self.filename)
 
