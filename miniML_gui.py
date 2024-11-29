@@ -11,6 +11,7 @@ from pathlib import Path
 import h5py
 from qt_material import build_stylesheet
 import sys
+sys.path.append('./core/')
 from miniML import MiniTrace, EventDetection
 from miniML_settings import MinimlSettings
 import FileImport.HekaReader as heka
@@ -612,7 +613,7 @@ class minimlGuiMain(QMainWindow):
             self.was_analyzed = True
             self.predictionPlot.clear()
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
-            prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling * self.detection.stride_length
+            prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling
             self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen)
             self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
                                      pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))

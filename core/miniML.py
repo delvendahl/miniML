@@ -1256,6 +1256,7 @@ class EventDetection():
 
                 ### event analysis params:
                 'convolve_win':self.convolve_win,
+                'gradient_convolve_win':self.gradient_convolve_win,
                 'min_peak_w':self.peak_w,
                 'rel_prom_cutoff':self.rel_prom_cutoff,
                 'event_direction':self.event_direction},

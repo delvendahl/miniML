@@ -77,6 +77,7 @@ class miniML_plots():
         plt.show()
 
     def plot_singular_event_average(self):
+        '''Plot event overlay + avg for events that have no overlapping events'''
         win_time = self.detection.window_size * self.detection.trace.sampling
         no_events_in_decay = np.where(np.diff(self.detection.event_peak_times) > win_time * 1.5)[0]
         no_events_in_rise = (np.where(np.diff(self.detection.event_peak_times) > win_time * 0.5)[0]) + 1
@@ -84,6 +85,7 @@ class miniML_plots():
         events = self.detection.events[intersection]
         # events = self.detection.events[no_events_in_decay]
         # events = self.detection.events[no_events_in_rise]
+        fig = plt.figure(f'singular_events')
         plt.plot(events.T, c=self.main_trace_color, alpha=0.3)
         plt.plot(np.mean(events.T, axis=1), c=self.red_color,linewidth='3', label='average event')
         plt.show()
