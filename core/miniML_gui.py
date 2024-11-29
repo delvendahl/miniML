@@ -11,7 +11,6 @@ from pathlib import Path
 import h5py
 from qt_material import build_stylesheet
 import sys
-sys.path.append('./core/')
 from miniML import MiniTrace, EventDetection
 from miniML_settings import MinimlSettings
 import FileImport.HekaReader as heka
