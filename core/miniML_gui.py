@@ -639,7 +639,7 @@ class minimlGuiMain(QMainWindow):
         if file_name == '':
             return
 
-        self.detection.save_to_csv(path=file_name)
+        self.detection.save_to_csv(filename=file_name)
 
 
     def save_as_hdf(self) -> None:
