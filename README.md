@@ -40,6 +40,8 @@ miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-m
 
 **Update June 2024:** The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
 
+**Update November 2024:** miniML can now be used with a graphical user interface (GUI). To use the GUI, install the additional dependencies from the requirements_gui.txt file.  
+
 
 ### ⏱ RUNNING MINIML
 
@@ -54,7 +56,7 @@ Detected events are analyzed and descriptive statistics can subsequently be save
 
 #### Analysis workflow via GUI
 
-miniML can also be used via a graphical user interface (GUI). To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a CSV or HDF5 file.
+miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a CSV or HDF5 file.
 
 ### 💡 EXAMPLE
 
