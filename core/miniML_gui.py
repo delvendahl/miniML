@@ -640,8 +640,9 @@ class minimlGuiMain(QMainWindow):
     def save_as_csv(self) -> None:
         if not hasattr(self, 'detection'):
             return
-
-        file_name = QFileDialog.getSaveFileName(self, 'Save file', '', 'CSV files (*.csv)')[0]
+        
+        default_name = str(Path(self.filename).with_suffix(''))
+        file_name = QFileDialog.getSaveFileName(self, 'Save file', default_name, 'CSV files (*.csv)')[0]
         if file_name == '':
             return
 
@@ -650,9 +651,10 @@ class minimlGuiMain(QMainWindow):
 
     def save_as_hdf(self) -> None:
         if not hasattr(self, 'detection'):
-            return    
+            return
 
-        file_name = QFileDialog.getSaveFileName(self, 'Save file', '', 'HDF files (*.h5 *.hdf *.hdf5)')[0]
+        default_name = str(Path(self.filename).with_suffix(''))
+        file_name = QFileDialog.getSaveFileName(self, 'Save file', default_name, 'HDF files (*.h5 *.hdf *.hdf5)')[0]
         if file_name == '':
             return
 
