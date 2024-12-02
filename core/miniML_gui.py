@@ -154,7 +154,7 @@ class minimlGuiMain(QMainWindow):
 
         fileMenu.addAction(self.openAction)
         fileMenu.addAction(self.resetAction)
-        fileMenu.addAction(self.textsaveAction)
+        fileMenu.addAction(self.saveAction)
         fileMenu.addAction(self.closeAction)
 
         editMenu.addAction(self.filterAction)
@@ -202,10 +202,8 @@ class minimlGuiMain(QMainWindow):
         self.tb.addAction(self.plotAction)
         self.tableAction = QAction(QIcon("icons/table_24px_blue.svg"), "Table", self)
         self.tb.addAction(self.tableAction)
-        self.textsaveAction = QAction(QIcon("icons/textfile_24px_blue.svg"), "Save as TXT", self)
-        self.textsaveAction.setShortcut('Ctrl+S')
-        self.tb.addAction(self.textsaveAction)
         self.saveAction = QAction(QIcon("icons/save_24px_blue.svg"), "Save as HDF5", self)
+        self.saveAction.setShortcut('Ctrl+S')
         self.tb.addAction(self.saveAction)
         self.settingsAction = QAction(QIcon("icons/settings_24px_blue.svg"), "Settings", self)
         self.settingsAction.setShortcut('Ctrl+P')
@@ -230,8 +228,7 @@ class minimlGuiMain(QMainWindow):
         self.plotAction.triggered.connect(self.toggle_plot_win)
         self.tableAction.triggered.connect(self.toggle_table_win)
         self.settingsAction.triggered.connect(self.settings_window)
-        self.textsaveAction.triggered.connect(self.save_as_csv)
-        self.saveAction.triggered.connect(self.save_as_hdf)
+        self.saveAction.triggered.connect(self.save_results)
         self.closeAction.triggered.connect(self.close_gui)
         self.aboutAction.triggered.connect(self.about_win)
 
@@ -637,28 +634,22 @@ class minimlGuiMain(QMainWindow):
             print('no events detected.')
             
 
-    def save_as_csv(self) -> None:
+    def save_results(self) -> None:
         if not hasattr(self, 'detection'):
+            return
+
+        default_name = str(Path(self.filename).with_suffix(''))
+        file_types = "CSV (*.csv);;Pickle (*.pickle);;HDF (*.h5 *.hdf *.hdf5)"
+        filename, filter = QFileDialog.getSaveFileName(self, 'Save file', default_name, file_types)
+        if filename == '':
             return
         
-        default_name = str(Path(self.filename).with_suffix(''))
-        file_name = QFileDialog.getSaveFileName(self, 'Save file', default_name, 'CSV files (*.csv)')[0]
-        if file_name == '':
-            return
-
-        self.detection.save_to_csv(filename=file_name)
-
-
-    def save_as_hdf(self) -> None:
-        if not hasattr(self, 'detection'):
-            return
-
-        default_name = str(Path(self.filename).with_suffix(''))
-        file_name = QFileDialog.getSaveFileName(self, 'Save file', default_name, 'HDF files (*.h5 *.hdf *.hdf5)')[0]
-        if file_name == '':
-            return
-
-        self.detection.save_to_h5(filename=file_name)
+        if filter == 'CSV (*.csv)':
+            self.detection.save_to_csv(filename=filename)
+        elif filter == 'Pickle (*.pickle)':
+            self.detection.save_to_pickle(filename=filename)
+        elif filter == 'HDF (*.h5 *.hdf *.hdf5)':
+            self.detection.save_to_h5(filename=filename)
 
 
     def plot_events(self):
