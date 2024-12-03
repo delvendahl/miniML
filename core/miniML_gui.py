@@ -588,6 +588,13 @@ class minimlGuiMain(QMainWindow):
             if answer == msgbox.No:
                 return
 
+            self.predictionPlot.clear()
+            self.eventPlot.clear()
+            self.averagePlot.clear()
+            self.histogramPlot.clear()
+            self.tableWidget.clear()
+            self.update_main_plot()
+
         n_batches = np.ceil((self.trace.data.shape[0] - self.settings.event_window) / (self.settings.stride * self.settings.batch_size)).astype(int)
         n_batches = np.floor(n_batches/5)
         tf.get_logger().setLevel("ERROR")
