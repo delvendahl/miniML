@@ -687,7 +687,7 @@ class EventDetection():
 
     def _make_smth_gradient(self):
         '''
-        Genereate a smoothed gradient trace of the data.
+        Generate a smoothed gradient trace of the data.
         '''
         # filter raw data trace, calculate gradient and filter first derivative trace        
         trace_convolved = self.hann_filter(data=self.trace.data - np.mean(self.trace.data), filter_size=self.convolve_win)
@@ -810,11 +810,7 @@ class EventDetection():
         if np.any(positions - add_points < 0) or np.any(positions + after >= self.trace.data.shape[0]):
             raise ValueError('Cannot extract time windows exceeding input data size.')
 
-        if filter:
-            mini_trace = self.hann_filter(data=self.trace.data, filter_size=self.convolve_win)
-        else:
-            mini_trace = self.trace.data
-
+        mini_trace = self.hann_filter(data=self.trace.data, filter_size=self.convolve_win) if filter else self.trace.data
         mini_trace *= self.event_direction   
 
         self._init_arrays(['event_peak_locations', 'event_start', 'min_positions_rise', 'max_positions_rise'], positions.shape[0], dtype=np.int64)
