@@ -1202,7 +1202,7 @@ class EventDetection():
         colnames = [f'event_{i}' for i in range(len(self.event_locations))]
 
         individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime'], columns=colnames)
-        avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'frequency'])
+        avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'tau_avg', 'frequency'])
         
         individual.to_csv(f'{filename}_individual.csv')
         avgs.to_csv(f'{filename}_avgs.csv', header=False)
