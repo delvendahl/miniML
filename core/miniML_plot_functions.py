@@ -73,7 +73,7 @@ class miniML_plots():
 
         plt.ylabel(f'{self.detection.trace.y_unit}')
         plt.xlabel('time (s)')
-        plt.legend()
+        plt.legend(loc='upper right')
         plt.show()
 
     def plot_singular_event_average(self):

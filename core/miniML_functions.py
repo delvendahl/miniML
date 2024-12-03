@@ -1,7 +1,6 @@
 from __future__ import annotations
 import numpy as np
 
-
 # - - - - - - - - - - - - - - - - - - - - - - -
 # functions for evaluation of individual events
 def get_event_peak(data:np.ndarray, event_num, add_points, window_size, diffs):

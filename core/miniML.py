@@ -1042,11 +1042,12 @@ class EventDetection():
             fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
         if fit_start > self.events.shape[1] - int(0.2 * self.window_size): # not a valid starting point
             return np.nan
-        
-        fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
-                           p0=[np.amax(event_avg), self.events.shape[1] / 50 * self.trace.sampling, 0])
-
-        return fit[1]
+        try:
+            fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
+                            p0=[np.amax(event_avg), self.events.shape[1] / 50 * self.trace.sampling, 0])
+            return fit[1]
+        except RuntimeError:
+            return np.nan
 
 
     def _fit_event(self, data:np.ndarray, amplitude:float=1, t_rise:float=1, t_decay:float=1, x_offset:float=1) -> dict:
