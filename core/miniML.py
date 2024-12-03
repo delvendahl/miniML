@@ -507,12 +507,14 @@ class EventDetection():
         The batch size for the event detection (used in model.predict).
     model_path: str, default=''
         The path of the model file (.h5) to be used for event detection.
+    model: tf.keras.Model, default=None
+        The model instance to be used for event detection. Overrides loading from model_path method if specified.
     model_threshold: float, default=0.5
         The threshold for the model; range=(0,1).
     compile_model: bool, default=True
         Whether to compile the model.
     callbacks: list, default=[]
-        List of callback function(s) to be used during event detection.
+        List of callback functions to be used during event detection.
     Attributes
     ----------
     event_locations: np.ndarray
@@ -589,9 +591,13 @@ class EventDetection():
         if self.verbose:
             print(f'Model loaded from {filepath}')
 
+
     def hann_filter(self, data, filter_size):
+        ''' Hann window filter '''
         win = signal.windows.hann(filter_size)    
+
         return signal.convolve(data, win, mode='same') / sum(win)
+
 
     def _linear_interpolation(self, data:np.ndarray, interpol_to_len:int):
         '''
@@ -610,6 +616,7 @@ class EventDetection():
         interpol_factor = len(x_interpol) / len(x)
         data_interpolated = np.interp(x_interpol, x, data, left=None, right=None, period=None)
         return data_interpolated, interpol_factor
+
 
     def __predict(self) -> None:
         '''
@@ -679,6 +686,9 @@ class EventDetection():
 
 
     def _make_smth_gradient(self):
+        '''
+        Genereate a smoothed gradient trace of the data.
+        '''
         # filter raw data trace, calculate gradient and filter first derivative trace        
         trace_convolved = self.hann_filter(data=self.trace.data - np.mean(self.trace.data), filter_size=self.convolve_win)
         trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
@@ -765,7 +775,6 @@ class EventDetection():
         Remove event locations and associated scores that have potentially been picked up by
         overlapping start-/ end-points of different detection peaks.
         '''
-        
         ### Check for duplicates:
         unique_indices = np.unique(self.event_locations, return_index=True)[1]
         self.event_locations, self.event_scores = self.event_locations[unique_indices], self.event_scores[unique_indices]
@@ -814,11 +823,7 @@ class EventDetection():
         for ix, position in enumerate(positions):
             indices = position + np.arange(-add_points, after)
             data = mini_trace[indices]
-            
-            if filter:
-                data_unfiltered = self.trace.data[indices]*self.event_direction
-            else:
-                data_unfiltered = data
+            data_unfiltered = self.trace.data[indices] * self.event_direction if filter else data
             
             event_peak = get_event_peak(data=data,event_num=ix,add_points=add_points,window_size=self.window_size,diffs=diffs)
             
