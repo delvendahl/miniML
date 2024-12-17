@@ -145,11 +145,6 @@ class miniML_plots():
             _ = plt.subplot(212, sharex=ax1)
             if plot_filtered_trace:
                 main_trace = self.detection.hann_filter(self.detection.trace.data, filter_size=self.detection.convolve_win)
-                
-                # # Filtering with a hann window leads to edge artifacts at the start and end of traces. Keep raw data for those regions..
-                # main_trace[0:int(self.detection.window_size/6)] = self.detection.trace.data[0:int(self.detection.window_size/6)]
-                # main_trace[main_trace.shape[0]-int(self.detection.window_size/6):main_trace.shape[0]] = self.detection.trace.data[main_trace.shape[0]-int(self.detection.window_size/6):main_trace.shape[0]]
-
                 plt.plot(self.detection.trace.time_axis, self.detection.trace.data, c='k', alpha=0.4)
 
             else:
