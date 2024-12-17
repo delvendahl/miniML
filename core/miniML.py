@@ -324,7 +324,7 @@ class MiniTrace():
 
 
     def filter(self, notch: float=None, highpass: float=None, lowpass: float=None, order: int=4,
-               savgol: float=None) -> MiniTrace:
+               savgol: float=None, hann:int=None) -> MiniTrace:
         ''' Filters trace with a combination of notch, high- and lowpass filters.
         If both lowpass and savgol arguments are passed, only the lowpass filter is applied. 
         notch: float, default=None
@@ -357,6 +357,12 @@ class MiniTrace():
             filtered_data = signal.sosfiltfilt(sos, filtered_data)
         elif savgol:
             filtered_data = signal.savgol_filter(filtered_data, int(savgol/1000/self.sampling), polyorder=order)
+        
+        if hann:
+            win = signal.windows.hann(hann)    
+            filtered_data = signal.convolve(filtered_data, win, mode='full') / sum(win)
+            filtered_data[:hann] = self.data[:hann]
+            filtered_data[filtered_data.shape[0]-hann:filtered_data.shape[0]] = self.data[filtered_data.shape[0]-hann:filtered_data.shape[0]]
 
         return MiniTrace(filtered_data, sampling_interval=self.sampling, y_unit=self.y_unit, filename=self.filename)
 
@@ -593,10 +599,16 @@ class EventDetection():
 
 
     def hann_filter(self, data, filter_size):
-        ''' Hann window filter '''
+        '''
+        Hann window filter. Start and end of the data are not filtered, to avoid artifacts
+        from zero padding.
+        '''
         win = signal.windows.hann(filter_size)    
+        filtered_data = signal.convolve(data, win, mode='same') / sum(win)
+        filtered_data[:filter_size] = data[:filter_size]
+        filtered_data[filtered_data.shape[0]-filter_size:filtered_data.shape[0]] = data[filtered_data.shape[0]-filter_size:filtered_data.shape[0]]
 
-        return signal.convolve(data, win, mode='same') / sum(win)
+        return filtered_data
 
 
     def _linear_interpolation(self, data:np.ndarray, interpol_to_len:int):
@@ -690,11 +702,16 @@ class EventDetection():
         Generate a smoothed gradient trace of the data.
         '''
         # filter raw data trace, calculate gradient and filter first derivative trace        
-        trace_convolved = self.hann_filter(data=self.trace.data - np.mean(self.trace.data), filter_size=self.convolve_win)
+        trace_convolved = self.hann_filter(data=self.trace.data, filter_size=self.convolve_win)
         trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
         
         gradient = np.gradient(trace_convolved, self.trace.sampling)
-        smth_gradient = self.hann_filter(data=gradient-np.mean(gradient), filter_size=self.gradient_convolve_win)
+        gradient[:int(self.convolve_win*1.5)] = 0
+        gradient[gradient.shape[0]-int(self.convolve_win*1.5):gradient.shape[0]] = 0
+
+        smth_gradient = self.hann_filter(data=gradient, filter_size=self.gradient_convolve_win)
+        smth_gradient[:self.gradient_convolve_win] = 0
+        smth_gradient[smth_gradient.shape[0]-self.gradient_convolve_win:smth_gradient.shape[0]] = 0
 
         return gradient, smth_gradient
 

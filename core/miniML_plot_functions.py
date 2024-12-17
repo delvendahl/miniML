@@ -25,8 +25,8 @@ class miniML_plots():
     def plot_gradient_search(self):
         fig, axs = plt.subplots(3, sharex=True, num='gradient search')
 
-        mini_trace = self.detection.trace.data - np.mean(self.detection.trace.data)
-        filtered_trace = self.detection.hann_filter(self.detection.trace.data - np.mean(self.detection.trace.data), filter_size=self.detection.convolve_win)
+        mini_trace = self.detection.trace.data
+        filtered_trace = self.detection.hann_filter(self.detection.trace.data, filter_size=self.detection.convolve_win)
 
         filtered_prediction = maximum_filter1d(self.detection.prediction, size=int(5*self.detection.interpol_factor), origin=-2)
 
@@ -146,9 +146,9 @@ class miniML_plots():
             if plot_filtered_trace:
                 main_trace = self.detection.hann_filter(self.detection.trace.data, filter_size=self.detection.convolve_win)
                 
-                # Filtering with a hann window leads to edge artifacts at the start and end of traces. Keep raw data for those regions..
-                main_trace[0:int(self.detection.window_size/6)] = self.detection.trace.data[0:int(self.detection.window_size/6)]
-                main_trace[main_trace.shape[0]-int(self.detection.window_size/6):main_trace.shape[0]] = self.detection.trace.data[main_trace.shape[0]-int(self.detection.window_size/6):main_trace.shape[0]]
+                # # Filtering with a hann window leads to edge artifacts at the start and end of traces. Keep raw data for those regions..
+                # main_trace[0:int(self.detection.window_size/6)] = self.detection.trace.data[0:int(self.detection.window_size/6)]
+                # main_trace[main_trace.shape[0]-int(self.detection.window_size/6):main_trace.shape[0]] = self.detection.trace.data[main_trace.shape[0]-int(self.detection.window_size/6):main_trace.shape[0]]
 
                 plt.plot(self.detection.trace.time_axis, self.detection.trace.data, c='k', alpha=0.4)
 
