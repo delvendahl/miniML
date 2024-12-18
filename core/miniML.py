@@ -576,7 +576,7 @@ class EventDetection():
         self._training_direction = -1 if training_direction_str.lower() == 'negative' else 1
 
 
-    def _init_arrays(self, attr_names, shape, dtype):
+    def _init_arrays(self, attr_names: list, shape: int, dtype: type) -> None:
         ''' initialize multiple 1d ndarrays with given shape containing NaNs '''
         for label in attr_names:
             value = -1 if 'int' in str(dtype) else np.NaN
@@ -590,7 +590,7 @@ class EventDetection():
         return num_events != 0
 
 
-    def load_model(self, filepath: str, threshold: float=0.5, compile=True) -> None:
+    def load_model(self, filepath: str, threshold: float=0.5, compile: bool=True) -> None:
         ''' Loads trained miniML model from hdf5 file '''
         self.model = tf.keras.models.load_model(filepath, compile=compile)
         self.model_threshold = threshold
@@ -598,7 +598,7 @@ class EventDetection():
             print(f'Model loaded from {filepath}')
 
 
-    def hann_filter(self, data, filter_size):
+    def hann_filter(self, data: np.ndarray, filter_size: int) -> np.ndarray:
         '''
         Hann window filter. Start and end of the data are not filtered, to avoid artifacts
         from zero padding.
@@ -611,7 +611,7 @@ class EventDetection():
         return filtered_data
 
 
-    def _linear_interpolation(self, data:np.ndarray, interpol_to_len:int):
+    def _linear_interpolation(self, data: np.ndarray, interpol_to_len: int) -> tuple[np.ndarray, float]:
         '''
         linear interpolation of a data stretch to match the indicated number of points.
 
@@ -665,7 +665,7 @@ class EventDetection():
         self.prediction = tf.squeeze(self.model.predict(ds, verbose=self.verbose, callbacks=self.callbacks))
         
 
-    def _interpolate_prediction_trace(self):
+    def _interpolate_prediction_trace(self) -> tuple[np.ndarray, float]:
         '''
         Interpolate the prediction trace such that it corresponds 1:1 to the raw data before resampling.
         Last few points of the data will not have prediction values because the data is shorter than the
@@ -680,7 +680,7 @@ class EventDetection():
         return resampled_prediction, interpol_factor
 
 
-    def _get_prediction_peaks(self, peak_w:int=10):
+    def _get_prediction_peaks(self, peak_w: int=10) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         '''
         Find peaks in prediction trace and extracted start- and endpoints of event areas based on left 
         and right ips respectively.
@@ -697,7 +697,7 @@ class EventDetection():
         return start_pnts, end_pnts, scores
 
 
-    def _make_smth_gradient(self):
+    def _make_smth_gradient(self) -> tuple[np.ndarray, np.ndarray]:
         '''
         Generate a smoothed gradient trace of the data.
         '''
@@ -716,7 +716,7 @@ class EventDetection():
         return gradient, smth_gradient
 
 
-    def _get_grad_threshold(self, grad, start_pnts, end_pnts):
+    def _get_grad_threshold(self, grad: np.ndarray, start_pnts: np.ndarray, end_pnts: np.ndarray) -> int:
         '''
         Get threshold based on standard deviation of the derivative of event-free data sections.
         '''
@@ -727,7 +727,7 @@ class EventDetection():
         return grad_threshold
 
 
-    def _find_event_locations(self, limit: int, scores, rel_prom_cutoff: float=0.25):
+    def _find_event_locations(self, limit: int, scores: np.ndarray, rel_prom_cutoff: float=0.25) -> tuple[np.ndarray, np.ndarray]:
         '''
         Find approximate event positions based on negative threshold crossings in prediction trace. Extract
         segment of peak windows in prediction trace and search for peaks in first derivative. If no peak is found,
@@ -737,17 +737,17 @@ class EventDetection():
         ------
         limit: int
             Right trace limit to make sure events at the very border are not picked up.
+        scores: numpy array
+            Prediction value for the events
         rel_prom_cutoff: float
             Relative prominence cutoff. Determines the minimum relative prominence for detection of overlapping events
-        peak_w: int
-            Minimum peak width for detection peaks to be accepted
 
         Returns
         ------
         event_locations: numpy array
             Location of steepest rise of the events
         event_scores: numpy array
-            Prediction value for the events           
+            Prediction value for the events
 
         '''
         # Remove indices at left and right borders to prevent boundary issues.
@@ -787,7 +787,7 @@ class EventDetection():
         return np.array(event_locations), np.array(event_scores)       
 
 
-    def _remove_duplicate_locations(self):
+    def _remove_duplicate_locations(self) -> None:
         '''
         Remove event locations and associated scores that have potentially been picked up by
         overlapping start-/ end-points of different detection peaks.
@@ -978,8 +978,8 @@ class EventDetection():
         return results
 
 
-    def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w:int=5, 
-                      rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win:int=None) -> None:
+    def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w: int=5, 
+                      rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win: int=None) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -1062,7 +1062,7 @@ class EventDetection():
         return fit[1]
 
 
-    def _fit_event(self, data:np.ndarray, amplitude:float=1, t_rise:float=1, t_decay:float=1, x_offset:float=1) -> dict:
+    def _fit_event(self, data: np.ndarray, amplitude: float=1, t_rise: float=1, t_decay: float=1, x_offset: float=1) -> dict:
         '''
         Performs a rudimentary fit to input event. If not starting values are provided, the data is fitted with
         all starting values set to one.
@@ -1226,7 +1226,7 @@ class EventDetection():
         print(f'events saved to {filename}_avgs.csv and {filename}_individual.csv')
 
 
-    def save_to_pickle(self, filename: str='', include_prediction:bool=True, include_data:bool=True) -> None:
+    def save_to_pickle(self, filename: str='', include_prediction: bool=True, include_data: bool=True) -> None:
         ''' 
         Save detection results to a .pickle file.         
 
