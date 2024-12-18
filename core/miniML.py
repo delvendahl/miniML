@@ -751,19 +751,14 @@ class EventDetection():
 
         '''
         # Remove indices at left and right borders to prevent boundary issues.
-        mask = []
-        for i, position in enumerate(self.start_pnts): 
-            if position <= self.window_size or self.end_pnts[i] >= self.prediction.shape[0]:
-                mask.append(False)
-            else:
-                mask.append(True)
+        mask = (self.start_pnts > self.window_size) & (self.end_pnts < self.prediction.shape[0])
         
         self.end_pnts = self.end_pnts[mask]
         self.start_pnts = self.start_pnts[mask]
         scores = scores[mask]
 
         event_locations, event_scores = [], []
-        for i, position in enumerate(self.start_pnts): 
+        for i, _ in enumerate(self.start_pnts): 
             peaks, peak_params = signal.find_peaks(x=self.smth_gradient[self.start_pnts[i]:self.end_pnts[i]], 
                                                    height=self.grad_threshold, prominence=self.grad_threshold)
             
