@@ -144,74 +144,73 @@ class minimlGuiMain(QMainWindow):
 	
 
     def _create_menubar(self):
-
         menubar = self.menuBar()
-        fileMenu = menubar.addMenu('File')
-        editMenu = menubar.addMenu('Edit')
-        viewMenu = menubar.addMenu('View')
-        runMenu = menubar.addMenu('Run')
-        helpMenu = menubar.addMenu('Help')
 
+        fileMenu = menubar.addMenu('File')
         fileMenu.addAction(self.openAction)
         fileMenu.addAction(self.resetAction)
         fileMenu.addAction(self.saveAction)
         fileMenu.addAction(self.closeAction)
 
+        editMenu = menubar.addMenu('Edit')
         editMenu.addAction(self.filterAction)
         editMenu.addAction(self.cutAction)
         editMenu.addAction(self.infoAction)
 
+        viewMenu = menubar.addMenu('View')
         viewMenu.addAction(self.plotAction)
         viewMenu.addAction(self.tableAction)
         viewMenu.addAction(self.predictionAction)
 
+        runMenu = menubar.addMenu('Run')
         runMenu.addAction(self.settingsAction)
         runMenu.addAction(self.analyseAction)
         runMenu.addAction(self.summaryAction)
 
+        helpMenu = menubar.addMenu('Help')
         helpMenu.addAction(self.aboutAction)
 
 
     def _create_toolbar(self):
-        self.tb = self.addToolBar("Menu")
+        self.tb = self.addToolBar('Menu')
         self.tb.setMovable(False)
 
-        self.openAction = QAction(QIcon("icons/load_file_24px_blue.svg"), "Open...", self)
+        self.openAction = QAction(QIcon('icons/load_file_24px_blue.svg'), 'Open...', self)
         self.openAction.setShortcut('Ctrl+O')
         self.tb.addAction(self.openAction)
-        self.filterAction = QAction(QIcon("icons/filter_24px_blue.svg"), "Filter", self)
+        self.filterAction = QAction(QIcon('icons/filter_24px_blue.svg'), 'Filter', self)
         self.filterAction.setShortcut('Ctrl+F')
         self.tb.addAction(self.filterAction)
-        self.infoAction = QAction(QIcon("icons/troubleshoot_24px_blue.svg"), "Info", self)
+        self.infoAction = QAction(QIcon('icons/troubleshoot_24px_blue.svg'), 'Info', self)
         self.infoAction.setShortcut('Ctrl+I')
         self.tb.addAction(self.infoAction)
-        self.cutAction = QAction(QIcon("icons/content_cut_24px_blue.svg"), "Cut trace", self)
+        self.cutAction = QAction(QIcon('icons/content_cut_24px_blue.svg'), 'Cut trace', self)
         self.cutAction.setShortcut('Ctrl+X')
         self.tb.addAction(self.cutAction)
-        self.resetAction = QAction(QIcon("icons/restore_page_24px_blue.svg"), "Reload", self)
+        self.resetAction = QAction(QIcon('icons/restore_page_24px_blue.svg'), 'Reload', self)
         self.resetAction.setShortcut('Ctrl+R')
         self.tb.addAction(self.resetAction)
-        self.analyseAction = QAction(QIcon("icons/rocket_launch_24px_blue.svg"), "Analyse", self)
+        self.analyseAction = QAction(QIcon('icons/rocket_launch_24px_blue.svg'), 'Analyse', self)
         self.analyseAction.setShortcut('Ctrl+A')
         self.tb.addAction(self.analyseAction)
-        self.predictionAction = QAction(QIcon("icons/ssid_chart_24px_blue.svg"), "Prediction", self)
+        self.predictionAction = QAction(QIcon('icons/ssid_chart_24px_blue.svg'), 'Prediction', self)
         self.tb.addAction(self.predictionAction)
-        self.summaryAction = QAction(QIcon("icons/functions_24px_blue.svg"), "Summary", self)
+        self.summaryAction = QAction(QIcon('icons/functions_24px_blue.svg'), 'Summary', self)
         self.tb.addAction(self.summaryAction)
-        self.plotAction = QAction(QIcon("icons/insert_chart_24px_blue.svg"), "Plot", self)
+        self.plotAction = QAction(QIcon('icons/insert_chart_24px_blue.svg'), 'Plot', self)
         self.tb.addAction(self.plotAction)
-        self.tableAction = QAction(QIcon("icons/table_24px_blue.svg"), "Table", self)
+        self.tableAction = QAction(QIcon('icons/table_24px_blue.svg'), 'Table', self)
         self.tb.addAction(self.tableAction)
-        self.saveAction = QAction(QIcon("icons/save_24px_blue.svg"), "Save as HDF5", self)
+        self.saveAction = QAction(QIcon('icons/save_24px_blue.svg'), 'Save results', self)
         self.saveAction.setShortcut('Ctrl+S')
         self.tb.addAction(self.saveAction)
-        self.settingsAction = QAction(QIcon("icons/settings_24px_blue.svg"), "Settings", self)
+        self.settingsAction = QAction(QIcon('icons/settings_24px_blue.svg'), 'Settings', self)
         self.settingsAction.setShortcut('Ctrl+P')
         self.tb.addAction(self.settingsAction)
-        self.closeAction = QAction(QIcon("icons/cancel_24px_blue"), 'Close Window', self)
+        self.closeAction = QAction(QIcon('icons/cancel_24px_blue'), 'Close Window', self)
         self.closeAction.setShortcut('Ctrl+W')
         # self.tb.addAction(self.closeAction)
-        self.aboutAction = QAction(QIcon("icons/info_24px_blue.svg"), "About", self)
+        self.aboutAction = QAction(QIcon('icons/info_24px_blue.svg'), 'About', self)
         self.aboutAction.setShortcut('Ctrl+H')
         # self.tb.addAction(self.aboutAction)
         
@@ -239,7 +238,7 @@ class minimlGuiMain(QMainWindow):
         self.tableWidget.horizontalHeader().setDefaultSectionSize(90)
         self.tableWidget.setRowCount(0) 
         self.tableWidget.setColumnCount(5)
-        self.tableWidget.setHorizontalHeaderLabels(("Position;Amplitude;Area;Risetime;Decay").split(";"))
+        self.tableWidget.setHorizontalHeaderLabels(['Position', 'Amplitude', 'Area', 'Risetime', 'Decay'])
         self.tableWidget.viewport().installEventFilter(self)
         self.tableWidget.setSelectionBehavior(QTableView.SelectRows)
 
@@ -583,7 +582,7 @@ class minimlGuiMain(QMainWindow):
         
         if self.was_analyzed:
             msgbox = QMessageBox
-            answer = msgbox.question(self,'', "Do you want to reanalyze this trace?", msgbox.Yes | msgbox.No)
+            answer = msgbox.question(self,'', 'Do you want to reanalyze this trace?', msgbox.Yes | msgbox.No)
 
             if answer == msgbox.No:
                 return
@@ -597,7 +596,7 @@ class minimlGuiMain(QMainWindow):
 
         n_batches = np.ceil((self.trace.data.shape[0] - self.settings.event_window) / (self.settings.stride * self.settings.batch_size)).astype(int)
         n_batches = np.floor(n_batches/5)
-        tf.get_logger().setLevel("ERROR")
+        tf.get_logger().setLevel('ERROR')
 
         with pg.ProgressDialog('Detecting events', minimum=0, maximum=n_batches, busyCursor=True, cancelText=None) as self.dlg:
             def update_progress():
@@ -646,7 +645,7 @@ class minimlGuiMain(QMainWindow):
             return
 
         default_name = str(Path(self.filename).with_suffix(''))
-        file_types = "CSV (*.csv);;Pickle (*.pickle);;HDF (*.h5 *.hdf *.hdf5)"
+        file_types = 'CSV (*.csv);;Pickle (*.pickle);;HDF (*.h5 *.hdf *.hdf5)'
         filename, filter = QFileDialog.getSaveFileName(self, 'Save file', default_name, file_types)
         if filename == '':
             return
@@ -661,7 +660,7 @@ class minimlGuiMain(QMainWindow):
 
     def plot_events(self):
         self.eventPlot.clear()
-        self.eventPlot.setTitle("Detected events")
+        self.eventPlot.setTitle('Detected events')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
         for event in self.detection.events:
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
@@ -672,14 +671,14 @@ class minimlGuiMain(QMainWindow):
         y, x = np.histogram(self.detection.event_stats.amplitudes, bins='auto')
         curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
         self.histogramPlot.clear()
-        self.histogramPlot.setTitle("Amplitude histogram")
+        self.histogramPlot.setTitle('Amplitude histogram')
         self.histogramPlot.addItem(curve)
         self.histogramPlot.setLabel('bottom', 'Amplitude', 'pA')
         self.histogramPlot.setLabel('left', 'Count', '')
 
         ev_average = np.mean(self.detection.events, axis=0)
         self.averagePlot.clear()
-        self.averagePlot.setTitle("Average event waveform")
+        self.averagePlot.setTitle('Average event waveform')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
         pen = pg.mkPen(color=self.settings.colors[0], width=2)
         self.averagePlot.plot(time_data, ev_average, pen=pen)
@@ -847,7 +846,7 @@ class AboutPanel(QDialog):
 
         # display miniML logo
         logo = QLabel()
-        logo.setPixmap(QPixmap('minML_icon.png').scaled(QSize(100, 100)))
+        logo.setPixmap(QPixmap(str(Path(__file__).parent.parent / 'minML_icon.png')).scaled(QSize(100, 100)))
         self.layout.addRow(logo)
 
         # display miniML version
@@ -859,14 +858,12 @@ class AboutPanel(QDialog):
         self.layout.addRow(self.author)
 
         # display miniML website
-        urlLink="Website: <a href=\"https://github.com/delvendahl/miniML\">miniML GitHub repository</a>"
-        self.website = QLabel(urlLink)
+        self.website = QLabel('Website: <a href=\"https://github.com/delvendahl/miniML\">miniML GitHub repository</a>')
         self.website.setOpenExternalLinks(True)
         self.layout.addRow(self.website)
 
         # display miniML publication
-        urlLink2="Publication: <a href=\"https://doi.org/10.7554/eLife.98485.1\">miniML eLife paper 2024</a>"
-        self.paper = QLabel(urlLink2)
+        self.paper = QLabel('Publication: <a href=\"https://doi.org/10.7554/eLife.98485.1\">miniML eLife paper 2024</a>')
         self.paper.setOpenExternalLinks(True)
         self.layout.addRow(self.paper)
 
@@ -1026,7 +1023,7 @@ class FilterPanel(QDialog):
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon('minML_icon.png'))
+    app.setWindowIcon(QIcon(str(Path(__file__).parent.parent / 'minML_icon.png')))
     main = minimlGuiMain()
     extra = {'density_scale': '-1',}
     app.setStyleSheet(build_stylesheet(theme='light_blue.xml', invert_secondary=False, 
