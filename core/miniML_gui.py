@@ -440,7 +440,7 @@ class minimlGuiMain(QMainWindow):
             return
 
         msgbox = QMessageBox
-        answer = msgbox.question(self,'', "Do you want to reload data?", msgbox.Yes | msgbox.No)
+        answer = msgbox.question(self,'', 'Do you want to reload data?', msgbox.Yes | msgbox.No)
 
         if answer == msgbox.Yes:
             self.trace = load_trace_from_file(self.filetype, self.load_args)
@@ -626,7 +626,6 @@ class minimlGuiMain(QMainWindow):
             self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
                                      pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))
 
-
         if self.detection.event_locations.shape[0] > 0:
             ev_positions = self.detection.event_peak_times
             ev_peakvalues = self.detection.trace.data[self.detection.event_peak_locations]
@@ -643,19 +642,19 @@ class minimlGuiMain(QMainWindow):
     def save_results(self) -> None:
         if not hasattr(self, 'detection'):
             return
-
-        default_name = str(Path(self.filename).with_suffix(''))
+        default_filename = Path(self.filename).with_suffix('')
         file_types = 'CSV (*.csv);;Pickle (*.pickle);;HDF (*.h5 *.hdf *.hdf5)'
-        filename, filter = QFileDialog.getSaveFileName(self, 'Save file', default_name, file_types)
-        if filename == '':
+        save_filename, selected_filter = QFileDialog.getSaveFileName(self, 'Save file', str(default_filename), file_types)
+        
+        if not save_filename:
             return
         
-        if filter == 'CSV (*.csv)':
-            self.detection.save_to_csv(filename=filename)
-        elif filter == 'Pickle (*.pickle)':
-            self.detection.save_to_pickle(filename=filename)
-        elif filter == 'HDF (*.h5 *.hdf *.hdf5)':
-            self.detection.save_to_h5(filename=filename)
+        if selected_filter == 'CSV (*.csv)':
+            self.detection.save_to_csv(filename=save_filename)
+        elif selected_filter == 'Pickle (*.pickle)':
+            self.detection.save_to_pickle(filename=save_filename)
+        elif selected_filter == 'HDF (*.h5 *.hdf *.hdf5)':
+            self.detection.save_to_h5(filename=save_filename)
 
 
     def plot_events(self):
@@ -844,25 +843,20 @@ class AboutPanel(QDialog):
 
         self.layout = QFormLayout(self)
 
-        # display miniML logo
         logo = QLabel()
         logo.setPixmap(QPixmap(str(Path(__file__).parent.parent / 'minML_icon.png')).scaled(QSize(100, 100)))
         self.layout.addRow(logo)
 
-        # display miniML version
         self.version = QLabel('miniML version 1.0.0')
         self.layout.addRow(self.version)
 
-        # display miniML author
         self.author = QLabel('Authors: Philipp O\'Neill, Martin Baccino Calace, Igor Delvendahl')
         self.layout.addRow(self.author)
 
-        # display miniML website
         self.website = QLabel('Website: <a href=\"https://github.com/delvendahl/miniML\">miniML GitHub repository</a>')
         self.website.setOpenExternalLinks(True)
         self.layout.addRow(self.website)
 
-        # display miniML publication
         self.paper = QLabel('Publication: <a href=\"https://doi.org/10.7554/eLife.98485.1\">miniML eLife paper 2024</a>')
         self.paper.setOpenExternalLinks(True)
         self.layout.addRow(self.paper)
@@ -936,7 +930,6 @@ class SettingsPanel(QDialog):
         self.model.setFixedWidth(200)
         self.direction = QComboBox()
         self.direction.addItems(['negative', 'positive'])
-        # set selected direction
         if parent.settings.direction == 'negative':
             self.direction.setCurrentIndex(0)
         else:
