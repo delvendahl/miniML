@@ -4,7 +4,7 @@ import numpy as np
 
 # - - - - - - - - - - - - - - - - - - - - - - -
 # functions for evaluation of individual events
-def get_event_peak(data:np.ndarray, event_num, add_points, window_size, diffs):
+def get_event_peak(data: np.ndarray, event_num: int, add_points: int, window_size: int, diffs: np.ndarray) -> int:
     """
     A function that calculates the peak position of an event in a given dataset.
 
@@ -30,7 +30,7 @@ def get_event_peak(data:np.ndarray, event_num, add_points, window_size, diffs):
     return peak_position
 
 
-def get_event_baseline(data, event_num, add_points, diffs, peak_positions, positions):
+def get_event_baseline(data: np.ndarray, event_num: int, add_points, diffs: np.ndarray, peak_positions: np.ndarray, positions: np.ndarray) -> tuple[float, float]:
     """
     Calculate the baseline and baseline variance for an event in the given data.
 
@@ -80,7 +80,7 @@ def get_event_baseline(data, event_num, add_points, diffs, peak_positions, posit
     return baseline, bsl_var
 
 
-def get_event_onset(data, peak_position, baseline, baseline_var):
+def get_event_onset(data: np.ndarray, peak_position: int, baseline: float, baseline_var: float) -> int:
     """
     Calculate the position of the event onset relative to the peak position.
 
@@ -112,23 +112,23 @@ def get_event_onset(data, peak_position, baseline, baseline_var):
     return onset_position
 
 
-def get_event_risetime(data, peak_position: int, onset_position: int):
+def get_event_risetime(data: np.ndarray, peak_position: int, onset_position: int, min_percentage: float=10, max_percentage: float=90) -> tuple[float, int, int]:
     """
-    Get the 10-90% risetime of an event.
+    Get the risetime of an event (default, 10-90%).
 
     Parameters:
     - data: A list or array-like object containing the event data.
     - peak_position (int): An integer representing the index of the peak position in the event data.
     - onset_position (int): An integer representing the index of the onset position in the event data.
+    - min_percentage (float): A float representing the minimum percentage for the risetime range. Defaults to 10%.
+    - max_percentage (float): A float representing the maximum percentage for the risetime range. Defaults to 90%.
 
     Returns:
-    - risetime: A float representing the 10-90% risetime of the event.
+    - risetime: A float representing the risetime of the event.
     - min_position_rise: An integer representing the index of the minimum position in the risetime range.
     - max_position_rise: An integer representing the index of the maximum position in the risetime range.
     """
 
-    min_percentage = 10
-    max_percentage = 90
     if not (0 <= min_percentage < max_percentage) and (min_percentage < max_percentage <= 100):
         raise ValueError('Invalid risetime parameters.')
     
@@ -158,8 +158,26 @@ def get_event_risetime(data, peak_position: int, onset_position: int):
     return risetime, min_position_rise, max_position_rise
 
 
-def get_event_halfdecay_time(data, peak_position, baseline):
-    '''Calculate halfdecay time (in points) in a stretch of data.'''
+def get_event_halfdecay_time(data: np.ndarray, peak_position: int, baseline: float) -> tuple[int, int]:
+    """"
+    Calculate halfdecay time (in points) in a stretch of data.
+    
+    Parameters
+    ----------
+    data: np.ndarray
+        The data to calculate the halfdecay time from.
+    peak_position: int
+        The position of the peak in the data.
+    baseline: float 
+        The baseline of the data.
+    
+    Returns 
+    ----------
+    halfdecay_position: int
+        The position of the halfdecay in the data.
+    halfdecay_time: int
+        The halfdecay time in points.
+    """
     level = baseline + (data[peak_position] - baseline) / 2
     halfdecay_level = np.argmax(data[peak_position:] < level)
     
@@ -169,8 +187,28 @@ def get_event_halfdecay_time(data, peak_position, baseline):
     return halfdecay_position, halfdecay_time
 
 
-def get_event_charge(data, start_point, end_point, baseline, sampling):
-    '''Calculate charge in a give trace between start and endpoint'''
+def get_event_charge(data: np.ndarray, start_point: int, end_point: int, baseline: float, sampling: float) -> float:
+    """
+    Calculate charge in a give trace between start and endpoint
+    
+    Parameters
+    ----------
+    data: np.ndarray
+        The data to calculate the charge from.
+    start_point: int
+        The start point of the trace.
+    end_point: int
+        The end point of the trace.
+    baseline: float 
+        The baseline of the data.
+    sampling: float
+        The sampling interval of the data.
+    
+    Returns 
+    ----------
+    charge: float
+        The charge in the trace for the given start and end point, calculated vs. the provied baseline value.
+    """
     integrate_array = (data[start_point:end_point]) - baseline
     charge = np.trapz(integrate_array, dx=sampling)
 
