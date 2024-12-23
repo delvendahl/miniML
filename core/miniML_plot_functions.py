@@ -168,6 +168,9 @@ class miniML_plots():
                     half_decay_times_for_plot = self.detection.half_decay_times[np.argwhere(~np.isnan(self.detection.half_decay_times)).flatten()]
                     plt.scatter(half_decay_times_for_plot, main_trace[half_decay_for_plot], c=self.green_color, s=20, zorder=2, label='half decay')
 
+                    plt.scatter(self.detection.min_positions_rise*self.detection.trace.sampling, main_trace[self.detection.min_positions_rise], c='magenta', s=20, zorder=2, label='10-90 rise')
+                    plt.scatter(self.detection.max_positions_rise*self.detection.trace.sampling, main_trace[self.detection.max_positions_rise], c='magenta', s=20, zorder=2)
+
                 data_range = np.abs(np.max(main_trace) - np.min(main_trace))
                 dat_min = np.min(main_trace)
                 plt.eventplot(self.detection.event_peak_times, lineoffsets=dat_min - data_range/15, 

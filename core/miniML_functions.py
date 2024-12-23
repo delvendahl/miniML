@@ -75,8 +75,9 @@ def get_event_baseline(data, event_num, add_points, diffs, peak_positions, posit
         bsl_end = (min_position + bsl_duration)
 
     baseline, bsl_var = np.mean(data[bsl_start:bsl_end]), np.std(data[bsl_start:bsl_end])
-
-    return baseline, bsl_var
+    if np.isnan(baseline):
+        raise ValueError('Baseline could not be determined. Will lead to downstream issues.')
+    return baseline, bsl_var, bsl_start, bsl_end, bsl_duration
 
 
 def get_event_onset(data, peak_position, baseline, baseline_var):
@@ -111,7 +112,7 @@ def get_event_onset(data, peak_position, baseline, baseline_var):
     return onset_position
 
 
-def get_event_risetime(data, peak_position: int, onset_position: int):
+def get_event_risetime(data, peak_position: int, bsl_start_position: int, baseline:float):
     """
     Get the 10-90% risetime of an event.
 
@@ -126,34 +127,32 @@ def get_event_risetime(data, peak_position: int, onset_position: int):
     - max_position_rise: An integer representing the index of the maximum position in the risetime range.
     """
 
-    min_percentage = 10
-    max_percentage = 90
+    min_percentage = 20
+    max_percentage = 80
     if not (0 <= min_percentage < max_percentage) and (min_percentage < max_percentage <= 100):
         raise ValueError('Invalid risetime parameters.')
-    
-    rise_data = data[onset_position:peak_position]
-    amplitude = data[peak_position] - data[onset_position]
-    min_level = data[onset_position] + amplitude * min_percentage / 100
-    max_level = data[onset_position] + amplitude * max_percentage / 100
+
+    rise_data = data[bsl_start_position:peak_position]
+    amplitude = data[peak_position] - baseline
+    min_level = baseline + (amplitude * min_percentage / 100)
+    max_level = baseline + (amplitude * max_percentage / 100)
     rise_min_threshold = rise_data[::-1] < min_level
     rise_max_threshold = rise_data[::-1] < max_level
-
     try:
         rise_min_level_crossing = np.argmax(rise_min_threshold)
         rise_max_level_crossing = np.argmax(rise_max_threshold)
         min_position_rise = peak_position - rise_min_level_crossing
         max_position_rise = peak_position - rise_max_level_crossing
     except ValueError:
-        min_position_rise = onset_position
+        min_position_rise = bsl_start_position
         max_position_rise = peak_position
 
-    if max_position_rise <= min_position_rise or min_position_rise==onset_position or max_position_rise==peak_position:
-        min_position_rise = onset_position
+    if max_position_rise <= min_position_rise or min_position_rise==bsl_start_position or max_position_rise==peak_position:
+        min_position_rise = bsl_start_position
         max_position_rise = peak_position
         risetime = (max_position_rise - min_position_rise) * 0.8
     else:
         risetime = max_position_rise - min_position_rise
-        
     return risetime, min_position_rise, max_position_rise
 
 
