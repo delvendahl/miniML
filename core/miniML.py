@@ -324,7 +324,7 @@ class MiniTrace():
 
 
     def filter(self, notch: float=None, highpass: float=None, lowpass: float=None, order: int=4,
-               savgol: float=None) -> MiniTrace:
+               savgol: float=None, hann:int=None) -> MiniTrace:
         ''' Filters trace with a combination of notch, high- and lowpass filters.
         If both lowpass and savgol arguments are passed, only the lowpass filter is applied. 
         notch: float, default=None
