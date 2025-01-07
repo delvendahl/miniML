@@ -137,6 +137,7 @@ class MiniTrace():
         ''' Returns the total duration of the recording '''
         return len(self.data) * self.sampling
 
+
     @classmethod
     def from_h5_file(cls, filename: str, tracename: str='mini_data', scaling: float=1e12, 
                      sampling: float=2e-5, unit: str='pA') -> MiniTrace:
@@ -195,17 +196,20 @@ class MiniTrace():
             Scaling factor applied to the data. Defaults to 1e12 (i.e. pA)
         unit: str, default=''
             Data unit, to be set when using scaling factor.
-        resample: boolean, defaulT=rue
+        resample: boolean, default=rue
             Resample data in case of sampling rate mismatch.
 
         Returns
         -------
         MiniTrace
             An initialized MiniTrace object.
+
         Raises
         ------
         Exception or ValueError
             If the file is not a valid .dat file.
+        IndexError
+            When the group index is out of range.
         ValueError
             When the sampling rates of different series mismatch and resampling is set to False.
         '''
@@ -275,16 +279,18 @@ class MiniTrace():
         ----------
         filename: string
             Path of a .abf file.
-        channel: int, default: 0
+        channel: int, default=0
             The recording channel to load
         scaling: float, default=1.0
             Scaling factor applied to the data.
         unit: str, default=''
             Data unit, to be set when using scaling factor.
+
         Returns
         -------
         MiniTrace
             An initialized MiniTrace object.
+
         Raises
         ------
         Exception
@@ -315,7 +321,20 @@ class MiniTrace():
 
 
     def detrend(self, detrend_type: str='linear', num_segments: int=0) -> MiniTrace:
-        ''' Detrend the data. '''
+        ''' Detrend the data. 
+
+        Parameters
+        ----------
+        detrend_type: str, default='linear'
+            Type of detrending. Options: 'linear', 'constant'
+        num_segments: int, default=0
+            Number of segments for detrending. Increase in case of non-linear trends in the data.
+
+        Returns
+        -------
+        MiniTrace
+            The detrended MiniTrace object.
+        '''
         num_data = self.data.shape[0]
         breaks = np.arange(num_data/num_segments, num_data, num_data/num_segments, dtype=np.int64) if num_segments > 1 else 0
         detrended = signal.detrend(self.data, bp=breaks, type=detrend_type)
@@ -324,9 +343,12 @@ class MiniTrace():
 
 
     def filter(self, notch: float=None, highpass: float=None, lowpass: float=None, order: int=4,
-               savgol: float=None, hann:int=None) -> MiniTrace:
+               savgol: float=None, hann: int=None) -> MiniTrace:
         ''' Filters trace with a combination of notch, high- and lowpass filters.
         If both lowpass and savgol arguments are passed, only the lowpass filter is applied. 
+
+        Parameters
+        ----------
         notch: float, default=None
             Notch filter frequency (Hz)
         highpass: float, default=None
@@ -337,8 +359,12 @@ class MiniTrace():
             Order of the filter.
         savgol: float, default=None
             The time window for Savitzky-Golay smoothing (ms).
+        hann: int, default=None
+            The length of the Hann window (samples).
             
-        returns: MiniTrace
+        Returns
+        -------
+        MiniTrace
             A filtered MiniTrace object.
         '''
         filtered_data = self.data.copy()
@@ -352,12 +378,11 @@ class MiniTrace():
             filtered_data = signal.sosfilt(sos, filtered_data)
         if lowpass:
             if savgol:
-                print('Warning: Two lowpass filteres selected, Savgol filter is ignored.')
+                print('Warning: Two lowpass filters selected, Savgol filter is ignored.')
             sos = signal.cheby2(order, 60, lowpass / nyq, btype='low', analog=False, output='sos', fs=None)
             filtered_data = signal.sosfiltfilt(sos, filtered_data)
         elif savgol:
             filtered_data = signal.savgol_filter(filtered_data, int(savgol/1000/self.sampling), polyorder=order)
-        
         if hann:
             win = signal.windows.hann(hann)    
             filtered_data = signal.convolve(filtered_data, win, mode='full') / sum(win)
@@ -399,7 +424,10 @@ class MiniTrace():
         after: int
             Number of samples after event positions for event extraction. Positions+after must smaller 
             than total number of samples in self.data.
-        returns: np.ndarray
+
+        Returns
+        ------
+        np.ndarray
             2d array with events of shape (len(positions), before+after).
         
         Raises
@@ -417,6 +445,7 @@ class MiniTrace():
 
 class EventStats():
     '''miniML class for event statistics.
+
     Parameters
     ----------
     amplitudes: np.ndarray
@@ -435,6 +464,7 @@ class EventStats():
         Total recording duration (seconds).
     y_unit: str
         Data unit.
+
     Attributes
     ----------
     event_count: number of events
@@ -473,7 +503,6 @@ class EventStats():
         ''' Returns frequency of events '''
         return len(self.amplitudes) / self.rec_time
 
-
     def print(self) -> None:
         ''' Prints event statistics to stdout '''
         print('\nEvent statistics:\n-------------------------')
@@ -494,7 +523,8 @@ class EventStats():
 
 
 class EventDetection():
-    '''miniML main class with methods for event detection and -analysis.
+    '''miniML main class with methods for event detection and analysis.
+
     Parameters
     ----------
     data: miniML MiniTrace object
@@ -521,6 +551,7 @@ class EventDetection():
         Whether to compile the model.
     callbacks: list, default=[]
         List of callback functions to be used during event detection.
+
     Attributes
     ----------
     event_locations: np.ndarray
@@ -615,8 +646,8 @@ class EventDetection():
         '''
         linear interpolation of a data stretch to match the indicated number of points.
 
-        returns
-        -----------
+        Returns
+        -------
         data_interpolated:
             the interpolated data
         interpol_factor:
@@ -635,8 +666,11 @@ class EventDetection():
         Performs prediction on a data trace using a sliding window of size `window_size` with a stride size given by `stride`.
         The prediction is performed on the data using the miniML model.
         Speed of prediction depends on batch size of model.predict(), but too high batch sizes will give low precision results.
+
         Raises  
-            ValueError when stride is below 1 or above window length
+        ------
+        ValueError
+            When stride is below 1 or above window length
         '''
         # resample values for prediction:
         data = signal.resample(self.trace.data, round(len(self.trace.data)*self.resampling_factor))
@@ -748,7 +782,6 @@ class EventDetection():
             Location of steepest rise of the events
         event_scores: numpy array
             Prediction value for the events
-
         '''
         # Remove indices at left and right borders to prevent boundary issues.
         mask = (self.start_pnts > self.window_size) & (self.end_pnts < self.prediction.shape[0])
@@ -787,7 +820,6 @@ class EventDetection():
         Remove event locations and associated scores that have potentially been picked up by
         overlapping start-/ end-points of different detection peaks.
         '''
-        ### Check for duplicates:
         unique_indices = np.unique(self.event_locations, return_index=True)[1]
         self.event_locations, self.event_scores = self.event_locations[unique_indices], self.event_scores[unique_indices]
         
@@ -991,6 +1023,8 @@ class EventDetection():
             The stride used during prediction. If not specified, it will be set to 1/30 of the window size
         eval: bool, default = False
             Whether to evaluate detected events.
+        resample_to_600: bool, default = True
+            Whether to resample the the data to match a 600 point window. Should always be true, unless a model was trained with a different window size.
         peak_w: int, default = 5
             The minimum prediction peak width.
         rel_prom_cutoff: int, float = 0.25
@@ -1000,8 +1034,6 @@ class EventDetection():
             Window size for the hanning window used to filter the data for event analysis.
         gradient_convolve_win: int, default = None
             Window size for the hanning window used to filter the derivative for event analysis
-        resample_to_600: bool, default = True
-            Whether to resample the the data to match a 600 point window. Should always be true, unless a model was trained with a different window size.
         '''   
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
@@ -1130,8 +1162,7 @@ class EventDetection():
 
 
     def save_to_h5(self, filename: str, include_prediction: bool=False) -> None:
-        ''' 
-        Save detection results to an hdf5 (.h5) file.
+        ''' Save detection results to an hdf5 (.h5) file.
         
         filename: str
             Filename to save results to. Needs to be an .h5 file.
@@ -1183,12 +1214,9 @@ class EventDetection():
 
 
     def save_to_csv(self, filename: str='') -> None:
-        ''' 
-        Save detection results to a .csv file. 
-        Generates two files, one with averages and one with the values for the individual events.
-        Filename is automatically generated.
+        ''' Save detection results to a .csv file. Generates two files, one with averages and one with the values for the individual events.
+        Filenames are automatically generated.
         
-
         filename: str
             filename, including path. Results will be split into "filename + _avgs.csv" and "filename + _individual.csv"
         '''
@@ -1230,8 +1258,7 @@ class EventDetection():
 
 
     def save_to_pickle(self, filename: str='', include_prediction: bool=True, include_data: bool=True) -> None:
-        ''' 
-        Save detection results to a .pickle file.         
+        ''' Save detection results to a .pickle file.         
 
         Parameters
         ------
@@ -1320,6 +1347,7 @@ class EventDetection():
 
 class EventAnalysis(EventDetection):
     '''miniML class for analysis of events detected by an alternative method. Convenient for method comparison.
+
     Parameters
     ----------
     trace: miniML trace object
@@ -1328,11 +1356,18 @@ class EventAnalysis(EventDetection):
         Number of samples to extract for each individual event.
     event_direction: str
         The direction of the events.
+    verbose: int
+        Verbosity level
     event_positions: np.ndarray or list
         The position(s) of detected events.
+    convolve_win: int
+        The size of the Hann window for event analysis.
+    resampling_factor: float
+        The factor by which to resample the data.
+
     Methods
     ----------
-    eval_events: 
+    eval_events(): 
         Perform event analysis.
     '''
     def __init__(self, trace, window_size, event_direction, verbose, event_positions, convolve_win, resampling_factor):
