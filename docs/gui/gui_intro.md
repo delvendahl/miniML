@@ -1,4 +1,4 @@
-# Intro to miniML GUI
+# The miniML GUI
 
 miniML can be run in a graphical user interface (GUI). The GUI provides a user-friendly interface for loading data, applying filters, and analyzing recordings.
 
