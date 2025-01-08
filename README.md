@@ -12,17 +12,6 @@ O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and 
 (2024) Deep learning-based synaptic event detection. _eLife_ ([doi:10.7554/eLife.98485.1](https://doi.org/10.7554/eLife.98485.1))  
 
 
-------------
-### Update 03.07.2024:
-
-
-Part of the downstream processing as well as parts of the plot functionality was changed. If you have been using miniML things should work as per usual, with the following exceptions:
-- Plot functionalities now are in a separate class and need to be generated slightly different. Please refer to the section "Inspect the results" in the tutorial.ipynb file for details.
-- The quantitative results for amplitude etc. may differ slightly from the previous version. Reason is the way we process the data as well as the filtering (see below). Previously, event location, event peak etc. were determined in resampled data (if win_size was not 600) and then mapped to the raw data. Now we work with the raw data in this step. Therefore, the exact values may differ.
-- The convolve_win parameter may need to be adjusted. Filtering was previously done in resampled data, so you may need to adjust the filter settings. You can visually check for good settings using the plot_gradient_search() method. See also section "Inspect the results" in the tutorial.ipynb file for details.
-- The save_to_csv() method has been updated to be consistent with the other file formats. It previously took a path as argument, now it takes a filename.
-------------
-
 ### 🧠 ABOUT
 
 miniML is a deep-learning-based tool to detect synaptic events in 1d time-series data. It uses a CNN-LSTM network architecture that was trained using a large dataset of synaptic events (miniature excitatory postsynaptic currents) from cerebellar mossy fiber to granule cell synapses. 
@@ -38,9 +27,9 @@ To use miniML, clone the GitHub Repository and install the requirements. The Pyt
 
 miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
 
-**Update June 2024:** The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
+The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
 
-**Update November 2024:** miniML can now be used with a graphical user interface (GUI). To use the GUI, install the additional dependencies from the requirements_gui.txt file.  
+To use miniML with a graphical user interface (GUI), you need to install the additional dependencies from the requirements_gui.txt file.  
 
 
 ### ⏱ RUNNING MINIML
@@ -67,6 +56,11 @@ miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py fil
 The folder "example_data/" contains an example recording from a cerebellar mossy fiber to granule cell synapse together with a commented Jupyter Notebook ([tutorial](tutorial.ipynb)) illustrating the use of miniML.
 
 
+### 📚 DOCUMENTATION
+
+Detailed documentation for miniML can be found [here](https://delvendahl.github.io/miniML/intro.html).
+
+
 ### 📢 UPDATE INFORMATION
 
 With the latest update, we include all the files required to generate and score the data to train a new model and use the model on your data. For the actual training, please refer to the following links to Kaggle:  
@@ -81,4 +75,4 @@ Please feel free to contact us in case of questions, either via email, or by ope
 
 
 ### ✉️ CONTACT
-philippsean.oneill@uzh.ch or igor.delvendahl@uzh.ch
+philipp.oneill@physiologie.uni-freiburg.de or igor.delvendahl@physiologie.uni-freiburg.de
