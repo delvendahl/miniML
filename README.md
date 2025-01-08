@@ -16,7 +16,15 @@ O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and 
 
 miniML is a deep-learning-based tool to detect synaptic events in 1d time-series data. It uses a CNN-LSTM network architecture that was trained using a large dataset of synaptic events (miniature excitatory postsynaptic currents) from cerebellar mossy fiber to granule cell synapses. 
 
-In this repository, we provide pre-trained models and Python code to run model inference on recorded data. In addition, an application example (cerebellar granule cell recording) is included.
+In this repository, we provide pre-trained models and Python code to run model inference on recorded data. In addition, documentation and an application example (cerebellar granule cell recording) are included.
+
+
+### 📢 UPDATE INFORMATION
+
+#### 8 January 2024
+We have updated the documentation for miniML. The latest version of the documentation is available [here](https://delvendahl.github.io/miniML/intro.html).
+
+Please also see the updated preprint at [bioRxiv](https://www.biorxiv.org/content/10.1101/2023.11.02.565316v3).
 
 
 ### 💻 INSTALLATION
@@ -51,9 +59,10 @@ Event data and statistics can be saved in different formats (.pickle, .h5, .csv)
 
 miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a CSV or HDF5 file.
 
+
 ### 💡 EXAMPLE
 
-The folder "example_data/" contains an example recording from a cerebellar mossy fiber to granule cell synapse together with a commented Jupyter Notebook ([tutorial](tutorial.ipynb)) illustrating the use of miniML.
+The folder "example_data/" contains an example recording from a cerebellar mossy fiber to granule cell synapse together with a commented Jupyter Notebook ([tutorial](docs/general/tutorial.ipynb)) illustrating the use of miniML.
 
 
 ### 📚 DOCUMENTATION
@@ -61,15 +70,31 @@ The folder "example_data/" contains an example recording from a cerebellar mossy
 Detailed documentation for miniML can be found [here](https://delvendahl.github.io/miniML/intro.html).
 
 
-### 📢 UPDATE INFORMATION
+### 📦 MODELS
 
-With the latest update, we include all the files required to generate and score the data to train a new model and use the model on your data. For the actual training, please refer to the following links to Kaggle:  
+The documentation includes notebooks showing how to train miniML models. You can also use the following links to Kaggle notebooks to train mminiML models on the cloud:  
 
 [1 - Transfer learning](https://www.kaggle.com/code/philipponeill/miniml-transfer-learning)  
 [2 - Full training](https://www.kaggle.com/code/philipponeill/miniml-full-training)  
 [3 - Training dataset](https://www.kaggle.com/datasets/philipponeill/miniml-training-data)  
 
-We had to make one change that will impact scripts written for the previous miniML version. We split the *direction* parameter (used by the miniML **detect_events()** method) into two separate parameters: *event_direction* and *training_direction* (refer to [miniML documentation](miniML_documentation.pdf) for details). In practice, this means that you may have to rename the parameter *direction* to *event_direction* in existing scripts.
+
+### 📝 CITATION
+
+If you use miniML in your work, please cite:
+```BibTeX
+@article{ONeill2024,
+  title = {A deep learning framework for automated and generalized synaptic event analysis},
+  url = {http://dx.doi.org/10.7554/eLife.98485.1},
+  DOI = {10.7554/elife.98485.1},
+  publisher = {eLife Sciences Publications,  Ltd},
+  author = {O’Neill,  Philipp S. and Baccino-Calace,  Martín and Rupprecht,  Peter and Friedrich,  Rainer W. and M\"{u}ller,  Martin and Delvendahl,  Igor},
+  year = {2024},
+  month = jun 
+}
+```
+
+### 🐛 ISSUES
 
 Please feel free to contact us in case of questions, either via email, or by opening an issue here on GitHub (chances are that other people have the same question).
 
