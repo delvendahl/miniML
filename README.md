@@ -16,7 +16,7 @@ O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and 
 
 miniML is a deep-learning-based tool to detect synaptic events in 1d time-series data. It uses a CNN-LSTM network architecture that was trained using a large dataset of synaptic events (miniature excitatory postsynaptic currents) from cerebellar mossy fiber to granule cell synapses. 
 
-In this repository, we provide pre-trained models and Python code to run model inference on recorded data. In addition, documentation and an application example (cerebellar granule cell recording) are included.
+In this repository, we provide pre-trained models and Python code to run model inference on recorded data. In addition, documentation and an application example (cerebellar granule cell mEPSC recording) are included.
 
 
 ### 📢 UPDATES
@@ -29,7 +29,7 @@ Please also see the updated preprint at [bioRxiv](https://www.biorxiv.org/conten
 
 ### 💻 INSTALLATION
 
-To use miniML, clone the GitHub Repository and install the requirements. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies using pip, run the following command in your Python environment:
+To use miniML, clone the GitHub Repository and install the requirements. miniML has been tested with Python 3.9 and 3.10.The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies using pip, run the following command in your Python environment:
 
 `pip install -r requirements.txt`
 
@@ -51,13 +51,13 @@ miniML model inference can then be run using the **detect_events()** method. Thi
 
 Following event detection, the individual detected events are analyzed and descriptive statistics are calculated for the recording.
 
-miniML includes several plotting methods. They can be found in the miniML_plots class in miniML_plot_functions.py. A detection object has to be passed as data argument. 
+miniML includes several plotting methods. They can be found in the **miniML_plots** class in `miniML_plot_functions.py`. A detection object has to be passed as data argument. 
 
 Event data and statistics can be saved in different formats (.pickle, .h5, .csv).
 
 #### Analysis workflow via GUI
 
-miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a CSV or HDF5 file.
+miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a PICKLE, CSV or HDF5 file.
 
 
 ### 💡 EXAMPLE
@@ -78,6 +78,8 @@ The documentation includes notebooks showing how to train miniML models. You can
 [2 - Full training](https://www.kaggle.com/code/philipponeill/miniml-full-training)  
 [3 - Training dataset](https://www.kaggle.com/datasets/philipponeill/miniml-training-data)  
 
+The repository contains trained models for sevveral event detection scenarios, as outlined in the associated paper. If you have trained a model that could be useful for other researchers, please consider opening a pull request or get in touch with us in order to add it to the repository.
+
 
 ### 📝 CITATION
 
@@ -96,7 +98,7 @@ If you use miniML in your work, please cite:
 
 ### 🐛 ISSUES
 
-Please feel free to contact us in case of questions, either via email, or by opening an issue here on GitHub (chances are that other people have the same question).
+Please feel free to contact us in case of questions, either via email, or by opening an [Issue](https://github.com/delvendahl/miniML/issues) here on GitHub.
 
 
 ### ✉️ CONTACT
