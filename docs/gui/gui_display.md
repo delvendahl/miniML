@@ -14,9 +14,13 @@ Load a new recording. Accepts .h5, .abf, and .dat files.
 
 Apply a filter to the recording. Includes options to detrend the data, filter the data using high-pass or low-pass filters, and apply a notch filter.
 
+![The filter window](../images/GUI_filter.png "miniML Filter")
+
 ### Info
 
-Show file information.
+Display information about the trace and file.
+
+![The info window](../images/GUI_info.png "miniML File Info")
 
 ### Cut
 
@@ -57,6 +61,9 @@ Opens the settings menu.
 ```{tip}
 The default values of the settings can be changed in the miniml_settings.py file.
 ```
+
+![The settings window](../images/GUI_settings.png "miniML Settings")
+
 
 
 ## Plot windows

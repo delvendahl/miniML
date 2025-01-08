@@ -11,6 +11,7 @@ parts:
     - file: general/loading_data
     - file: general/tutorial_resampling
     - file: general/batch_analysis
+    - file: general/models
  - caption: GUI
    chapters:
     - file: gui/gui_intro
