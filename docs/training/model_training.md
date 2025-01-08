@@ -14,7 +14,7 @@ All the files and links to train your own model are provided in the GitHub repos
 
 miniML is a classifier that predicts whether a given data stretch contains a synaptic event or not. For good classification performance, the stretch of data must be large enough to contain the entire event. In the case of our recordings in cerebellar granule cells, this corresponds to 600 data points (samples) or about 12 ms given a sampling rate of 50 kHz (see figure below).
 
-![mEPSC example](images/GC_mEPSC_example.svg "mEPSC example")
+![mEPSC example](../images/GC_mEPSC_example.svg "mEPSC example")
 
 If event kinetics and/or sampling rate are different in other data, 600 points may be too much or too little. For example, to capture a synaptic event in current clamp in the same cell, the window size needs to be expanded to 3000 points. Because the model expects an input size of 600 points, we resample the trace based on the provided window size for inference. For example, the window size is set to 3000 points, and a recording containing 6,000,000 points is provided. In this case, we can down-sample the whole trace by a factor of 5, to 1,200,000 points. Now the signal of interest fits into the 600-point window that the model expects (see figure below). This only concerns the prediction by the model. To analyze the detected events, e.g., to read out amplitudes, the original recording is used again. To give an idea what window sizes we chose, in the following there are a few examples from different preparations used in the manuscript. Red dotted lines indicate the 600-point window that is classified by the model.
 
