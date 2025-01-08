@@ -19,7 +19,7 @@ miniML is a deep-learning-based tool to detect synaptic events in 1d time-series
 In this repository, we provide pre-trained models and Python code to run model inference on recorded data. In addition, documentation and an application example (cerebellar granule cell recording) are included.
 
 
-### 📢 UPDATE INFORMATION
+### 📢 UPDATES
 
 #### 8 January 2024
 We have updated the documentation for miniML. The latest version of the documentation is available [here](https://delvendahl.github.io/miniML/intro.html).
@@ -62,7 +62,7 @@ miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py fil
 
 ### 💡 EXAMPLE
 
-The folder "example_data/" contains an example recording from a cerebellar mossy fiber to granule cell synapse together with a commented Jupyter Notebook ([tutorial](docs/general/tutorial.ipynb)) illustrating the use of miniML.
+The folder "example_data/" contains an example recording from a cerebellar mossy fiber to granule cell synapse. To use miniML on this data, run the commented example Jupyter Notebook ([tutorial](docs/general/tutorial.ipynb)) illustrating the use of miniML.
 
 
 ### 📚 DOCUMENTATION
@@ -72,7 +72,7 @@ Detailed documentation for miniML can be found [here](https://delvendahl.github.
 
 ### 📦 MODELS
 
-The documentation includes notebooks showing how to train miniML models. You can also use the following links to Kaggle notebooks to train mminiML models on the cloud:  
+The documentation includes notebooks showing how to train miniML models. You can also use the following links to Kaggle to train mminiML models on the cloud:  
 
 [1 - Transfer learning](https://www.kaggle.com/code/philipponeill/miniml-transfer-learning)  
 [2 - Full training](https://www.kaggle.com/code/philipponeill/miniml-full-training)  
