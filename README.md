@@ -33,10 +33,11 @@ To use miniML, clone the GitHub Repository and install the requirements. miniML 
 
 `pip install -r requirements.txt`
 
-miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
-
 >[!IMPORTANT]
 >The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
+
+> [!NOTE]
+>miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
 
 
 To use miniML with a graphical user interface (GUI), you need to install the additional dependencies from the requirements_gui.txt file.  
@@ -57,9 +58,8 @@ miniML includes several plotting methods. They can be found in the **miniML_plot
 
 Event data and statistics can be saved in different formats (.pickle, .h5, .csv).
 
-#### Analysis workflow via GUI
-
-miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a PICKLE, CSV or HDF5 file.
+> [!TIP]
+>miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a PICKLE, CSV or HDF5 file.
 
 
 ### 💡 EXAMPLE
@@ -80,7 +80,7 @@ The documentation includes notebooks showing how to train miniML models. You can
 [2 - Full training](https://www.kaggle.com/code/philipponeill/miniml-full-training)  
 [3 - Training dataset](https://www.kaggle.com/datasets/philipponeill/miniml-training-data)  
 
-The repository contains trained models for sevveral event detection scenarios, as outlined in the associated paper. If you have trained a model that could be useful for other researchers, please consider opening a pull request or get in touch with us in order to add it to the repository.
+The repository contains trained models for several event detection scenarios, as outlined in the associated paper. If you have trained a model that could be useful for other researchers, please consider opening a pull request or get in touch with us in order to add it to the repository.
 
 
 ### 📝 CITATION
