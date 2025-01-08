@@ -245,6 +245,7 @@ class minimlGuiMain(QMainWindow):
         self.tableWidget.setHorizontalHeaderLabels(['Position', 'Amplitude', 'Area', 'Risetime', 'Decay'])
         self.tableWidget.viewport().installEventFilter(self)
         self.tableWidget.setSelectionBehavior(QTableView.SelectRows)
+        self.tableWidget.setEditTriggers(QTableWidget.NoEditTriggers)
 
 
     def eventFilter(self, source, event):
