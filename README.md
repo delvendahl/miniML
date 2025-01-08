@@ -35,7 +35,9 @@ To use miniML, clone the GitHub Repository and install the requirements. miniML 
 
 miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
 
+```{important}
 The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
+```
 
 To use miniML with a graphical user interface (GUI), you need to install the additional dependencies from the requirements_gui.txt file.  
 
