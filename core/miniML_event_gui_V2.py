@@ -130,7 +130,7 @@ class minimlGuiMain(QMainWindow):
         self.splitter3.setHandleWidth(12)
         self.splitter3.addWidget(self.splitter2)
 
-        self._create_table()
+        self.tableWidget = self._create_table()
 
         self.splitter3.addWidget(self.tableWidget)
         self.splitter3.setSizes([750, 400])
@@ -237,15 +237,15 @@ class minimlGuiMain(QMainWindow):
 
 
     def _create_table(self):
-        self.tableWidget = QTableWidget()
-        self.tableWidget.verticalHeader().setDefaultSectionSize(10)
-        self.tableWidget.horizontalHeader().setDefaultSectionSize(90)
-        self.tableWidget.setRowCount(0) 
-        self.tableWidget.setColumnCount(5)
-        self.tableWidget.setHorizontalHeaderLabels(['Position', 'Amplitude', 'Area', 'Risetime', 'Decay'])
-        self.tableWidget.viewport().installEventFilter(self)
-        self.tableWidget.setSelectionBehavior(QTableView.SelectRows)
-
+        tableWidget = QTableWidget()
+        tableWidget.verticalHeader().setDefaultSectionSize(10)
+        tableWidget.horizontalHeader().setDefaultSectionSize(90)
+        tableWidget.setRowCount(0) 
+        tableWidget.setColumnCount(5)
+        tableWidget.setHorizontalHeaderLabels(['Position', 'Amplitude', 'Area', 'Risetime', 'Decay'])
+        tableWidget.viewport().installEventFilter(self)
+        tableWidget.setSelectionBehavior(QTableView.SelectRows)
+        return tableWidget
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.MouseButtonPress:
@@ -320,6 +320,11 @@ class minimlGuiMain(QMainWindow):
             self.detection.risetimes = np.delete(self.detection.risetimes, row, axis=0)
             self.detection.charges = np.delete(self.detection.charges, row, axis=0)
             self.detection.event_bsls = np.delete(self.detection.event_bsls, row, axis=0)
+            self.detection.bsl_starts = np.delete(self.detection.bsl_starts, row, axis=0)
+            self.detection.bsl_ends = np.delete(self.detection.bsl_ends, row, axis=0)
+            self.detection.min_positions_rise = np.delete(self.detection.min_positions_rise, row, axis=0)
+            self.detection.max_positions_rise = np.delete(self.detection.max_positions_rise, row, axis=0)
+            self.detection.half_decay = np.delete(self.detection.half_decay, row, axis=0)
             self.detection.events = np.delete(self.detection.events, row, axis=0)
             self.detection.event_scores = np.delete(self.detection.event_scores, row, axis=0)
 
@@ -332,7 +337,7 @@ class minimlGuiMain(QMainWindow):
             self.plotDetected = self.tracePlot.plot(ev_positions, ev_peakvalues, pen=pen, symbol='o', symbolSize=8, 
                                                     symbolpen=self.settings.colors[0], symbolBrush=self.settings.colors[0])
 
-            self.tabulate_results()
+            self.tabulate_results(tableWidget=self.tableWidget)
             self.plot_events()
 
 
@@ -644,7 +649,7 @@ class minimlGuiMain(QMainWindow):
             self.plotDetected = self.tracePlot.plot(ev_positions, ev_peakvalues, pen=pen, symbol='o', symbolSize=8, 
                                                     symbolpen=self.settings.colors[0], symbolBrush=self.settings.colors[0])
 
-            self.tabulate_results()
+            self.tabulate_results(tableWidget=self.tableWidget)
             self.plot_events()
         else:
             print('no events detected.')
@@ -696,18 +701,18 @@ class minimlGuiMain(QMainWindow):
         self.averagePlot.setLabel('left', 'Amplitude', 'pA')
 
     
-    def tabulate_results(self):
-        self.tableWidget.clear()
+    def tabulate_results(self, tableWidget):
+        tableWidget.clear()
         n_events = len(self.detection.event_stats.amplitudes)
-        self.tableWidget.setHorizontalHeaderLabels(['Location', 'Amplitude', 'Area', 'Risetime', 'Decay'])
-        self.tableWidget.setRowCount(n_events)
+        tableWidget.setHorizontalHeaderLabels(['Location', 'Amplitude', 'Area', 'Risetime', 'Decay'])
+        tableWidget.setRowCount(n_events)
         for i in range(n_events):
-            self.tableWidget.setItem(i, 0, QTableWidgetItem(f'{self.detection.event_locations[i] * self.detection.trace.sampling :.5f}'))
-            self.tableWidget.setItem(i, 1, QTableWidgetItem(f'{self.detection.event_stats.amplitudes[i]:.5f}'))
-            self.tableWidget.setItem(i, 2, QTableWidgetItem(f'{self.detection.event_stats.charges[i]:.5f}'))
-            self.tableWidget.setItem(i, 3, QTableWidgetItem(f'{self.detection.event_stats.risetimes[i]:.5f}'))
-            self.tableWidget.setItem(i, 4, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[i]:.5f}'))
-        self.tableWidget.show()
+            tableWidget.setItem(i, 0, QTableWidgetItem(f'{self.detection.event_locations[i] * self.detection.trace.sampling :.5f}'))
+            tableWidget.setItem(i, 1, QTableWidgetItem(f'{self.detection.event_stats.amplitudes[i]:.5f}'))
+            tableWidget.setItem(i, 2, QTableWidgetItem(f'{self.detection.event_stats.charges[i]:.5f}'))
+            tableWidget.setItem(i, 3, QTableWidgetItem(f'{self.detection.event_stats.risetimes[i]:.5f}'))
+            tableWidget.setItem(i, 4, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[i]:.5f}'))
+        tableWidget.show()
 
 
 class LoadHdfPanel(QDialog):
@@ -1037,17 +1042,18 @@ class EventViewer(QMainWindow):
         self.left_buffer = int(self.detection.window_size/2)
         self.right_buffer = int(self.detection.window_size*1.5)
         self.num_events = self.detection.event_locations.shape[0]
+        print(self.num_events)
         self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
         
         self.exclude_events = np.zeros(self.num_events)
         # calling method
-        self.initEventViewerUI()
+        self.initEventViewerUI(parent=parent)
  
         # showing all the widgets
         self.show()
 
     # method for components
-    def initEventViewerUI(self):
+    def initEventViewerUI(self, parent):
         # create plot window object
         self.plt = pg.PlotWidget()
 
@@ -1055,10 +1061,10 @@ class EventViewer(QMainWindow):
         self.layout.setHandleWidth(12)
         self.layout.addWidget(self.plt)
 
-        self._create_table()
+        self.tableWidget = parent._create_table()
         self.layout.addWidget(self.tableWidget)
         self.layout.setSizes([750, 500])
- 
+        parent.tabulate_results(tableWidget=self.tableWidget)
         # setting this widget as central widget of the main window
         self.setCentralWidget(self.layout)
         QApplication.setStyle(QStyleFactory.create('Cleanlooks'))
@@ -1067,30 +1073,6 @@ class EventViewer(QMainWindow):
         self.setWindowTitle('Event Viewer')
 
         self.update_plot()
-
-    def _create_table(self):
-        self.tableWidget = QTableWidget()
-        self.tableWidget.verticalHeader().setDefaultSectionSize(10)
-        self.tableWidget.horizontalHeader().setDefaultSectionSize(90)
-        self.tableWidget.setRowCount(0) 
-        self.tableWidget.setColumnCount(6)
-        self.tableWidget.setHorizontalHeaderLabels(("Position;Amplitude;Area;Risetime;Decay;IsOverlapping").split(";"))
-        self.tableWidget.viewport().installEventFilter(self)
-        self.tableWidget.setSelectionBehavior(QTableView.SelectRows)
-
-        self.tableWidget.clear()
-        n_events = len(self.detection.event_stats.amplitudes)
-        self.tableWidget.setHorizontalHeaderLabels(['Location', 'Amplitude', 'Area', 'Risetime', 'Decay', 'Is Overlapping'])
-        self.tableWidget.setRowCount(n_events)
-        for i in range(n_events):
-            self.tableWidget.setItem(i, 0, QTableWidgetItem(f'{self.detection.event_locations[i] * self.detection.trace.sampling :.5f}'))
-            self.tableWidget.setItem(i, 1, QTableWidgetItem(f'{self.detection.event_stats.amplitudes[i]:.5f}'))
-            self.tableWidget.setItem(i, 2, QTableWidgetItem(f'{self.detection.event_stats.charges[i]:.5f}'))
-            self.tableWidget.setItem(i, 3, QTableWidgetItem(f'{self.detection.event_stats.risetimes[i]:.5f}'))
-            self.tableWidget.setItem(i, 4, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[i]:.5f}'))
-            self.tableWidget.setItem(i, 5, QTableWidgetItem(f'Add later'))
-
-        self.tableWidget.show()
 
     def update_plot(self):
         self.plt.clear()
