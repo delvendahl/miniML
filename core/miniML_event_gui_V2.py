@@ -1034,11 +1034,12 @@ class EventViewer(QMainWindow):
         super(EventViewer, self).__init__(parent)
         self.detection = parent.detection
         self.ind = 0
-        self.left_buffer = 300
-        self.right_buffer = 900
+        self.left_buffer = int(self.detection.window_size/2)
+        self.right_buffer = int(self.detection.window_size*1.5)
         self.num_events = self.detection.event_locations.shape[0]
         self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
-         
+        
+        self.exclude_events = np.zeros(self.num_events)
         # calling method
         self.initEventViewerUI()
  
@@ -1133,96 +1134,109 @@ class EventViewer(QMainWindow):
         
         time_ax = np.arange(0, data.shape[0]) * self.detection.trace.sampling * 1e3
 
-        pen = pg.mkPen(color='k', width=1.5)
-        data_plot = self.plt.plot(time_ax, data, pen=pen)
-        data_plot.setAlpha(0.5, False)
+        if self.exclude_events[self.ind]:
+            pen = pg.mkPen(color='r', width=1.5)
+            data_plot = self.plt.plot(time_ax, data, pen=pen)
+            data_plot.setAlpha(0.5, False)
 
-        filtered_data_plot = self.plt.plot(time_ax, filtered_data, pen=pen)
-        filtered_data_plot.setAlpha(1, False)
-        
-        bsl_times = [rel_bsl_start, rel_bsl_end]
-        bsl_vals = [bsl, bsl]
+            filtered_data_plot = self.plt.plot(time_ax, filtered_data, pen=pen)
+            filtered_data_plot.setAlpha(1, False)
+        else:
+            pen = pg.mkPen(color='k', width=1.5)
+            data_plot = self.plt.plot(time_ax, data, pen=pen)
+            data_plot.setAlpha(0.5, False)
 
-        pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-        self.plt.plot(bsl_times,
-                 bsl_vals,
-                 pen=pen, symbol='o', symbolSize=8, nsymbolpen='r', symbolBrush='r')
+            filtered_data_plot = self.plt.plot(time_ax, filtered_data, pen=pen)
+            filtered_data_plot.setAlpha(1, False)
+            
+            bsl_times = [rel_bsl_start, rel_bsl_end]
+            bsl_vals = [bsl, bsl]
 
-        pen = pg.mkPen(color='r', width=3, style=pg.QtCore.Qt.DotLine)
-        self.plt.plot(bsl_times, bsl_vals, pen=pen)
+            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            self.plt.plot(bsl_times,
+                    bsl_vals,
+                    pen=pen, symbol='o', symbolSize=8, nsymbolpen='r', symbolBrush='r')
 
-        self.plt.plot([rel_bsl_end, rel_peak_loc],
-                 bsl_vals,
-                 pen=pg.mkPen(color='k', width=2, style=pg.QtCore.Qt.DotLine))
-        
+            pen = pg.mkPen(color='r', width=3, style=pg.QtCore.Qt.DotLine)
+            self.plt.plot(bsl_times, bsl_vals, pen=pen)
 
-        col = 'magenta'
-        pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-        
-        self.plt.plot(
-            [rel_min_rise, rel_max_rise],
-            [self.filtered_data[min_rise], self.filtered_data[max_rise]],
-            pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
+            self.plt.plot([rel_bsl_end, rel_peak_loc],
+                    bsl_vals,
+                    pen=pg.mkPen(color='k', width=2, style=pg.QtCore.Qt.DotLine))
+            
 
-
-        pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-        
-        self.plt.plot(
-            [rel_min_rise, rel_max_rise],
-            [self.filtered_data[min_rise], self.filtered_data[min_rise]],
-            pen=pen)
-
-        self.plt.plot(
-            [rel_max_rise, rel_max_rise],
-            [self.filtered_data[max_rise], self.filtered_data[min_rise]],
-            pen=pen)
-
-
-        col = 'orange'
-        pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-        
-        self.plt.plot(
-            [rel_peak_loc_left, rel_peak_loc_right, rel_peak_loc],
-            [peak_val]*3,
-            pen=pen, symbol=['x', 'x', 'o'], symbolSize=[12, 12, 8], symbolpen=col, symbolBrush=col)
-
-        if len(peaks_in_win):
+            col = 'magenta'
+            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            
             self.plt.plot(
-                rel_peaks_in_win,
-                self.filtered_data[peaks_in_win],
+                [rel_min_rise, rel_max_rise],
+                [self.filtered_data[min_rise], self.filtered_data[max_rise]],
                 pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
 
 
-        pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-        
-        self.plt.plot(
-            [rel_peak_loc, rel_peak_loc],
-            [peak_val, peak_val - self.detection.event_stats.amplitudes[self.ind]],
-            pen=pen)
-
-        
-        if not np.isnan(self.detection.half_decay[self.ind]):
-            col = 'green'
-
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-            self.plt.plot([rel_decay_loc],
-                     [self.filtered_data[decay_loc]],
-                     pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
-            
-            # pen = pg.mkPen(color=self.settings.colors[0], width=3, style=pg.QtCore.Qt.DashLine)
             pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-            self.plt.plot([rel_peak_loc, rel_decay_loc],
-                     [self.filtered_data[decay_loc], self.filtered_data[decay_loc]],
-                     pen=pen)
+            
+            self.plt.plot(
+                [rel_min_rise, rel_max_rise],
+                [self.filtered_data[min_rise], self.filtered_data[min_rise]],
+                pen=pen)
+
+            self.plt.plot(
+                [rel_max_rise, rel_max_rise],
+                [self.filtered_data[max_rise], self.filtered_data[min_rise]],
+                pen=pen)
+
+
+            col = 'orange'
+            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            
+            self.plt.plot(
+                [rel_peak_loc_left, rel_peak_loc_right, rel_peak_loc],
+                [peak_val]*3,
+                pen=pen, symbol=['x', 'x', 'o'], symbolSize=[12, 12, 8], symbolpen=col, symbolBrush=col)
+
+            if len(peaks_in_win):
+                self.plt.plot(
+                    rel_peaks_in_win,
+                    self.filtered_data[peaks_in_win],
+                    pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
+
+
+            pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
+            
+            self.plt.plot(
+                [rel_peak_loc, rel_peak_loc],
+                [peak_val, peak_val - self.detection.event_stats.amplitudes[self.ind]],
+                pen=pen)
+
+            
+            if not np.isnan(self.detection.half_decay[self.ind]):
+                col = 'green'
+
+                pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+                self.plt.plot([rel_decay_loc],
+                        [self.filtered_data[decay_loc]],
+                        pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
+                
+                # pen = pg.mkPen(color=self.settings.colors[0], width=3, style=pg.QtCore.Qt.DashLine)
+                pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
+                self.plt.plot([rel_peak_loc, rel_decay_loc],
+                        [self.filtered_data[decay_loc], self.filtered_data[decay_loc]],
+                        pen=pen)
+        
+        self.plt.setLabel('bottom', 'Time', 's')
+        self.plt.setLabel('left', 'Amplitude', 'pA')
 
 
     def keyPressEvent(self, event):
         # print(event.key())
         if event.key() == 16777236: # Forward key. See print statement above to get keybindings.
             self.ind += 1
-        elif event.key() == 16777234:
+        if event.key() == 16777234:
             self.ind -= 1
-        
+        if event.key() == 77: # 'm'
+            self.exclude_events[self.ind] = (self.exclude_events[self.ind]+1)%2
+
         # Take care of boundary indices
         if self.ind < 0:
             self.ind += self.num_events
