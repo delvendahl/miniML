@@ -941,7 +941,14 @@ class EventDetection():
             
             if not np.isnan(self.half_decay[ix]):
                 self.half_decay[ix] = int(self.half_decay[ix] + self.event_locations[ix] - self.add_points)
-
+        
+    def _get_singular_event_indices(self):
+        '''
+        Extract indices of events that have no overlap with any other events.
+        '''
+        no_events_in_decay = np.where(np.diff(self.event_locations) > self.window_size * 1.5)[0]
+        no_events_in_rise = (np.where(np.diff(self.event_locations) > self.window_size * 0.5)[0]) + 1
+        self.singular_event_indices = np.intersect1d(no_events_in_rise, no_events_in_decay, assume_unique=False, return_indices=False)
 
     def _get_average_event_properties(self) -> dict:
         '''extracts event properties for the event average the same way the individual events are analysed'''
@@ -1025,6 +1032,7 @@ class EventDetection():
         self._remove_duplicate_locations()
 
         if self.event_locations.shape[0] > 0:
+            self._get_singular_event_indices()
             self.events = self.trace._extract_event_data(positions=self.event_locations, 
                                                          before=self.add_points, after=self.window_size + self.add_points)
 
