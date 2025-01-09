@@ -25,14 +25,14 @@ Part of the downstream processing as well as parts of the plot functionality was
 
 ### 🧠 ABOUT
 
-miniML is a deep-learning-based tool to detect synaptic events in 1d timeseries data. It uses a CNN-LSTM network architecture that was trained using a large dataset of synaptic events from cerebellar mossy fiber to granule cell synapses. 
+miniML is a deep-learning-based tool to detect synaptic events in 1d time-series data. It uses a CNN-LSTM network architecture that was trained using a large dataset of synaptic events (miniature excitatory postsynaptic currents) from cerebellar mossy fiber to granule cell synapses. 
 
-In this repository, we provide pretrained models and Python code to run model inference on recorded data. In addition, an application example (cerebellar granule cell recording) is included.
+In this repository, we provide pre-trained models and Python code to run model inference on recorded data. In addition, an application example (cerebellar granule cell recording) is included.
 
 
 ### 💻 INSTALLATION
 
-To use miniML, clone the GitHub Repositiory and install the requirements. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies using pip, run the following command in your Python environment:
+To use miniML, clone the GitHub Repository and install the requirements. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies using pip, run the following command in your Python environment:
 
 `pip install -r requirements.txt`
 
@@ -50,9 +50,13 @@ First, a miniML *MiniTrace* object needs to be created containing 1d timeseries 
 
 Next, a miniML *EventDetection* object is initiated. Here, one needs to specify a miniML model file to use as well as the *Trace* object to operate on. 
 
-Finally, model inference can be run using the **detect_events()** method. This method will run miniML over the given data using the specified model. Runtime will depend on data length.
+miniML model inference can then be run using the **detect_events()** method. This method will run miniML over the given data using the specified model. Runtime will depend on data length. 
 
-Detected events are analyzed and descriptive statistics can subsequently be saved in different formats (.pickle, .h5, .csv).
+Following event detection, the individual detected events are analyzed and descriptive statistics are calculated for the recording.
+
+miniML includes several plotting methods. They can be found in the miniML_plots class in miniML_plot_functions.py. A detection object has to be passed as data argument. 
+
+Event data and statistics can be saved in different formats (.pickle, .h5, .csv).
 
 #### Analysis workflow via GUI
 
