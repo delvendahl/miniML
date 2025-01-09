@@ -112,7 +112,7 @@ def get_event_onset(data: np.ndarray, peak_position: int, baseline: float, basel
     return onset_position
 
 
-def get_event_risetime(data: np.ndarray, peak_position: int, onset_position: int, min_percentage: float=10, max_percentage: float=90) -> tuple[float, int, int]:
+def get_event_risetime(data: np.ndarray, peak_position: int, bsl_start_position: int, baseline:float, min_percentage: float=10, max_percentage: float=90) -> tuple[float, int, int]:
     """
     Get the risetime of an event (default, 10-90%).
 
