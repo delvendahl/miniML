@@ -386,6 +386,8 @@ class MiniTrace():
         if hann:
             win = signal.windows.hann(hann)    
             filtered_data = signal.convolve(filtered_data, win, mode='full') / sum(win)
+            
+            # Hann window generates edge artifacts due to zero-padding. Retain unfiltered data at edges.
             filtered_data[:hann] = self.data[:hann]
             filtered_data[filtered_data.shape[0]-hann:filtered_data.shape[0]] = self.data[filtered_data.shape[0]-hann:filtered_data.shape[0]]
 
@@ -996,7 +998,7 @@ class EventDetection():
 
         ### Set parameters for charge calculation
         factor_charge = 4
-        data = np.mean(self.events, axis=0) * self.event_direction
+        data = np.mean(self.events[self.singular_event_indices], axis=0) * self.event_direction
 
         event_peak = get_event_peak(data=data,event_num=0,add_points=add_points,window_size=self.window_size,diffs=diffs)
         event_peak_value = data[event_peak]
@@ -1080,10 +1082,9 @@ class EventDetection():
             
             # Fit the average event; take a subset of the window.
             fit_start = int(self.window_size/6) # 1/2 of add points, i.e. half the stretch added to the events.
-            fit_end = int(self.window_size/2)
 
             self.fitted_avg_event = self._fit_event(
-                data=np.mean(self.events, axis=0)[fit_start:fit_end],
+                data=np.mean(self.events[self.singular_event_indices], axis=0)[fit_start:],
                 amplitude=self.average_event_properties['amplitude'] * self.event_direction,
                 t_rise=self.average_event_properties['risetime'],
                 t_decay=self.average_event_properties['halfdecay_time'],
@@ -1095,18 +1096,22 @@ class EventDetection():
 
     def _get_average_event_decay(self) -> float:
         ''' Returns the decay time constant of the averaged events '''
-        event_x = np.arange(0, self.events.shape[1]) * self.trace.sampling
-        event_avg = np.average(self.events, axis=0) * self.event_direction
-        if self.events.shape[0] < 4:
+        events_for_avg = self.events[self.singular_event_indices]
+
+        event_x = np.arange(0, events_for_avg.shape[1]) * self.trace.sampling
+        event_avg = np.average(events_for_avg, axis=0) * self.event_direction
+        if events_for_avg.shape[0] < 4:
             fit_start = np.argmax(np.convolve(event_avg, np.ones(5) / 5, mode='same')) + int(0.01 * self.window_size)
         else:
             fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
-        if fit_start > self.events.shape[1] - int(0.2 * self.window_size): # not a valid starting point
+        if fit_start > events_for_avg.shape[1] - int(0.2 * self.window_size): # not a valid starting point
             return np.nan
         try:
+            
+            self.avg_decay_fit_start = fit_start
             fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
-                            p0=[np.amax(event_avg), self.events.shape[1] / 50 * self.trace.sampling, 0])
-            return fit[1]
+                            p0=[np.amax(event_avg), events_for_avg.shape[1] / 50 * self.trace.sampling, 0])
+            return fit
         except RuntimeError:
             return np.nan
 
@@ -1156,10 +1161,10 @@ class EventDetection():
         '''
         if not self.events_present():
             return
-
+        self.avg_decay_fit = self._get_average_event_decay()
         self.event_stats = EventStats(amplitudes=self.event_peak_values - self.event_bsls,
                                       scores=self.event_scores,
-                                      tau=self._get_average_event_decay(),
+                                      tau=self.avg_decay_fit[1],
                                       charges=self.charges,
                                       risetimes=self.risetimes,
                                       decaytimes=self.decaytimes,
