@@ -981,6 +981,12 @@ class EventDetection():
         no_events_in_decay = np.where(np.diff(self.event_locations) > self.window_size * 1.5)[0]
         no_events_in_rise = (np.where(np.diff(self.event_locations) > self.window_size * 0.5)[0]) + 1
         self.singular_event_indices = np.intersect1d(no_events_in_rise, no_events_in_decay, assume_unique=False, return_indices=False)
+        
+        # First and last event will be lost due to intersecting. Add manually if they qualify.
+        if 0 in no_events_in_decay:
+            self.singular_event_indices = np.insert(self.singular_event_indices, 0, 0)
+        if len(self.event_locations) - 1 in no_events_in_rise:
+            self.singular_event_indices = np.append(self.singular_event_indices, [len(self.event_locations) - 1])
 
     def _get_average_event_properties(self) -> dict:
         '''extracts event properties for the event average the same way the individual events are analysed'''
