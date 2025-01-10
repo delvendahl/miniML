@@ -339,6 +339,65 @@ class minimlGuiMain(QMainWindow):
             self.plot_events()
 
 
+    def delete_multiple_events(self, rows:list=[]) -> None:
+        """
+        Deletes multiple events from the detection object after exclusion in the Event Viewer.
+
+        Args:
+            rows (list): list of the event indices to be deleted.
+
+        Returns:
+            None
+
+        This function prompts the user with a confirmation dialog to delete the events. 
+        After deleting the event, the function updates the main plot, plots the detected events, and tabulates the results.
+        """
+        if len(rows) > 0:
+            msgbox = QMessageBox
+            answer = msgbox.question(self,'', f"Do you really want to delete {len(rows)} event(s)? This can not be reverted", msgbox.Yes | msgbox.No)
+
+            if answer == msgbox.Yes:
+                self.detection.event_locations = np.delete(self.detection.event_locations, rows, axis=0)
+                self.detection.event_peak_locations = np.delete(self.detection.event_peak_locations, rows, axis=0)
+                self.detection.event_peak_times = np.delete(self.detection.event_peak_times, rows, axis=0)
+                self.detection.event_peak_values = np.delete(self.detection.event_peak_values, rows, axis=0)
+                self.detection.event_start = np.delete(self.detection.event_start, rows, axis=0)
+                self.detection.decaytimes = np.delete(self.detection.decaytimes, rows, axis=0)
+                self.detection.risetimes = np.delete(self.detection.risetimes, rows, axis=0)
+                self.detection.charges = np.delete(self.detection.charges, rows, axis=0)
+                self.detection.event_bsls = np.delete(self.detection.event_bsls, rows, axis=0)
+                self.detection.bsl_starts = np.delete(self.detection.bsl_starts, rows, axis=0)
+                self.detection.bsl_ends = np.delete(self.detection.bsl_ends, rows, axis=0)
+                self.detection.min_positions_rise = np.delete(self.detection.min_positions_rise, rows, axis=0)
+                self.detection.max_positions_rise = np.delete(self.detection.max_positions_rise, rows, axis=0)
+                self.detection.half_decay = np.delete(self.detection.half_decay, rows, axis=0)
+                self.detection.events = np.delete(self.detection.events, rows, axis=0)
+                self.detection.event_scores = np.delete(self.detection.event_scores, rows, axis=0)
+
+                self.exclude_events = np.delete(self.exclude_events, rows, axis=0)
+                self.exclude_for_avg = np.delete(self.exclude_for_avg, rows, axis=0)
+
+                if len(self.detection.event_locations) > 0:
+                    self.detection._eval_events()
+                    
+                    self.update_main_plot()
+
+                    self.tabulate_results(tableWidget=self.tableWidget)
+                    self.plot_events()
+                    self.num_events = self.detection.event_locations.shape[0]
+
+                else:
+                    self.num_events = 0
+                    msgbox = QMessageBox()
+                    msgbox.setIcon(QMessageBox.Warning)  # You can use Information, Warning, etc.
+                    msgbox.setWindowTitle('Message')         # Set the title of the window
+                    msgbox.setText('All detected events were deleted.')  # Set the message text
+                    msgbox.setStandardButtons(QMessageBox.Ok)  # Only show the 'OK' button
+                    
+                    # Show the message box and wait for the user to click 'OK'
+                    msgbox.exec_()
+
+
     def filter_data(self) -> None:
         """
         A function that filters data based on the selected filter options in the FilterPanel.
@@ -459,14 +518,11 @@ class minimlGuiMain(QMainWindow):
 
 
     def toggle_event_viewer(self) -> None:
-        if self.was_analyzed:
+        if self.was_analyzed and self.num_events > 0:
             self.ind = 0
             self.left_buffer = int(self.detection.window_size/2)
             self.right_buffer = int(self.detection.window_size*1.5)
-            self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
-            
-            # I think it's easiest if I just implement that klicking on any resize will automatically throw
-            # you out of the event viewer, and restore default view.
+            self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)            
             if self.event_viewer_on == False:
                 # Clear plot
                 self.tracePlot.clear()
@@ -505,6 +561,7 @@ class minimlGuiMain(QMainWindow):
         self.splitter2.setSizes(self.splitter2_archive)
         self.splitter3.setSizes(self.splitter3_archive)
         
+        self.delete_multiple_events(rows = np.where(self.exclude_events == 1)[0])
         self.update_main_plot()
         # Here I can apply the changes, i.e. make a list indices to delete and remove them from all params.
 
