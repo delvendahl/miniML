@@ -1,0 +1,28 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+format: jb-book
+root: intro
+parts:
+ - caption: USING MINIML
+   chapters:
+    - file: general/installation
+    - file: general/tutorial
+    - file: general/loading_data
+    - file: general/tutorial_resampling
+    - file: general/batch_analysis
+    - file: general/models
+ - caption: GUI
+   chapters:
+    - file: gui/gui_intro
+    - file: gui/gui_display
+    - file: gui/gui_load
+    - file: gui/gui_analyze
+    - file: gui/gui_save
+ - caption: MODEL TRAINING
+   chapters:
+     - file: training/model_training
+     - file: training/full_training
+     - file: training/TL_training
+     - file: training/tutorial_TL_model
+    

@@ -12,35 +12,37 @@ O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and 
 (2024) Deep learning-based synaptic event detection. _eLife_ ([doi:10.7554/eLife.98485.1](https://doi.org/10.7554/eLife.98485.1))  
 
 
-------------
-### Update 03.07.2024:
-
-
-Part of the downstream processing as well as parts of the plot functionality was changed. If you have been using miniML things should work as per usual, with the following exceptions:
-- Plot functionalities now are in a separate class and need to be generated slightly different. Please refer to the section "Inspect the results" in the tutorial.ipynb file for details.
-- The quantitative results for amplitude etc. may differ slightly from the previous version. Reason is the way we process the data as well as the filtering (see below). Previously, event location, event peak etc. were determined in resampled data (if win_size was not 600) and then mapped to the raw data. Now we work with the raw data in this step. Therefore, the exact values may differ.
-- The convolve_win parameter may need to be adjusted. Filtering was previously done in resampled data, so you may need to adjust the filter settings. You can visually check for good settings using the plot_gradient_search() method. See also section "Inspect the results" in the tutorial.ipynb file for details.
-- The save_to_csv() method has been updated to be consistent with the other file formats. It previously took a path as argument, now it takes a filename.
-------------
-
 ### 🧠 ABOUT
 
 miniML is a deep-learning-based tool to detect synaptic events in 1d time-series data. It uses a CNN-LSTM network architecture that was trained using a large dataset of synaptic events (miniature excitatory postsynaptic currents) from cerebellar mossy fiber to granule cell synapses. 
 
-In this repository, we provide pre-trained models and Python code to run model inference on recorded data. In addition, an application example (cerebellar granule cell recording) is included.
+In this repository, we provide documentation, pre-trained models, and Python code to run model inference on recorded data. In addition, an application example (cerebellar granule cell mEPSC recording) is included.
+
+
+### 📢 UPDATES
+
+#### 8 January 2024
+We have updated the documentation for miniML. The latest version of the documentation is available [here](https://delvendahl.github.io/miniML/intro.html).
+
+Please also see the updated preprint at [bioRxiv](https://www.biorxiv.org/content/10.1101/2023.11.02.565316v3).
 
 
 ### 💻 INSTALLATION
 
-To use miniML, clone the GitHub Repository and install the requirements. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies using pip, run the following command in your Python environment:
+To use miniML, clone the GitHub Repository and install the requirements. miniML has been tested with Python 3.9 and 3.10. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies using pip, run the following command in your Python environment:
 
 `pip install -r requirements.txt`
 
-miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
+>[!IMPORTANT]
+>The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
 
-**Update June 2024:** The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
+> [!NOTE]
+>miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
 
-**Update November 2024:** miniML can now be used with a graphical user interface (GUI). To use the GUI, install the additional dependencies from the requirements_gui.txt file.  
+
+To use miniML with a graphical user interface (GUI), you need to install the additional dependencies from the requirements_gui.txt file.  
+
+`pip install -r requirements_gui.txt`
 
 
 ### ⏱ RUNNING MINIML
@@ -54,31 +56,54 @@ miniML model inference can then be run using the **detect_events()** method. Thi
 
 Following event detection, the individual detected events are analyzed and descriptive statistics are calculated for the recording.
 
-miniML includes several plotting methods. They can be found in the miniML_plots class in miniML_plot_functions.py. A detection object has to be passed as data argument. 
+miniML includes several plotting methods. They can be found in the **miniML_plots** class in `miniML_plot_functions.py`. A detection object has to be passed as data argument. 
 
 Event data and statistics can be saved in different formats (.pickle, .h5, .csv).
 
-#### Analysis workflow via GUI
+> [!TIP]
+>miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspected and deleted, if desired. The GUI can also be used to save results to a PICKLE, CSV or HDF5 file.
 
-miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspecte and deleted, if desired. The GUI can also be used to save results to a CSV or HDF5 file.
 
 ### 💡 EXAMPLE
 
-The folder "example_data/" contains an example recording from a cerebellar mossy fiber to granule cell synapse together with a commented Jupyter Notebook ([tutorial](tutorial.ipynb)) illustrating the use of miniML.
+The folder "example_data/" contains an example recording from a cerebellar mossy fiber to granule cell synapse. To use miniML on this data, run the commented example Jupyter Notebook ([tutorial](docs/general/tutorial.ipynb)) illustrating the use of miniML.
 
 
-### 📢 UPDATE INFORMATION
+### 📚 DOCUMENTATION
 
-With the latest update, we include all the files required to generate and score the data to train a new model and use the model on your data. For the actual training, please refer to the following links to Kaggle:  
+Detailed documentation for miniML can be found [here](https://delvendahl.github.io/miniML/intro.html).
+
+
+### 📦 MODELS
+
+The documentation includes notebooks showing how to train miniML models. You can also use the following links to Kaggle to train mminiML models on the cloud:  
 
 [1 - Transfer learning](https://www.kaggle.com/code/philipponeill/miniml-transfer-learning)  
 [2 - Full training](https://www.kaggle.com/code/philipponeill/miniml-full-training)  
 [3 - Training dataset](https://www.kaggle.com/datasets/philipponeill/miniml-training-data)  
 
-We had to make one change that will impact scripts written for the previous miniML version. We split the *direction* parameter (used by the miniML **detect_events()** method) into two separate parameters: *event_direction* and *training_direction* (refer to [miniML documentation](miniML_documentation.pdf) for details). In practice, this means that you may have to rename the parameter *direction* to *event_direction* in existing scripts.
+The repository contains trained models for several event detection scenarios, as outlined in the associated paper. If you have trained a model that could be useful for other researchers, please consider opening a pull request or get in touch with us in order to add it to the repository.
 
-Please feel free to contact us in case of questions, either via email, or by opening an issue here on GitHub (chances are that other people have the same question).
+
+### 📝 CITATION
+
+If you use miniML in your work, please cite:
+```BibTeX
+@article{ONeill2024,
+  title = {A deep learning framework for automated and generalized synaptic event analysis},
+  url = {http://dx.doi.org/10.7554/eLife.98485.1},
+  DOI = {10.7554/elife.98485.1},
+  publisher = {eLife Sciences Publications,  Ltd},
+  author = {O’Neill,  Philipp S. and Baccino-Calace,  Martín and Rupprecht,  Peter and Friedrich,  Rainer W. and M\"{u}ller,  Martin and Delvendahl,  Igor},
+  year = {2024},
+  month = jun 
+}
+```
+
+### 🐛 ISSUES
+
+Please feel free to contact us in case of questions, either via email, or by opening an [Issue](https://github.com/delvendahl/miniML/issues) here on GitHub.
 
 
 ### ✉️ CONTACT
-philippsean.oneill@uzh.ch or igor.delvendahl@uzh.ch
+philipp.oneill@physiologie.uni-freiburg.de or igor.delvendahl@physiologie.uni-freiburg.de
