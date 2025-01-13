@@ -1,9 +1,0 @@
-Relevant settings:
-
-win_size = 200
-event_direction = 'negative'
-training_direction = 'negative'
-
-
-convolve_win = 30
-resample_to_600 = True
