@@ -92,6 +92,8 @@ class minimlGuiMain(QMainWindow):
         self._create_menubar()
         self.info_dialog = None
         self.settings = MinimlSettings()
+        self.event_viewer_on = False
+        self.was_analyzed = False
 
 
     def initUI(self):
@@ -182,7 +184,7 @@ class minimlGuiMain(QMainWindow):
         self.filterAction = QAction(QIcon('icons/filter_24px_blue.svg'), 'Filter', self)
         self.filterAction.setShortcut('Ctrl+F')
         self.tb.addAction(self.filterAction)
-        self.infoAction = QAction(QIcon('icons/troubleshoot_24px_blue.svg'), 'Info', self)
+        self.infoAction = QAction(QIcon('icons/info_24px_blue.svg'), 'Info', self)
         self.infoAction.setShortcut('Ctrl+I')
         self.tb.addAction(self.infoAction)
         self.cutAction = QAction(QIcon('icons/content_cut_24px_blue.svg'), 'Cut trace', self)
@@ -210,7 +212,7 @@ class minimlGuiMain(QMainWindow):
         self.settingsAction = QAction(QIcon('icons/settings_24px_blue.svg'), 'Settings', self)
         self.settingsAction.setShortcut('Ctrl+P')
         self.tb.addAction(self.settingsAction)
-        self.closeAction = QAction(QIcon('icons/cancel_24px_blue'), 'Close Window', self)
+        self.closeAction = QAction(QIcon('icons/cancel_24px_blue.svg'), 'Close Window', self)
         self.closeAction.setShortcut('Ctrl+W')
         # self.tb.addAction(self.closeAction)
         self.aboutAction = QAction(QIcon('icons/info_24px_blue.svg'), 'About', self)
@@ -233,7 +235,7 @@ class minimlGuiMain(QMainWindow):
         self.saveAction.triggered.connect(self.save_results)
         self.closeAction.triggered.connect(self.close_gui)
         self.aboutAction.triggered.connect(self.about_win)
-        self.event_paramAction.triggered.connect(self.EventViewerWindow)
+        self.event_paramAction.triggered.connect(self.toggle_event_viewer)
 
 
     def _create_table(self):
@@ -246,6 +248,18 @@ class minimlGuiMain(QMainWindow):
         tableWidget.viewport().installEventFilter(self)
         tableWidget.setSelectionBehavior(QTableView.SelectRows)
         return tableWidget
+
+
+    def _warning_box(self, message):
+        msgbox = QMessageBox()
+        msgbox.setIcon(QMessageBox.Warning)  # You can use Information, Warning, etc.
+        msgbox.setWindowTitle('Message')         # Set the title of the window
+        msgbox.setText(message)  # Set the message text
+        msgbox.setStandardButtons(QMessageBox.Ok)  # Only show the 'OK' button
+        # Show the message box and wait for the user to click 'OK'
+        msgbox.exec_()
+ 
+
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.MouseButtonPress:
@@ -331,14 +345,65 @@ class minimlGuiMain(QMainWindow):
             self.detection._eval_events()
             
             self.update_main_plot()
-            ev_positions = self.detection.event_peak_times
-            ev_peakvalues = self.detection.trace.data[self.detection.event_peak_locations]
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-            self.plotDetected = self.tracePlot.plot(ev_positions, ev_peakvalues, pen=pen, symbol='o', symbolSize=8, 
-                                                    symbolpen=self.settings.colors[0], symbolBrush=self.settings.colors[0])
 
             self.tabulate_results(tableWidget=self.tableWidget)
             self.plot_events()
+
+
+    def delete_multiple_events(self, rows:list=[]) -> None:
+        """
+        Deletes multiple events from the detection object after exclusion in the Event Viewer.
+
+        Args:
+            rows (list): list of the event indices to be deleted.
+
+        Returns:
+            None
+
+        This function prompts the user with a confirmation dialog to delete the events. 
+        After deleting the event, the function updates the main plot, plots the detected events, and tabulates the results.
+        """        
+        if len(rows) > 0:
+            msgbox = QMessageBox
+            answer = msgbox.question(self,'', f"Do you really want to delete {len(rows)} event(s)? This can not be reverted", msgbox.Yes | msgbox.No)
+
+            if answer == msgbox.Yes:
+                self.detection.event_locations = np.delete(self.detection.event_locations, rows, axis=0)
+                self.detection.event_peak_locations = np.delete(self.detection.event_peak_locations, rows, axis=0)
+                self.detection.event_peak_times = np.delete(self.detection.event_peak_times, rows, axis=0)
+                self.detection.event_peak_values = np.delete(self.detection.event_peak_values, rows, axis=0)
+                self.detection.event_start = np.delete(self.detection.event_start, rows, axis=0)
+                self.detection.decaytimes = np.delete(self.detection.decaytimes, rows, axis=0)
+                self.detection.risetimes = np.delete(self.detection.risetimes, rows, axis=0)
+                self.detection.charges = np.delete(self.detection.charges, rows, axis=0)
+                self.detection.event_bsls = np.delete(self.detection.event_bsls, rows, axis=0)
+                self.detection.bsl_starts = np.delete(self.detection.bsl_starts, rows, axis=0)
+                self.detection.bsl_ends = np.delete(self.detection.bsl_ends, rows, axis=0)
+                self.detection.min_positions_rise = np.delete(self.detection.min_positions_rise, rows, axis=0)
+                self.detection.max_positions_rise = np.delete(self.detection.max_positions_rise, rows, axis=0)
+                self.detection.half_decay = np.delete(self.detection.half_decay, rows, axis=0)
+                self.detection.events = np.delete(self.detection.events, rows, axis=0)
+                self.detection.event_scores = np.delete(self.detection.event_scores, rows, axis=0)
+
+                self.exclude_events = np.delete(self.exclude_events, rows, axis=0)
+                self.use_for_avg = np.delete(self.use_for_avg, rows, axis=0)
+
+        self.detection.singular_event_indices = np.where(self.use_for_avg == 1)[0]
+        if not len(self.detection.singular_event_indices):
+            self._warning_box(message='All events excluded for average. At least one has to remain, using all detected events instead!')
+
+        if len(self.detection.event_locations) > 0:
+            self.detection._eval_events()
+            
+            self.update_main_plot()
+
+            self.tabulate_results(tableWidget=self.tableWidget)
+            self.plot_events()
+            self.num_events = self.detection.event_locations.shape[0]
+
+        else:
+            self.num_events = 0
+            self._warning_box(message='All detected events were deleted.')
 
 
     def filter_data(self) -> None:
@@ -401,49 +466,282 @@ class minimlGuiMain(QMainWindow):
         self.tracePlot.setLabel('bottom', 'Time', 's')
         label1 = 'Vmon' if self.recording_mode == 'current-clamp' else 'Imon'
         self.tracePlot.setLabel('left', label1, self.trace.y_unit)
-    
+        if self.was_analyzed and self.detection.event_locations.shape[0] > 0:
+            ev_positions = self.detection.event_peak_times
+            ev_peakvalues = self.detection.trace.data[self.detection.event_peak_locations]
+            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            self.plotDetected = self.tracePlot.plot(ev_positions, ev_peakvalues, pen=pen, symbol='o', symbolSize=8, 
+                                                    symbolpen=self.settings.colors[0], symbolBrush=self.settings.colors[0])
+
 
     def toggle_table_win(self) -> None:
-        if 0 in self.splitter3.sizes():
-            self.splitter3.setSizes(self._store_size_c)
-        else:
-            self._store_size_c = self.splitter3.sizes()
-            self.splitter3.setSizes([np.sum(self.splitter3.sizes()), 0])
+        if self.event_viewer_on == False:
+            if 0 in self.splitter3.sizes():
+                self.splitter3.setSizes(self._store_size_c)
+            else:
+                self._store_size_c = self.splitter3.sizes()
+                self.splitter3.setSizes([np.sum(self.splitter3.sizes()), 0])
+        elif self.event_viewer_on == True:
+            self.collapse_event_viewer()
 
 
     def toggle_plot_win(self) -> None:
-        sizes = self.splitter2.sizes()
-        if sizes[2] == 0: # panel is hidden
-            sizes[0] = 0 if sizes[0] == 0 else self._store_size[0]
-            sizes[1] = (np.sum(sizes[0:3]) - self._store_size_b) if sizes[0] == 0 else (self._store_size[1] - self._store_size_b)
-            sizes[2] = self._store_size_b
-            self._store_size = sizes
-        else: # panel is shown
-            self._store_size = sizes
-            self._store_size_b = sizes[2]
-            sizes[0] = 0 if sizes[0] == 0 else sizes[0]
-            sizes[1] = np.sum(sizes[0:3]) if sizes[0] == 0 else np.sum(sizes[1:3])
-            sizes[2] = 0
-        self.splitter2.setSizes(sizes)
+        if self.event_viewer_on == False:
+            sizes = self.splitter2.sizes()
+            if sizes[2] == 0: # panel is hidden
+                sizes[0] = 0 if sizes[0] == 0 else self._store_size[0]
+                sizes[1] = (np.sum(sizes[0:3]) - self._store_size_b) if sizes[0] == 0 else (self._store_size[1] - self._store_size_b)
+                sizes[2] = self._store_size_b
+                self._store_size = sizes
+            else: # panel is shown
+                self._store_size = sizes
+                self._store_size_b = sizes[2]
+                sizes[0] = 0 if sizes[0] == 0 else sizes[0]
+                sizes[1] = np.sum(sizes[0:3]) if sizes[0] == 0 else np.sum(sizes[1:3])
+                sizes[2] = 0
+            self.splitter2.setSizes(sizes)
+        
+        elif self.event_viewer_on == True:
+            self.collapse_event_viewer()
 
 
     def toggle_prediction_win(self) -> None:
-        sizes = self.splitter2.sizes()
-        if sizes[0] == 0: # panel is hidden
-            sizes[0] = self._store_size_a
-            sizes[1] = (np.sum(sizes[0:3]) - self._store_size_a) if sizes[2] == 0 else (self._store_size[1] - self._store_size_a)
-            sizes[2] = 0 if sizes[2] == 0 else self._store_size[2]
-            self._store_size = sizes
-        else: # panel is shown
-            self._store_size = sizes
-            self._store_size_a = sizes[0]
-            sizes[1] = np.sum(sizes[0:3]) if sizes[2] == 0 else np.sum(sizes[0:2])
-            sizes[2] = 0 if sizes[2] == 0 else sizes[2]
-            sizes[0] = 0
-        self.splitter2.setSizes(sizes)
+        if self.event_viewer_on == False:
+            sizes = self.splitter2.sizes()
+            if sizes[0] == 0: # panel is hidden
+                sizes[0] = self._store_size_a
+                sizes[1] = (np.sum(sizes[0:3]) - self._store_size_a) if sizes[2] == 0 else (self._store_size[1] - self._store_size_a)
+                sizes[2] = 0 if sizes[2] == 0 else self._store_size[2]
+                self._store_size = sizes
+            else: # panel is shown
+                self._store_size = sizes
+                self._store_size_a = sizes[0]
+                sizes[1] = np.sum(sizes[0:3]) if sizes[2] == 0 else np.sum(sizes[0:2])
+                sizes[2] = 0 if sizes[2] == 0 else sizes[2]
+                sizes[0] = 0
+            self.splitter2.setSizes(sizes)
+        
+        elif self.event_viewer_on == True:
+            self.collapse_event_viewer()
 
-    def EventViewer(self) -> None:
-        pass
+
+    def toggle_event_viewer(self) -> None:
+        if self.was_analyzed and self.num_events > 0:
+            self.ind = 0
+            self.left_buffer = int(self.detection.window_size/2)
+            self.right_buffer = int(self.detection.window_size*1.5)
+            self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)            
+            if self.event_viewer_on == False:
+                # Clear plot
+                self.tracePlot.clear()
+
+                # Store sizes of previous windows.
+                self.splitter1_archive = self.splitter1.sizes()
+                self.splitter2_archive = self.splitter2.sizes()
+                self.splitter3_archive = self.splitter3.sizes()
+                
+                # resize the trace window and hide others.
+                self.splitter2.setSizes([0, np.sum(self.splitter2.sizes()), 0])
+                
+                # Replot data
+                self.update_event_viewer()
+                self.event_viewer_on = True
+
+            elif self.event_viewer_on == True:
+                # add here: update the events to be deleted based on the selection.
+                self.collapse_event_viewer()
+        else:
+            self._warning_box(message='Please load and analyze data first!')
+
+
+    def collapse_event_viewer(self) -> None:
+        self.tracePlot.clear()
+
+        self.splitter1.setSizes(self.splitter1_archive)
+        self.splitter2.setSizes(self.splitter2_archive)
+        self.splitter3.setSizes(self.splitter3_archive)
+        
+        self.delete_multiple_events(rows = np.where(self.exclude_events == 1)[0])
+        self.update_main_plot()
+        # Here I can apply the changes, i.e. make a list indices to delete and remove them from all params.
+
+        if self.detection.event_locations.shape[0] > 0:
+            self.tabulate_results(tableWidget=self.tableWidget)
+            self.plot_events()
+
+        self.event_viewer_on = False
+
+
+    def update_event_viewer(self):
+        self.tracePlot.clear()
+
+        event_loc = self.detection.event_locations[self.ind]
+        peak_loc = self.detection.event_peak_locations[self.ind]
+        peak_loc_left = peak_loc - self.detection.peak_spacer
+        peak_loc_right = peak_loc + self.detection.peak_spacer
+        peak_val = self.detection.event_peak_values[self.ind]
+
+        bsl = self.detection.event_bsls[self.ind]
+        bsl_start = self.detection.bsl_starts[self.ind]
+        bsl_end = self.detection.bsl_ends[self.ind]
+        min_rise = self.detection.min_positions_rise[self.ind]
+        max_rise = self.detection.max_positions_rise[self.ind]
+        zero_point = event_loc - self.left_buffer
+        
+        peaks_in_win = self.detection.event_peak_locations[
+            np.logical_and(self.detection.event_peak_locations>peak_loc,
+                           self.detection.event_peak_locations<event_loc+self.right_buffer)]
+        
+
+        rel_peak_loc =  (peak_loc - zero_point) * self.detection.trace.sampling * 1e3
+        rel_peak_loc_left =  (peak_loc_left - zero_point) * self.detection.trace.sampling * 1e3
+        rel_peak_loc_right =  (peak_loc_right - zero_point) * self.detection.trace.sampling * 1e3
+        
+        rel_bsl_start = (bsl_start - zero_point) * self.detection.trace.sampling * 1e3
+        rel_bsl_end = (bsl_end - zero_point) * self.detection.trace.sampling * 1e3
+        rel_min_rise = (min_rise - zero_point) * self.detection.trace.sampling * 1e3
+        rel_max_rise = (max_rise - zero_point) * self.detection.trace.sampling * 1e3
+        
+        if not np.isnan(self.detection.half_decay[self.ind]):
+            decay_loc = int(self.detection.half_decay[self.ind])
+            rel_decay_loc = (decay_loc - zero_point) * self.detection.trace.sampling * 1e3
+
+        if len(peaks_in_win):
+            rel_peaks_in_win = (peaks_in_win - zero_point) * self.detection.trace.sampling * 1e3
+
+        data = self.detection.trace.data[zero_point:event_loc+self.right_buffer]
+        filtered_data = self.filtered_data[zero_point:event_loc+self.right_buffer]
+        
+        time_ax = np.arange(0, data.shape[0]) * self.detection.trace.sampling * 1e3
+
+        if self.exclude_events[self.ind]:
+            pen = pg.mkPen(color='r', width=1.5)
+            data_plot = self.tracePlot.plot(time_ax, data, pen=pen)
+            data_plot.setAlpha(0.5, False)
+
+            filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pen)
+            filtered_data_plot.setAlpha(1, False)
+        else:
+            pen = pg.mkPen(color='k', width=1.5)
+            data_plot = self.tracePlot.plot(time_ax, data, pen=pen)
+            data_plot.setAlpha(0.5, False)
+
+            filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pen)
+            filtered_data_plot.setAlpha(1, False)
+            
+            bsl_times = [rel_bsl_start, rel_bsl_end]
+            bsl_vals = [bsl, bsl]
+
+            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            self.tracePlot.plot(bsl_times,
+                    bsl_vals,
+                    pen=pen, symbol='o', symbolSize=8, nsymbolpen='r', symbolBrush='r')
+
+            pen = pg.mkPen(color='r', width=3, style=pg.QtCore.Qt.DotLine)
+            self.tracePlot.plot(bsl_times, bsl_vals, pen=pen)
+
+            self.tracePlot.plot([rel_bsl_end, rel_peak_loc],
+                    bsl_vals,
+                    pen=pg.mkPen(color='k', width=2, style=pg.QtCore.Qt.DotLine))
+            
+
+            col = 'magenta'
+            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            
+            self.tracePlot.plot(
+                [rel_min_rise, rel_max_rise],
+                [self.filtered_data[min_rise], self.filtered_data[max_rise]],
+                pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
+
+
+            pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
+            
+            self.tracePlot.plot(
+                [rel_min_rise, rel_max_rise],
+                [self.filtered_data[min_rise], self.filtered_data[min_rise]],
+                pen=pen)
+
+            self.tracePlot.plot(
+                [rel_max_rise, rel_max_rise],
+                [self.filtered_data[max_rise], self.filtered_data[min_rise]],
+                pen=pen)
+
+
+            col = 'orange'
+            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            
+            self.tracePlot.plot(
+                [rel_peak_loc_left, rel_peak_loc_right, rel_peak_loc],
+                [peak_val]*3,
+                pen=pen, symbol=['x', 'x', 'o'], symbolSize=[12, 12, 8], symbolpen=col, symbolBrush=col)
+
+            if len(peaks_in_win):
+                self.tracePlot.plot(
+                    rel_peaks_in_win,
+                    self.filtered_data[peaks_in_win],
+                    pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
+
+
+            pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
+            
+            self.tracePlot.plot(
+                [rel_peak_loc, rel_peak_loc],
+                [peak_val, peak_val - self.detection.event_stats.amplitudes[self.ind]],
+                pen=pen)
+
+            
+            if not np.isnan(self.detection.half_decay[self.ind]):
+                col = 'green'
+
+                pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+                self.tracePlot.plot([rel_decay_loc],
+                        [self.filtered_data[decay_loc]],
+                        pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
+                
+                # pen = pg.mkPen(color=self.settings.colors[0], width=3, style=pg.QtCore.Qt.DashLine)
+                pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
+                self.tracePlot.plot([rel_peak_loc, rel_decay_loc],
+                        [self.filtered_data[decay_loc], self.filtered_data[decay_loc]],
+                        pen=pen)
+
+        pen = pg.mkPen(color='k', width=1)
+
+        if self.use_for_avg[self.ind] == 1:
+            self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: used for average', color='green', border=pen)
+            self.tracePlot.addItem(self.text)
+            self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
+        
+        elif self.use_for_avg[self.ind] == 0:
+            self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: excluded from average', color='red', border=pen)
+            self.tracePlot.addItem(self.text)
+            self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
+
+
+        self.tracePlot.setLabel('bottom', 'Time', 's')
+        self.tracePlot.setLabel('left', 'Amplitude', 'pA')
+
+
+    def keyPressEvent(self, event):
+        # print(event.key())
+        if self.event_viewer_on:
+            if event.key() == 16777236: # Forward key. See print statement above to get keybindings.
+                self.ind += 1
+            if event.key() == 16777234:
+                self.ind -= 1
+            if event.key() == 77: # 'm'
+                self.exclude_events[self.ind] = (self.exclude_events[self.ind]+1)%2
+                self.use_for_avg[self.ind] = (self.exclude_events[self.ind]+1)%2     
+                
+            elif event.key() == 78: # 'n' 
+                self.use_for_avg[self.ind] = (self.use_for_avg[self.ind]+1)%2 
+
+            # Take care of boundary indices
+            if self.ind < 0:
+                self.ind += self.num_events
+            elif self.ind >= self.num_events:
+                self.ind = self.ind - self.num_events
+
+            self.update_event_viewer()
 
 
     def reload_data(self) -> None:
@@ -571,8 +869,6 @@ class minimlGuiMain(QMainWindow):
         summary_win = SummaryPanel(self)
         summary_win.exec_()
 
-    def EventViewerWindow(self) -> None:
-        EventViewerWin = EventViewer(self)
 
     def settings_window(self) -> None:
         settings_win = SettingsPanel(self)
@@ -651,6 +947,13 @@ class minimlGuiMain(QMainWindow):
 
             self.tabulate_results(tableWidget=self.tableWidget)
             self.plot_events()
+
+            # Set variables needed for event viewer to work.
+            self.num_events = self.detection.event_locations.shape[0]
+            self.exclude_events = np.zeros(self.num_events)
+            self.use_for_avg = np.zeros(self.num_events)
+            self.use_for_avg[self.detection.singular_event_indices] = 1
+
         else:
             print('no events detected.')
             
@@ -674,6 +977,9 @@ class minimlGuiMain(QMainWindow):
 
 
     def plot_events(self):
+        '''
+        Plot events, histogram and average event.
+        '''
         self.eventPlot.clear()
         self.eventPlot.setTitle('Detected events')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
@@ -691,7 +997,7 @@ class minimlGuiMain(QMainWindow):
         self.histogramPlot.setLabel('bottom', 'Amplitude', 'pA')
         self.histogramPlot.setLabel('left', 'Count', '')
 
-        ev_average = np.mean(self.detection.events, axis=0)
+        ev_average = np.mean(self.detection.events[self.detection.singular_event_indices], axis=0)
         self.averagePlot.clear()
         self.averagePlot.setTitle('Average event waveform')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
@@ -819,7 +1125,6 @@ class LoadDatPanel(QDialog):
         self.series.addItems(bundle_series)
 
 
-
 class FileInfoPanel(QDialog):
     def __init__(self, parent=None):
         super(FileInfoPanel, self).__init__(parent)
@@ -878,7 +1183,6 @@ class AboutPanel(QDialog):
         self.layout.addRow(self.paper)
 
         finalize_dialog_window(self, title='About miniML', cancel=False)
-
 
 
 class SummaryPanel(QDialog):
@@ -1032,202 +1336,6 @@ class FilterPanel(QDialog):
         self.layout.addRow('Hann window size', self.hann_window)
 
         finalize_dialog_window(self, title='Filter settings')
-
-
-class EventViewer(QMainWindow):
-    def __init__(self, parent=None):
-        super(EventViewer, self).__init__(parent)
-        self.detection = parent.detection
-        self.ind = 0
-        self.left_buffer = int(self.detection.window_size/2)
-        self.right_buffer = int(self.detection.window_size*1.5)
-        self.num_events = self.detection.event_locations.shape[0]
-        print(self.num_events)
-        self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
-        
-        self.exclude_events = np.zeros(self.num_events)
-        # calling method
-        self.initEventViewerUI(parent=parent)
- 
-        # showing all the widgets
-        self.show()
-
-    # method for components
-    def initEventViewerUI(self, parent):
-        # create plot window object
-        self.plt = pg.PlotWidget()
-
-        self.layout = QSplitter(Qt.Horizontal)
-        self.layout.setHandleWidth(12)
-        self.layout.addWidget(self.plt)
-
-        self.tableWidget = parent._create_table()
-        self.layout.addWidget(self.tableWidget)
-        self.layout.setSizes([750, 500])
-        parent.tabulate_results(tableWidget=self.tableWidget)
-        # setting this widget as central widget of the main window
-        self.setCentralWidget(self.layout)
-        QApplication.setStyle(QStyleFactory.create('Cleanlooks'))
-        
-        self.setGeometry(100, 100, 1150, 750)
-        self.setWindowTitle('Event Viewer')
-
-        self.update_plot()
-
-    def update_plot(self):
-        self.plt.clear()
-
-        event_loc = self.detection.event_locations[self.ind]
-        peak_loc = self.detection.event_peak_locations[self.ind]
-        peak_loc_left = peak_loc - self.detection.peak_spacer
-        peak_loc_right = peak_loc + self.detection.peak_spacer
-        peak_val = self.detection.event_peak_values[self.ind]
-
-        bsl = self.detection.event_bsls[self.ind]
-        bsl_start = self.detection.bsl_starts[self.ind]
-        bsl_end = self.detection.bsl_ends[self.ind]
-        min_rise = self.detection.min_positions_rise[self.ind]
-        max_rise = self.detection.max_positions_rise[self.ind]
-        zero_point = event_loc - self.left_buffer
-        
-        peaks_in_win = self.detection.event_peak_locations[
-            np.logical_and(self.detection.event_peak_locations>peak_loc,
-                           self.detection.event_peak_locations<event_loc+self.right_buffer)]
-        
-
-        rel_peak_loc =  (peak_loc - zero_point) * self.detection.trace.sampling * 1e3
-        rel_peak_loc_left =  (peak_loc_left - zero_point) * self.detection.trace.sampling * 1e3
-        rel_peak_loc_right =  (peak_loc_right - zero_point) * self.detection.trace.sampling * 1e3
-        
-        rel_bsl_start = (bsl_start - zero_point) * self.detection.trace.sampling * 1e3
-        rel_bsl_end = (bsl_end - zero_point) * self.detection.trace.sampling * 1e3
-        rel_min_rise = (min_rise - zero_point) * self.detection.trace.sampling * 1e3
-        rel_max_rise = (max_rise - zero_point) * self.detection.trace.sampling * 1e3
-        
-        if not np.isnan(self.detection.half_decay[self.ind]):
-            decay_loc = int(self.detection.half_decay[self.ind])
-            rel_decay_loc = (decay_loc - zero_point) * self.detection.trace.sampling * 1e3
-
-        if len(peaks_in_win):
-            rel_peaks_in_win = (peaks_in_win - zero_point) * self.detection.trace.sampling * 1e3
-
-        data = self.detection.trace.data[zero_point:event_loc+self.right_buffer]
-        filtered_data = self.filtered_data[zero_point:event_loc+self.right_buffer]
-        
-        time_ax = np.arange(0, data.shape[0]) * self.detection.trace.sampling * 1e3
-
-        if self.exclude_events[self.ind]:
-            pen = pg.mkPen(color='r', width=1.5)
-            data_plot = self.plt.plot(time_ax, data, pen=pen)
-            data_plot.setAlpha(0.5, False)
-
-            filtered_data_plot = self.plt.plot(time_ax, filtered_data, pen=pen)
-            filtered_data_plot.setAlpha(1, False)
-        else:
-            pen = pg.mkPen(color='k', width=1.5)
-            data_plot = self.plt.plot(time_ax, data, pen=pen)
-            data_plot.setAlpha(0.5, False)
-
-            filtered_data_plot = self.plt.plot(time_ax, filtered_data, pen=pen)
-            filtered_data_plot.setAlpha(1, False)
-            
-            bsl_times = [rel_bsl_start, rel_bsl_end]
-            bsl_vals = [bsl, bsl]
-
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-            self.plt.plot(bsl_times,
-                    bsl_vals,
-                    pen=pen, symbol='o', symbolSize=8, nsymbolpen='r', symbolBrush='r')
-
-            pen = pg.mkPen(color='r', width=3, style=pg.QtCore.Qt.DotLine)
-            self.plt.plot(bsl_times, bsl_vals, pen=pen)
-
-            self.plt.plot([rel_bsl_end, rel_peak_loc],
-                    bsl_vals,
-                    pen=pg.mkPen(color='k', width=2, style=pg.QtCore.Qt.DotLine))
-            
-
-            col = 'magenta'
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-            
-            self.plt.plot(
-                [rel_min_rise, rel_max_rise],
-                [self.filtered_data[min_rise], self.filtered_data[max_rise]],
-                pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
-
-
-            pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-            
-            self.plt.plot(
-                [rel_min_rise, rel_max_rise],
-                [self.filtered_data[min_rise], self.filtered_data[min_rise]],
-                pen=pen)
-
-            self.plt.plot(
-                [rel_max_rise, rel_max_rise],
-                [self.filtered_data[max_rise], self.filtered_data[min_rise]],
-                pen=pen)
-
-
-            col = 'orange'
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-            
-            self.plt.plot(
-                [rel_peak_loc_left, rel_peak_loc_right, rel_peak_loc],
-                [peak_val]*3,
-                pen=pen, symbol=['x', 'x', 'o'], symbolSize=[12, 12, 8], symbolpen=col, symbolBrush=col)
-
-            if len(peaks_in_win):
-                self.plt.plot(
-                    rel_peaks_in_win,
-                    self.filtered_data[peaks_in_win],
-                    pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
-
-
-            pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-            
-            self.plt.plot(
-                [rel_peak_loc, rel_peak_loc],
-                [peak_val, peak_val - self.detection.event_stats.amplitudes[self.ind]],
-                pen=pen)
-
-            
-            if not np.isnan(self.detection.half_decay[self.ind]):
-                col = 'green'
-
-                pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-                self.plt.plot([rel_decay_loc],
-                        [self.filtered_data[decay_loc]],
-                        pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
-                
-                # pen = pg.mkPen(color=self.settings.colors[0], width=3, style=pg.QtCore.Qt.DashLine)
-                pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-                self.plt.plot([rel_peak_loc, rel_decay_loc],
-                        [self.filtered_data[decay_loc], self.filtered_data[decay_loc]],
-                        pen=pen)
-        
-        self.plt.setLabel('bottom', 'Time', 's')
-        self.plt.setLabel('left', 'Amplitude', 'pA')
-
-
-    def keyPressEvent(self, event):
-        # print(event.key())
-        if event.key() == 16777236: # Forward key. See print statement above to get keybindings.
-            self.ind += 1
-        if event.key() == 16777234:
-            self.ind -= 1
-        if event.key() == 77: # 'm'
-            self.exclude_events[self.ind] = (self.exclude_events[self.ind]+1)%2
-
-        # Take care of boundary indices
-        if self.ind < 0:
-            self.ind += self.num_events
-        elif self.ind >= self.num_events:
-            self.ind = self.ind - self.num_events
-
-        self.update_plot()
-
-
 
 
 if __name__ == '__main__':
