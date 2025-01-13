@@ -990,6 +990,10 @@ class EventDetection():
         if len(self.event_locations) - 1 in no_events_in_rise:
             self.singular_event_indices = np.append(self.singular_event_indices, [len(self.event_locations) - 1])
 
+        # if all events are overlapping, use all of them.
+        if not len(self.singular_event_indices):
+            self.singular_event_indices = np.array(list(range(self.event_locations.shape[0])))
+
     def _get_average_event_properties(self) -> dict:
         '''extracts event properties for the event average the same way the individual events are analysed'''
         ### Prepare data
@@ -1080,15 +1084,15 @@ class EventDetection():
             self.events = self.events - self.event_bsls[:, None]
             self.average_event_properties = self._get_average_event_properties()
             
-            # Fit the average event; take a subset of the window.
-            fit_start = int(self.window_size/6) # 1/2 of add points, i.e. half the stretch added to the events.
+            # # Fit the average event; take a subset of the window.
+            # fit_start = int(self.window_size/6) # 1/2 of add points, i.e. half the stretch added to the events.
 
-            self.fitted_avg_event = self._fit_event(
-                data=np.mean(self.events[self.singular_event_indices], axis=0)[fit_start:],
-                amplitude=self.average_event_properties['amplitude'] * self.event_direction,
-                t_rise=self.average_event_properties['risetime'],
-                t_decay=self.average_event_properties['halfdecay_time'],
-                x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)
+            # self.fitted_avg_event = self._fit_event(
+            #     data=np.mean(self.events[self.singular_event_indices], axis=0)[fit_start:],
+            #     amplitude=self.average_event_properties['amplitude'] * self.event_direction,
+            #     t_rise=self.average_event_properties['risetime'],
+            #     t_decay=self.average_event_properties['halfdecay_time'],
+            #     x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)
 
             if eval:
                 self._eval_events()
@@ -1161,6 +1165,9 @@ class EventDetection():
         '''
         if not self.events_present():
             return
+        if not len(self.singular_event_indices):
+            self.singular_event_indices = np.array(list(range(self.event_locations.shape[0])))
+
         self.avg_decay_fit = self._get_average_event_decay()
         self.event_stats = EventStats(amplitudes=self.event_peak_values - self.event_bsls,
                                       scores=self.event_scores,
@@ -1325,7 +1332,6 @@ class EventDetection():
                 'frequency':self.event_stats.frequency()},
             
             'average_event_properties':self.average_event_properties,
-            'average_event_fit':self.fitted_avg_event,
             'metadata':{
                 ### trace information:
                 'source_filename':self.trace.filename,

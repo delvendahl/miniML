@@ -250,6 +250,17 @@ class minimlGuiMain(QMainWindow):
         return tableWidget
 
 
+    def _warning_box(self, message):
+        msgbox = QMessageBox()
+        msgbox.setIcon(QMessageBox.Warning)  # You can use Information, Warning, etc.
+        msgbox.setWindowTitle('Message')         # Set the title of the window
+        msgbox.setText(message)  # Set the message text
+        msgbox.setStandardButtons(QMessageBox.Ok)  # Only show the 'OK' button
+        # Show the message box and wait for the user to click 'OK'
+        msgbox.exec_()
+ 
+
+
     def eventFilter(self, source, event):
         if event.type() == QEvent.MouseButtonPress:
             if event.button() == Qt.LeftButton:
@@ -351,7 +362,7 @@ class minimlGuiMain(QMainWindow):
 
         This function prompts the user with a confirmation dialog to delete the events. 
         After deleting the event, the function updates the main plot, plots the detected events, and tabulates the results.
-        """
+        """        
         if len(rows) > 0:
             msgbox = QMessageBox
             answer = msgbox.question(self,'', f"Do you really want to delete {len(rows)} event(s)? This can not be reverted", msgbox.Yes | msgbox.No)
@@ -375,27 +386,24 @@ class minimlGuiMain(QMainWindow):
                 self.detection.event_scores = np.delete(self.detection.event_scores, rows, axis=0)
 
                 self.exclude_events = np.delete(self.exclude_events, rows, axis=0)
-                self.exclude_for_avg = np.delete(self.exclude_for_avg, rows, axis=0)
+                self.use_for_avg = np.delete(self.use_for_avg, rows, axis=0)
 
-                if len(self.detection.event_locations) > 0:
-                    self.detection._eval_events()
-                    
-                    self.update_main_plot()
+        self.detection.singular_event_indices = np.where(self.use_for_avg == 1)[0]
+        if not len(self.detection.singular_event_indices):
+            self._warning_box(message='All events excluded for average. At least one has to remain, using all detected events instead!')
 
-                    self.tabulate_results(tableWidget=self.tableWidget)
-                    self.plot_events()
-                    self.num_events = self.detection.event_locations.shape[0]
+        if len(self.detection.event_locations) > 0:
+            self.detection._eval_events()
+            
+            self.update_main_plot()
 
-                else:
-                    self.num_events = 0
-                    msgbox = QMessageBox()
-                    msgbox.setIcon(QMessageBox.Warning)  # You can use Information, Warning, etc.
-                    msgbox.setWindowTitle('Message')         # Set the title of the window
-                    msgbox.setText('All detected events were deleted.')  # Set the message text
-                    msgbox.setStandardButtons(QMessageBox.Ok)  # Only show the 'OK' button
-                    
-                    # Show the message box and wait for the user to click 'OK'
-                    msgbox.exec_()
+            self.tabulate_results(tableWidget=self.tableWidget)
+            self.plot_events()
+            self.num_events = self.detection.event_locations.shape[0]
+
+        else:
+            self.num_events = 0
+            self._warning_box(message='All detected events were deleted.')
 
 
     def filter_data(self) -> None:
@@ -537,21 +545,13 @@ class minimlGuiMain(QMainWindow):
                 
                 # Replot data
                 self.update_event_viewer()
-
                 self.event_viewer_on = True
 
             elif self.event_viewer_on == True:
                 # add here: update the events to be deleted based on the selection.
                 self.collapse_event_viewer()
         else:
-            msgbox = QMessageBox()
-            msgbox.setIcon(QMessageBox.Warning)  # You can use Information, Warning, etc.
-            msgbox.setWindowTitle('Message')         # Set the title of the window
-            msgbox.setText('Please load and analyze data first!')  # Set the message text
-            msgbox.setStandardButtons(QMessageBox.Ok)  # Only show the 'OK' button
-            
-            # Show the message box and wait for the user to click 'OK'
-            msgbox.exec_()
+            self._warning_box(message='Please load and analyze data first!')
 
 
     def collapse_event_viewer(self) -> None:
@@ -706,13 +706,13 @@ class minimlGuiMain(QMainWindow):
 
         pen = pg.mkPen(color='k', width=1)
 
-        if self.exclude_for_avg[self.ind] == 0:
-            self.text = pg.TextItem(f'{self.ind}/{self.num_events}: used for average', color='green', border=pen)
+        if self.use_for_avg[self.ind] == 1:
+            self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: used for average', color='green', border=pen)
             self.tracePlot.addItem(self.text)
             self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
         
-        elif self.exclude_for_avg[self.ind] == 1:
-            self.text = pg.TextItem(f'{self.ind}/{self.num_events}: excluded from average', color='red', border=pen)
+        elif self.use_for_avg[self.ind] == 0:
+            self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: excluded from average', color='red', border=pen)
             self.tracePlot.addItem(self.text)
             self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
 
@@ -730,10 +730,10 @@ class minimlGuiMain(QMainWindow):
                 self.ind -= 1
             if event.key() == 77: # 'm'
                 self.exclude_events[self.ind] = (self.exclude_events[self.ind]+1)%2
-                self.exclude_for_avg[self.ind] = self.exclude_events[self.ind]         
+                self.use_for_avg[self.ind] = (self.exclude_events[self.ind]+1)%2     
                 
             elif event.key() == 78: # 'n' 
-                self.exclude_for_avg[self.ind] = (self.exclude_for_avg[self.ind]+1)%2 
+                self.use_for_avg[self.ind] = (self.use_for_avg[self.ind]+1)%2 
 
             # Take care of boundary indices
             if self.ind < 0:
@@ -951,8 +951,8 @@ class minimlGuiMain(QMainWindow):
             # Set variables needed for event viewer to work.
             self.num_events = self.detection.event_locations.shape[0]
             self.exclude_events = np.zeros(self.num_events)
-            self.exclude_for_avg = np.ones(self.num_events)
-            self.exclude_for_avg[self.detection.singular_event_indices] = 0
+            self.use_for_avg = np.zeros(self.num_events)
+            self.use_for_avg[self.detection.singular_event_indices] = 1
 
         else:
             print('no events detected.')
@@ -997,7 +997,7 @@ class minimlGuiMain(QMainWindow):
         self.histogramPlot.setLabel('bottom', 'Amplitude', 'pA')
         self.histogramPlot.setLabel('left', 'Count', '')
 
-        ev_average = np.mean(self.detection.events, axis=0)
+        ev_average = np.mean(self.detection.events[self.detection.singular_event_indices], axis=0)
         self.averagePlot.clear()
         self.averagePlot.setTitle('Average event waveform')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling

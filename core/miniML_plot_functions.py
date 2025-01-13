@@ -74,9 +74,7 @@ class miniML_plots():
         
         plt.plot(event_x[self.detection.avg_decay_fit_start:],
                  fitted_ev, c=self.orange_color, ls='--', label='fit')
-
-        plt.show()
-
+        
         plt.ylabel(f'{self.detection.trace.y_unit}')
         plt.xlabel('time (s)')
         plt.legend(loc='upper right')
