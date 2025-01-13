@@ -204,13 +204,9 @@ class minimlGuiMain(QMainWindow):
         self.tb.addAction(self.plotAction)
         self.tableAction = QAction(QIcon('icons/table_24px_blue.svg'), 'Table', self)
         self.tb.addAction(self.tableAction)
-        # self.event_paramAction = QAction(QIcon("icons/Friendly-Kitten-Icon.svg"), "Show Event Params", self)
-        # self.tb.addAction(self.event_paramAction)
-
         self.eventAction = QAction(QIcon('icons/event_mode_24px_blue.svg'), 'Event', self)
         self.eventAction.setShortcut('Ctrl+E')
         self.tb.addAction(self.eventAction)
-
         self.saveAction = QAction(QIcon('icons/save_24px_blue.svg'), 'Save results', self)
         self.saveAction.setShortcut('Ctrl+S')
         self.tb.addAction(self.saveAction)
