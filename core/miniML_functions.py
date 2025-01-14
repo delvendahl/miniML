@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-
+import matplotlib.pyplot as plt
 # - - - - - - - - - - - - - - - - - - - - - - -
 # functions for evaluation of individual events
 def get_event_peak(data: np.ndarray, event_num: int, add_points: int, window_size: int, diffs: np.ndarray) -> int:
@@ -111,49 +111,75 @@ def get_event_onset(data: np.ndarray, peak_position: int, baseline: float, basel
 
     return onset_position
 
-
-def get_event_risetime(data: np.ndarray, peak_position: int, bsl_start_position: int, baseline:float, min_percentage: float=10, max_percentage: float=90) -> tuple[float, int, int]:
+def get_event_risetime(data: np.ndarray, sampling_rate:int, baseline:float, min_percentage: float=10, max_percentage: float=90, amplitude:float=None) -> tuple[float, int, int]:
     """
-    Get the risetime of an event (default, 10-90%).
+    Get the risetime of an event (default, 10-90%). Data will automatically be resapmled to 100 kHz (by linear interpolation) sampling rate for better accuracy.
 
     Parameters:
-    - data: A list or array-like object containing the event data.
-    - peak_position (int): An integer representing the index of the peak position in the event data.
-    - onset_position (int): An integer representing the index of the onset position in the event data.
+    - data: A list or array-like object containing the rise data.
+    - sampling_rate (int): Sampling rate in Hz
+    - baseline (float): Baseline value.
     - min_percentage (float): A float representing the minimum percentage for the risetime range. Defaults to 10%.
     - max_percentage (float): A float representing the maximum percentage for the risetime range. Defaults to 90%.
+    - amplitude (float): Amplitude of the event. If not given, it is set to difference between peak and baseline.
 
     Returns:
     - risetime: A float representing the risetime of the event.
-    - min_position_rise: An integer representing the index of the minimum position in the risetime range.
-    - max_position_rise: An integer representing the index of the maximum position in the risetime range.
+    - min_position_rise: A float representing the time point of the minimum position in the risetime range.
+    - max_value_rise: A float representing the value of the resampled data at min_position_rise
+    - max_position_rise: An float representing the time point of the maximum position in the risetime range.
+    - max_value_rise: A float representing the value of the resampled data at max_position_rise
     """
 
     if not (0 <= min_percentage < max_percentage) and (min_percentage < max_percentage <= 100):
         raise ValueError('Invalid risetime parameters.')
 
-    rise_data = data[bsl_start_position:peak_position]
-    amplitude = data[peak_position] - baseline
+    amplitude = data[-1] - baseline if not amplitude else amplitude
+
+    target_sampling_rate = 100_000 # 100 kHz
+    target_sampling = 1/target_sampling_rate
+
+    current_sampling_rate = sampling_rate
+    current_sampling = 1/current_sampling_rate
+
+    time_ax_original = np.arange(0, data.shape[0])*current_sampling
+    resampled_time_ax = np.arange(0, time_ax_original[-1] + target_sampling, target_sampling)
+
+    rise_data = np.interp(resampled_time_ax, time_ax_original, data, left=None, right=None, period=None)
+
     min_level = baseline + (amplitude * min_percentage / 100)
     max_level = baseline + (amplitude * max_percentage / 100)
     rise_min_threshold = rise_data[::-1] < min_level
     rise_max_threshold = rise_data[::-1] < max_level
-    try:
-        rise_min_level_crossing = np.argmax(rise_min_threshold)
-        rise_max_level_crossing = np.argmax(rise_max_threshold)
-        min_position_rise = peak_position - rise_min_level_crossing
-        max_position_rise = peak_position - rise_max_level_crossing
-    except ValueError:
-        min_position_rise = bsl_start_position
-        max_position_rise = peak_position
-
-    if max_position_rise <= min_position_rise or min_position_rise==bsl_start_position or max_position_rise==peak_position:
-        min_position_rise = bsl_start_position
-        max_position_rise = peak_position
+    # This should always be possible... If this breaks, take check in again.
+    # try:
+        # rise_min_level_crossing = np.argmax(rise_min_threshold)
+        # rise_max_level_crossing = np.argmax(rise_max_threshold)
+        # min_position_rise = rise_data.shape[0] - rise_min_level_crossing
+        # max_position_rise = rise_data.shape[0] - rise_max_level_crossing
+    # except ValueError:
+    #     min_position_rise = 0 # bsl_start_position
+    #     max_position_rise = rise_data.shape[0] - 1 # peak_position
+    rise_min_level_crossing = np.argmax(rise_min_threshold)
+    rise_max_level_crossing = np.argmax(rise_max_threshold)
+    min_position_rise = (rise_data.shape[0]) - rise_min_level_crossing
+    max_position_rise = (rise_data.shape[0]) - rise_max_level_crossing
+    if max_position_rise <= min_position_rise or min_position_rise==0 or max_position_rise >= rise_data.shape[0] - 1:
+        min_position_rise = 0
+        max_position_rise = rise_data.shape[0] - 1
         risetime = (max_position_rise - min_position_rise) * 0.8
     else:
         risetime = max_position_rise - min_position_rise
-    return risetime, min_position_rise, max_position_rise
+
+    risetime = risetime * (1/target_sampling_rate)
+    
+    min_value_rise = rise_data[min_position_rise]
+    min_position_rise = min_position_rise * (1/target_sampling_rate)
+    
+    max_value_rise = rise_data[max_position_rise]
+    max_position_rise = max_position_rise * (1/target_sampling_rate)
+
+    return risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise
 
 
 def get_event_halfdecay_time(data: np.ndarray, peak_position: int, baseline: float) -> tuple[int, int]:

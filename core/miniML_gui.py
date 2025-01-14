@@ -382,6 +382,8 @@ class minimlGuiMain(QMainWindow):
                 self.detection.bsl_ends = np.delete(self.detection.bsl_ends, rows, axis=0)
                 self.detection.min_positions_rise = np.delete(self.detection.min_positions_rise, rows, axis=0)
                 self.detection.max_positions_rise = np.delete(self.detection.max_positions_rise, rows, axis=0)
+                self.detection.min_values_rise = np.delete(self.detection.min_values_rise, rows, axis=0)
+                self.detection.max_values_rise = np.delete(self.detection.max_values_rise, rows, axis=0)                
                 self.detection.half_decay = np.delete(self.detection.half_decay, rows, axis=0)
                 self.detection.events = np.delete(self.detection.events, rows, axis=0)
                 self.detection.event_scores = np.delete(self.detection.event_scores, rows, axis=0)
@@ -586,7 +588,11 @@ class minimlGuiMain(QMainWindow):
         bsl_start = self.detection.bsl_starts[self.ind]
         bsl_end = self.detection.bsl_ends[self.ind]
         min_rise = self.detection.min_positions_rise[self.ind]
+        min_value_rise = self.detection.min_values_rise[self.ind]
         max_rise = self.detection.max_positions_rise[self.ind]
+        max_value_rise = self.detection.max_values_rise[self.ind]
+
+        
         zero_point = event_loc - self.left_buffer
         
         peaks_in_win = self.detection.event_peak_locations[
@@ -600,8 +606,8 @@ class minimlGuiMain(QMainWindow):
         
         rel_bsl_start = (bsl_start - zero_point) * self.detection.trace.sampling * 1e3
         rel_bsl_end = (bsl_end - zero_point) * self.detection.trace.sampling * 1e3
-        rel_min_rise = (min_rise - zero_point) * self.detection.trace.sampling * 1e3
-        rel_max_rise = (max_rise - zero_point) * self.detection.trace.sampling * 1e3
+        rel_min_rise = (min_rise - (zero_point * self.detection.trace.sampling)) * 1e3
+        rel_max_rise = (max_rise - (zero_point * self.detection.trace.sampling)) * 1e3
         
         if not np.isnan(self.detection.half_decay[self.ind]):
             decay_loc = int(self.detection.half_decay[self.ind])
@@ -651,7 +657,7 @@ class minimlGuiMain(QMainWindow):
             
             self.tracePlot.plot(
                 [rel_min_rise, rel_max_rise],
-                [self.filtered_data[min_rise], self.filtered_data[max_rise]],
+                [min_value_rise, max_value_rise],
                 pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
 
 
@@ -659,12 +665,12 @@ class minimlGuiMain(QMainWindow):
             
             self.tracePlot.plot(
                 [rel_min_rise, rel_max_rise],
-                [self.filtered_data[min_rise], self.filtered_data[min_rise]],
+                [min_value_rise, min_value_rise],
                 pen=pen)
 
             self.tracePlot.plot(
                 [rel_max_rise, rel_max_rise],
-                [self.filtered_data[max_rise], self.filtered_data[min_rise]],
+                [min_value_rise, max_value_rise],
                 pen=pen)
 
 
@@ -718,7 +724,7 @@ class minimlGuiMain(QMainWindow):
             self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
 
 
-        self.tracePlot.setLabel('bottom', 'Time', 's')
+        self.tracePlot.setLabel('bottom', 'Time', 'ms')
         self.tracePlot.setLabel('left', 'Amplitude', 'pA')
 
 
