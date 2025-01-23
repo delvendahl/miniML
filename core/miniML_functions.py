@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-import matplotlib.pyplot as plt
+
 # - - - - - - - - - - - - - - - - - - - - - - -
 # functions for evaluation of individual events
 def get_event_peak(data: np.ndarray, event_num: int, add_points: int, window_size: int, diffs: np.ndarray) -> int:
