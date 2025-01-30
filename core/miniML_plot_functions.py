@@ -32,7 +32,7 @@ class miniML_plots():
 
         axs[0].plot(filtered_prediction, self.main_trace_color)
         axs[0].scatter(self.detection.start_pnts, self.detection.prediction[self.detection.start_pnts], c=self.red_color, zorder=2, label='start points')
-        axs[0].scatter(self.detection.end_pnts, self.detection.prediction[self.detection.end_pnts],  c=self.green_color, zorder=2, label='end points')
+        axs[0].scatter(self.detection.end_pnts, self.detection.prediction[self.detection.end_pnts], c=self.green_color, zorder=2, label='end points')
         axs[0].legend(loc='upper right')
 
         axs[1].plot(mini_trace, c='k', alpha=0.4)
@@ -40,7 +40,7 @@ class miniML_plots():
 
         axs[1].scatter(self.detection.event_locations, filtered_trace[self.detection.event_locations], c=self.orange_color, zorder=2, label='event locations')
         axs[1].scatter(self.detection.start_pnts, filtered_trace[self.detection.start_pnts], c=self.red_color, zorder=2)
-        axs[1].scatter(self.detection.end_pnts, filtered_trace[self.detection.end_pnts],  c=self.green_color, zorder=2)
+        axs[1].scatter(self.detection.end_pnts, filtered_trace[self.detection.end_pnts], c=self.green_color, zorder=2)
         axs[1].legend(loc='upper right')
 
         axs[2].plot(self.detection.gradient, c='k', alpha=0.4, label='gradient')
@@ -62,7 +62,7 @@ class miniML_plots():
         
         # average
         ev_average = np.mean(self.detection.events, axis=0)
-        plt.plot(np.arange(0, self.detection.events.shape[1]) * self.detection.trace.sampling, ev_average, c=self.red_color,linewidth='3', label='average event')
+        plt.plot(np.arange(0, self.detection.events.shape[1]) * self.detection.trace.sampling, ev_average, c=self.red_color, linewidth='3', label='average event')
         
         # fit
         fitted_ev = mEPSC_template(np.arange(0, self.detection.events.shape[1]-int(self.detection.window_size/6)) * self.detection.trace.sampling, 
@@ -80,14 +80,14 @@ class miniML_plots():
         '''Plot event overlay + avg for events that have no overlapping events'''
         win_time = self.detection.window_size * self.detection.trace.sampling
         no_events_in_decay = np.where(np.diff(self.detection.event_peak_times) > win_time * 1.5)[0]
-        no_events_in_rise = (np.where(np.diff(self.detection.event_peak_times) > win_time * 0.5)[0]) + 1
+        no_events_in_rise = np.where(np.diff(self.detection.event_peak_times) > win_time * 0.5)[0] + 1
         intersection = np.intersect1d(no_events_in_rise, no_events_in_decay, assume_unique=False, return_indices=False)
         events = self.detection.events[intersection]
         # events = self.detection.events[no_events_in_decay]
         # events = self.detection.events[no_events_in_rise]
         fig = plt.figure(f'singular_events')
         plt.plot(events.T, c=self.main_trace_color, alpha=0.3)
-        plt.plot(np.mean(events.T, axis=1), c=self.red_color,linewidth='3', label='average event')
+        plt.plot(np.mean(events.T, axis=1), c=self.red_color, linewidth='3', label='average event')
         plt.show()
 
 
@@ -112,7 +112,8 @@ class miniML_plots():
         plt.xlabel(xlab_str)
         plt.show()
 
-    def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, plot_filtered_trace: bool=False, save_fig: str='') -> None:
+    def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, 
+                        plot_filtered_trace: bool=False, save_fig: str='') -> None:
         ''' 
         Plot prediction trace, optionally together with data and detection result.
         
@@ -252,4 +253,3 @@ class miniML_plots():
             plt.close()
             return
         plt.show()
-
