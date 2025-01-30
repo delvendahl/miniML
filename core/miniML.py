@@ -1058,14 +1058,14 @@ class EventDetection():
             self.average_event_properties = self._get_average_event_properties()
             
             # Fit the average event; take a subset of the window.
-            fit_start = int(self.window_size/6) # 1/2 of add points, i.e. half the stretch added to the events.
-            fit_end = int(self.window_size/2)
+            fit_start = int(self.window_size / 6)
+            fit_end = int(self.window_size / 1.2)
 
             self.fitted_avg_event = self._fit_event(
                 data=np.mean(self.events, axis=0)[fit_start:fit_end],
                 amplitude=self.average_event_properties['amplitude'] * self.event_direction,
                 t_rise=self.average_event_properties['risetime'],
-                t_decay=self.average_event_properties['halfdecay_time'],
+                t_decay=self.average_event_properties['halfdecay_time'] * 1.5,
                 x_offset=(self.average_event_properties['onset_position'] - fit_start)*self.trace.sampling)
 
             if eval:
