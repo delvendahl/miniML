@@ -1104,17 +1104,6 @@ class EventDetection():
             self.events = self.events - self.event_bsls[:, None]
             self.average_event_properties = self._get_average_event_properties()
             
-            # Fit the average event; take a subset of the window.
-            fit_start = int(self.window_size / 6)
-            fit_end = int(self.window_size / 1.2)
-
-            self.fitted_avg_event = self._fit_event(
-                data=np.mean(self.events, axis=0)[fit_start:fit_end],
-                amplitude=self.average_event_properties['amplitude'] * self.event_direction,
-                t_rise=self.average_event_properties['risetime'],
-                t_decay=self.average_event_properties['halfdecay_time'] * 1.5,
-                x_offset=(self.average_event_properties['onset_position'] - fit_start) * self.trace.sampling)
-
             if eval:
                 self._eval_events()
 
@@ -1135,7 +1124,8 @@ class EventDetection():
             
             self.avg_decay_fit_start = fit_start
             fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
-                            p0=[np.amax(event_avg), events_for_avg.shape[1] / 50 * self.trace.sampling, 0])
+                               p0=[np.amax(event_avg), events_for_avg.shape[1] / 50 * self.trace.sampling, 0],
+                               bounds=([0, 0, -np.inf], [np.inf, 1e3, events_for_avg.shape[1] * self.trace.sampling]))
             return fit
         except RuntimeError:
             return np.nan
