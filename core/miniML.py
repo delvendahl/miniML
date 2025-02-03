@@ -631,13 +631,13 @@ class EventDetection():
 
     def hann_filter(self, data: np.ndarray, filter_size: int) -> np.ndarray:
         '''
-        Hann window filter. Start and end of the data are not filtered, to avoid artifacts
+        Hann window filter. Start and end of the data are not filtered to avoid artifacts
         from zero padding.
         '''
         win = signal.windows.hann(filter_size)    
         filtered_data = signal.convolve(data, win, mode='same') / sum(win)
         filtered_data[:filter_size] = data[:filter_size]
-        filtered_data[filtered_data.shape[0]-filter_size:filtered_data.shape[0]] = data[filtered_data.shape[0]-filter_size:filtered_data.shape[0]]
+        filtered_data[-filter_size:] = data[-filter_size:]
 
         return filtered_data
 
@@ -741,11 +741,11 @@ class EventDetection():
         
         gradient = np.gradient(trace_convolved, self.trace.sampling)
         gradient[:int(self.convolve_win*1.5)] = 0
-        gradient[gradient.shape[0]-int(self.convolve_win*1.5):gradient.shape[0]] = 0
+        gradient[-int(self.convolve_win*1.5):] = 0
 
         smth_gradient = self.hann_filter(data=gradient, filter_size=self.gradient_convolve_win)
         smth_gradient[:self.gradient_convolve_win] = 0
-        smth_gradient[smth_gradient.shape[0]-self.gradient_convolve_win:smth_gradient.shape[0]] = 0
+        smth_gradient[-self.gradient_convolve_win:] = 0
 
         return gradient, smth_gradient
 
@@ -821,11 +821,12 @@ class EventDetection():
         overlapping start-/ end-points of different detection peaks.
         '''
         unique_indices = np.unique(self.event_locations, return_index=True)[1]
-        self.event_locations, self.event_scores = self.event_locations[unique_indices], self.event_scores[unique_indices]
+        self.event_locations = self.event_locations[unique_indices]
+        self.event_scores = self.event_scores[unique_indices]
         
-        remove = list(np.argwhere(np.diff(self.event_locations)<self.window_size/100).flatten() + 1)
-        self.event_locations = np.delete(self.event_locations, remove)
-        self.event_scores = np.delete(self.event_scores, remove)
+        duplicate_indices = np.argwhere(np.diff(self.event_locations)<self.window_size/100).flatten() + 1
+        self.event_locations = np.delete(self.event_locations, duplicate_indices)
+        self.event_scores = np.delete(self.event_scores, duplicate_indices)
         self.event_locations = np.asarray(self.event_locations, dtype=np.int64)
 
 
