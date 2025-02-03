@@ -885,7 +885,7 @@ class EventDetection():
             self.event_start[ix] = onset_position
 
             risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise = get_event_risetime(
-                data=data[bsl_start:int(event_peak)], sampling_rate=self.trace.sampling_rate, baseline=baseline, amplitude=self.event_peak_values[ix] - baseline)
+                data=data[bsl_start:int(event_peak_pos)], sampling_rate=self.trace.sampling_rate, baseline=baseline, amplitude=self.event_peak_values[ix] - baseline)
             self.risetimes[ix] = risetime
             self.min_positions_rise[ix] = min_position_rise
             self.min_values_rise[ix] = min_value_rise
@@ -1104,7 +1104,6 @@ class EventDetection():
             self.events = self.events - self.event_bsls[:, None]
             self.average_event_properties = self._get_average_event_properties()
             
-            ###### CHECK IF NECESSARY AFTER MERGE
             # Fit the average event; take a subset of the window.
             fit_start = int(self.window_size / 6)
             fit_end = int(self.window_size / 1.2)
@@ -1115,7 +1114,6 @@ class EventDetection():
                 t_rise=self.average_event_properties['risetime'],
                 t_decay=self.average_event_properties['halfdecay_time'] * 1.5,
                 x_offset=(self.average_event_properties['onset_position'] - fit_start) * self.trace.sampling)
-            ########
 
             if eval:
                 self._eval_events()
