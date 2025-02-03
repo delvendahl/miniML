@@ -18,6 +18,8 @@ miniML is a classifier that predicts whether a given data stretch contains a syn
 
 If event kinetics and/or sampling rate are different in other data, 600 points may be too much or too little. For example, to capture a synaptic event in current clamp in the same cell, the window size needs to be expanded to 3000 points. Because the model expects an input size of 600 points, we resample the trace based on the provided window size for inference. For example, the window size is set to 3000 points, and a recording containing 6,000,000 points is provided. In this case, we can down-sample the whole trace by a factor of 5, to 1,200,000 points. Now the signal of interest fits into the 600-point window that the model expects (see figure below). This only concerns the prediction by the model. To analyze the detected events, e.g., to read out amplitudes, the original recording is used again. To give an idea what window sizes we chose, in the following there are a few examples from different preparations used in the manuscript. Red dotted lines indicate the 600-point window that is classified by the model.
 
+![resampling example](../images/resampling_examples.svg "resampling example")
+
 If our model does not perform well in your data, this could be a reason and simply adjusting the window size and resampling the data may help. This is especially the case if the event kinetics or even the cell type is the same, but a different sampling rate was used during the recordings. However, if the overall shape of the event and the noise characteristics are too different, it may be necessary to train a new model. This is explained in the following.
 
 ## Extracting training data
@@ -25,12 +27,16 @@ If our model does not perform well in your data, this could be a reason and simp
 After identifying the proper window size, we need compile a training dataset. We extract training data with an implementation of template matching, which worked well in our hands. However, any method that can extract short data stretches as shown below is suitable. A good training dataset should contain:
 
 - Clear examples of synaptic events:
+![example 1](../images/model_training_nice_example.svg "example 1")
 
 - Examples of synaptic events that are “less nice”, e.g. because they are smaller in amplitude and have a limited signal to noise ratio:
+![example 2](../images/model_training_mid_example.svg "example 2")
 
 - Negative examples of signals that may resemble a synaptic event but would be considered a false positive.
+![example 3](../images/model_training_FP.svg "example 3")
 
 - Negative examples that contain purely noise (as far as it’s possible to judge):
+![example 4](../images/model_training_noise.svg "example 4")
 
 
 ```{note}
@@ -74,6 +80,7 @@ We use cloud services by Kaggle to train our models. Kaggle is an online data sc
 [The dataset](https://www.kaggle.com/datasets/philipponeill/miniml-training-data)
 
 To train a model, the previously scored dataset needs to be uploaded to a Kaggle dataset. To train a model from scratch, uploading the dataset and running the from-scratch script should suffice. For transfer learning, additionally a base model is needed. We provide one such model (GC_lstm_model.h5) in the Kaggle dataset. After training, the best fitting model (lstm_transfer.h5) can be downloaded from the Output directory:
+![download model](../images/model_training_kaggle_input_ouput.png "download model")
 
 
 ## Using a new model on your data
@@ -84,27 +91,43 @@ Once downloaded, the new model can readily be applied with the following adjustm
 
 To use another model, we need to change the *model_path* to the path of the new model.
 
+![model path](../images/TL_Changes_model.png "model path")
+
 ### Set new window size
 
 If the new model has a different window size, we need to change the *win_size* parameter.
+
+![win size](../images/TL_Changes_win.png "win size")
 
 ### Define event direction and training direction
 
 Every model requires defining *event_direction* and *training_direction*. Both can be ‘positive’ or ‘negative’, and default to ‘negative’. There are two separate parameters, because the direction during training may not correspond to the direction in actual data. This is usually the case when training a TL model for positive events, such as mEPSPs from cerebellar granule cells. Inverting the mEPSPs during TL improved model performance, presumably because the events are more similar to the negative mEPSCs the base model was trained on. In that case, the raw data needs to be inverted for inference, but not for downstream analysis. Keep this in mind and make sure the parameters are set appropriately, otherwise the prediction or the downstream analysis will not work properly
 
+![direction](../images/TL_Changes_BSL_direction.png "direction")
+
 ### Adjust filter window size
 
 To analyze the detected events, we identify an event location (point of steepest rise) using the first derivative. Based on that, we find peak position, onset position etc. to read out quantitative values such as the event amplitude. Additionally, we use this approach to identify overlapping events (see below). To find event locations and other points of interest we first need to filter the data. We use a Hann window for that purpose. In our hands, using a Hann window allowed us to filter the data and remove noise peaks without distorting event kinetics too much. *convolve_win* is the only parameter that needs to be adjusted. *convolve_win* is the size of the Hann window (not to be confused with the window size, win_size, used for inference). While it does not affect the detection itself, it is important for the downstream analysis of the events. Filtering the data too little can lead to noise peaks being detected as event location, peak, onset, etc. Conversely, filtering the data too much can lead to heavily distorted event kinetics and a decrease in absolute signal amplitude, and therefore lead to slower kinetics and lower amplitudes.
+
+![convolve win](../images/TL_Changes_conv_win.png "convolve win")
+
 
 We include two examples here of an event being filtered too much (*convolve_win* = 150) or too little (*convolve_win* = 3). In the two examples below, the middle column (*convolve_win* = 20) would be a good filter setting. The second example also shows how overlapping events are being detected.
 
 Example 1:
 
+![Example 1](../images/TL_example_1.svg "Example 1")
+
+
 Example 2:
+
+![Example 2](../images/TL_example_2.svg "Example 2")
 
 ### Set the resample flag
 
 *resample_to_600* is a Boolean flag (set to True/False). If True, the data gets resampled based on the window size. See also section 1, “select a window size”. For transfer learning this will always be **True**. If you train a model from scratch with a window size different from 600, this needs to be set to **False**.
+
+![resampling flag](../images/TL_Changes_resample.png "resampling flag")
 
 
 ## Sharing of trained models
