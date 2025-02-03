@@ -385,7 +385,7 @@ class MiniTrace():
             filtered_data = signal.savgol_filter(filtered_data, int(savgol/1000/self.sampling), polyorder=order)
         if hann:
             win = signal.windows.hann(hann)    
-            filtered_data = signal.convolve(filtered_data, win, mode='full') / sum(win)
+            filtered_data = signal.convolve(filtered_data, win, mode='same') / sum(win)
             
             # Hann window generates edge artifacts due to zero-padding. Retain unfiltered data at edges.
             filtered_data[:hann] = self.data[:hann]
