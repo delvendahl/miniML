@@ -22,6 +22,7 @@ class miniML_plots():
         self.red_color = '#a90308'
         self.green_color = '#287c37'
 
+        
     def plot_gradient_search(self):
         fig, axs = plt.subplots(3, sharex=True, num='gradient search')
 
@@ -40,7 +41,7 @@ class miniML_plots():
 
         axs[1].scatter(self.detection.event_locations, filtered_trace[self.detection.event_locations], c=self.orange_color, zorder=2, label='event locations')
         axs[1].scatter(self.detection.start_pnts, filtered_trace[self.detection.start_pnts], c=self.red_color, zorder=2)
-        axs[1].scatter(self.detection.end_pnts, filtered_trace[self.detection.end_pnts],  c=self.green_color, zorder=2)
+        axs[1].scatter(self.detection.end_pnts, filtered_trace[self.detection.end_pnts], c=self.green_color, zorder=2)
         axs[1].legend(loc='upper right')
 
         axs[2].plot(self.detection.gradient, c='k', alpha=0.4, label='gradient')
@@ -49,6 +50,7 @@ class miniML_plots():
         axs[2].legend(loc='upper right')
         plt.show()
 
+        
     def plot_event_overlay(self) -> None:
         '''
         plot the average event waveform overlayed on top of the individual events
@@ -67,7 +69,6 @@ class miniML_plots():
         fitted_ev = exp_fit(event_x[self.detection.avg_decay_fit_start:],
                             *self.detection.avg_decay_fit) * self.detection.event_direction
 
-
         fig = plt.figure('Event average and fit')
         plt.plot(event_x, events.T, c=self.main_trace_color, alpha=0.3)
         plt.plot(event_x, ev_average, c=self.red_color,linewidth='3', label='average event')
@@ -83,12 +84,10 @@ class miniML_plots():
     def plot_singular_event_average(self):
         '''Plot event overlay + avg for events that have no overlapping events'''
         events = self.detection.events[self.detection.singular_event_indices]
-
         fig = plt.figure(f'singular_events')
         plt.plot(events.T, c=self.main_trace_color, alpha=0.3)
-        plt.plot(np.mean(events.T, axis=1), c=self.red_color,linewidth='3', label='average event')
+        plt.plot(np.mean(events.T, axis=1), c=self.red_color, linewidth='3', label='average event')
         plt.show()
-
 
 
     def plot_event_histogram(self, plot: str='amplitude', cumulative: bool=False) -> None:
@@ -111,7 +110,8 @@ class miniML_plots():
         plt.xlabel(xlab_str)
         plt.show()
 
-    def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, plot_filtered_trace: bool=False, save_fig: str='') -> None:
+    def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, 
+                        plot_filtered_trace: bool=False, save_fig: str='') -> None:
         ''' 
         Plot prediction trace, optionally together with data and detection result.
         
@@ -164,7 +164,6 @@ class miniML_plots():
                         bsl_starts,
                         bsl_ends, color=self.red_color, zorder=2, ls='--', lw=2)
 
-
                 ### remove np.nans from halfdecay
                 half_decay_for_plot = self.detection.half_decay[np.argwhere(~np.isnan(self.detection.half_decay)).flatten()].astype(np.int64)
                 half_decay_times_for_plot = self.detection.half_decay_times[np.argwhere(~np.isnan(self.detection.half_decay_times)).flatten()]
@@ -172,7 +171,6 @@ class miniML_plots():
 
                 plt.scatter(self.detection.min_positions_rise, self.detection.min_values_rise, c='magenta', s=20, zorder=2, label='10-90 rise')
                 plt.scatter(self.detection.max_positions_rise, self.detection.max_values_rise, c='magenta', s=20, zorder=2)
-
 
             data_range = np.abs(np.max(main_trace) - np.min(main_trace))
             dat_min = np.min(main_trace)
@@ -193,6 +191,7 @@ class miniML_plots():
             return
         plt.show()
 
+        
     def plot_event_locations(self, plot_filtered: bool=False, save_fig: str='') -> None:
         ''' 
         Plot prediction trace, together with data and detected event positions (before any actual analysis is done).
@@ -237,6 +236,7 @@ class miniML_plots():
         else:
             plt.show()
 
+            
     def plot_detection(self, save_fig: str='') -> None:
         ''' 
         Plot detection results together with data.
@@ -262,4 +262,3 @@ class miniML_plots():
             plt.close()
             return
         plt.show()
-
