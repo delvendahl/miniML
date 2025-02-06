@@ -622,18 +622,16 @@ class minimlGuiMain(QMainWindow):
         time_ax = np.arange(0, data.shape[0]) * self.detection.trace.sampling * 1e3
 
         if self.exclude_events[self.ind]:
-            pen = pg.mkPen(color='r', width=1.5)
-            data_plot = self.tracePlot.plot(time_ax, data, pen=pen)
+            data_plot = self.tracePlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=2))
             data_plot.setAlpha(0.5, False)
 
-            filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pen)
+            filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pg.mkPen(color=self.settings.colors[3], width=2))
             filtered_data_plot.setAlpha(1, False)
         else:
-            pen = pg.mkPen(color='k', width=1.5)
-            data_plot = self.tracePlot.plot(time_ax, data, pen=pen)
+            data_plot = self.tracePlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=2))
             data_plot.setAlpha(0.5, False)
 
-            filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pen)
+            filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pg.mkPen(color=self.settings.colors[3], width=2))
             filtered_data_plot.setAlpha(1, False)
             
             bsl_times = [rel_bsl_start, rel_bsl_end]
@@ -649,7 +647,7 @@ class minimlGuiMain(QMainWindow):
 
             self.tracePlot.plot([rel_bsl_end, rel_peak_loc],
                     bsl_vals,
-                    pen=pg.mkPen(color='k', width=2, style=pg.QtCore.Qt.DotLine))
+                    pen=pg.mkPen(color='k', width=3, style=pg.QtCore.Qt.DotLine))
             
 
             col = 'magenta'
@@ -711,7 +709,7 @@ class minimlGuiMain(QMainWindow):
                         [self.filtered_data[decay_loc], self.filtered_data[decay_loc]],
                         pen=pen)
 
-        pen = pg.mkPen(color='k', width=1)
+        pen = pg.mkPen(color='k', width=1.5)
 
         if self.use_for_avg[self.ind] == 1:
             self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: used for average', color='green', border=pen)
@@ -890,6 +888,7 @@ class minimlGuiMain(QMainWindow):
         self.settings.event_threshold = float(settings_win.thresh.text()) if settings_win.thresh.hasAcceptableInput() else 0.5
         self.settings.direction = str(settings_win.direction.currentText())
         self.settings.batch_size = int(settings_win.batchsize.text())
+        self.settings.convolve_win = int(settings_win.convolve_window.text())
 
 
     def run_analysis(self) -> None:
@@ -935,7 +934,7 @@ class minimlGuiMain(QMainWindow):
                                             verbose=0,
                                             callbacks=CustomCallback())
 
-            self.detection.detect_events(stride=self.settings.stride, eval=True)
+            self.detection.detect_events(stride=self.settings.stride, eval=True, convolve_win=self.settings.convolve_win)
 
             self.was_analyzed = True
             self.predictionPlot.clear()
@@ -991,8 +990,7 @@ class minimlGuiMain(QMainWindow):
         self.eventPlot.setTitle('Detected events')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
         for event in self.detection.events:
-            pen = pg.mkPen(color=self.settings.colors[3], width=1)
-            self.eventPlot.plot(time_data, event, pen=pen)
+            self.eventPlot.plot(time_data, event, pen=pg.mkPen(color=self.settings.colors[3], width=1))
         self.eventPlot.setLabel('bottom', 'Time', 's')
         self.eventPlot.setLabel('left', 'Amplitude', 'pA')
 
@@ -1008,8 +1006,7 @@ class minimlGuiMain(QMainWindow):
         self.averagePlot.clear()
         self.averagePlot.setTitle('Average event waveform')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
-        pen = pg.mkPen(color=self.settings.colors[0], width=2)
-        self.averagePlot.plot(time_data, ev_average, pen=pen)
+        self.averagePlot.plot(time_data, ev_average, pen=pg.mkPen(color=self.settings.colors[0], width=2))
         self.averagePlot.setLabel('bottom', 'Time', 's')
         self.averagePlot.setLabel('left', 'Amplitude', 'pA')
 
@@ -1264,6 +1261,9 @@ class SettingsPanel(QDialog):
         self.direction.setFixedWidth(200)
         self.batchsize = QLineEdit(str(parent.settings.batch_size))
 
+        self.convolve_window = QLineEdit(str(parent.settings.convolve_win))
+        self.convolve_window.setValidator(QIntValidator(1, 10000))
+
         self.layout = QFormLayout(self)
         self.layout.addRow('Stride length (samples)', self.stride)
         self.layout.addRow('Event length (samples)', self.ev_len)
@@ -1271,6 +1271,7 @@ class SettingsPanel(QDialog):
         self.layout.addRow('Model', self.model)
         self.layout.addRow('Event direction', self.direction)
         self.layout.addRow('Batch size', self.batchsize)
+        self.layout.addRow('Filter window', self.convolve_window)
 
         finalize_dialog_window(self, title='miniML settings')
 

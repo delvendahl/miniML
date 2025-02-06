@@ -8,7 +8,8 @@ class MinimlSettings():
                  model: str='GC_lstm_model.h5',
                  event_threshold: float=0.5,
                  direction: str='negative',
-                 batch_size: int=512):
+                 batch_size: int=512,
+                 convolve_win: int=20):
 
         self.stride = stride
         self.event_window = event_length
@@ -17,6 +18,7 @@ class MinimlSettings():
         self.event_threshold = event_threshold
         self.direction = direction
         self.batch_size = batch_size
+        self.convolve_win = convolve_win
         self.colors = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"]
 
 
@@ -75,3 +77,18 @@ class MinimlSettings():
             raise ValueError('Batch size must be a positive integer')
 
         self._batch_size = value
+
+
+    @property
+    def convolve_win(self) -> int:
+        return self._convolve_win
+    
+    @convolve_win.setter
+    def convolve_win(self, value) -> None:
+        if value < 1:
+            raise ValueError('Convolution window must be larger than 0')
+        if type(value) is not int:
+            raise ValueError('Convolution window must be an integer')
+
+        self._convolve_win = value
+
