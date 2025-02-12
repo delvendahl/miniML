@@ -621,93 +621,39 @@ class minimlGuiMain(QMainWindow):
         
         time_ax = np.arange(0, data.shape[0]) * self.detection.trace.sampling * 1e3
 
-        if self.exclude_events[self.ind]:
-            data_plot = self.tracePlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=2))
-            data_plot.setAlpha(0.5, False)
+        data_plot = self.tracePlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=1))
+        data_plot.setAlpha(0.5, False)
+        filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pg.mkPen(color=self.settings.colors[3], width=1))
+        filtered_data_plot.setAlpha(1, False)
 
-            filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pg.mkPen(color=self.settings.colors[3], width=2))
-            filtered_data_plot.setAlpha(1, False)
-        else:
-            data_plot = self.tracePlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=2))
-            data_plot.setAlpha(0.5, False)
-
-            filtered_data_plot = self.tracePlot.plot(time_ax, filtered_data, pen=pg.mkPen(color=self.settings.colors[3], width=2))
-            filtered_data_plot.setAlpha(1, False)
-            
+        if not self.exclude_events[self.ind]:      
             bsl_times = [rel_bsl_start, rel_bsl_end]
             bsl_vals = [bsl, bsl]
 
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-            self.tracePlot.plot(bsl_times,
-                    bsl_vals,
-                    pen=pen, symbol='o', symbolSize=8, nsymbolpen='r', symbolBrush='r')
-
-            pen = pg.mkPen(color='r', width=3, style=pg.QtCore.Qt.DotLine)
-            self.tracePlot.plot(bsl_times, bsl_vals, pen=pen)
-
-            self.tracePlot.plot([rel_bsl_end, rel_peak_loc],
-                    bsl_vals,
-                    pen=pg.mkPen(color='k', width=3, style=pg.QtCore.Qt.DotLine))
-            
-
-            col = 'magenta'
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-            
-            self.tracePlot.plot(
-                [rel_min_rise, rel_max_rise],
-                [min_value_rise, max_value_rise],
-                pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
-
-
-            pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-            
-            self.tracePlot.plot(
-                [rel_min_rise, rel_max_rise],
-                [min_value_rise, min_value_rise],
-                pen=pen)
-
-            self.tracePlot.plot(
-                [rel_max_rise, rel_max_rise],
-                [min_value_rise, max_value_rise],
-                pen=pen)
-
-
-            col = 'orange'
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-            
-            self.tracePlot.plot(
-                [rel_peak_loc_left, rel_peak_loc_right, rel_peak_loc],
-                [peak_val]*3,
-                pen=pen, symbol=['x', 'x', 'o'], symbolSize=[12, 12, 8], symbolpen=col, symbolBrush=col)
-
-            if len(peaks_in_win):
-                self.tracePlot.plot(
-                    rel_peaks_in_win,
-                    self.filtered_data[peaks_in_win],
-                    pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
-
-
-            pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-            
-            self.tracePlot.plot(
-                [rel_peak_loc, rel_peak_loc],
-                [peak_val, peak_val - self.detection.event_stats.amplitudes[self.ind]],
-                pen=pen)
-
-            
-            if not np.isnan(self.detection.half_decay[self.ind]):
-                col = 'green'
-
+            def plot_symbols(trace_plot, x, y, color, symbol, size):
                 pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
-                self.tracePlot.plot([rel_decay_loc],
-                        [self.filtered_data[decay_loc]],
-                        pen=pen, symbol='o', symbolSize=8, symbolpen=col, symbolBrush=col)
-                
-                # pen = pg.mkPen(color=self.settings.colors[0], width=3, style=pg.QtCore.Qt.DashLine)
-                pen = pg.mkPen(color=col, width=3, style=pg.QtCore.Qt.DotLine)
-                self.tracePlot.plot([rel_peak_loc, rel_decay_loc],
-                        [self.filtered_data[decay_loc], self.filtered_data[decay_loc]],
-                        pen=pen)
+                trace_plot.plot(x, y, pen=pen, symbol=symbol, symbolSize=size, symbolpen=color, symbolBrush=color)
+
+            def plot_line(trace_plot, x, y, color, width, style):
+                pen = pg.mkPen(color=color, width=width, style=style)
+                trace_plot.plot(x, y, pen=pen)
+
+            plot_symbols(self.tracePlot, bsl_times, bsl_vals, 'r', 'o', 8)
+            plot_line(self.tracePlot, bsl_times, bsl_vals, 'r', 2, pg.QtCore.Qt.DotLine)
+            plot_line(self.tracePlot, [rel_bsl_end, rel_peak_loc], bsl_vals, 'k', 2, pg.QtCore.Qt.DotLine)
+
+            plot_symbols(self.tracePlot, [rel_min_rise, rel_max_rise], [min_value_rise, max_value_rise], 'magenta', 'o', 10)
+            plot_line(self.tracePlot, [rel_min_rise, rel_max_rise], [min_value_rise, min_value_rise], 'magenta', 2, pg.QtCore.Qt.DotLine)
+            plot_line(self.tracePlot, [rel_max_rise, rel_max_rise], [min_value_rise, max_value_rise], 'magenta', 2, pg.QtCore.Qt.DotLine)
+
+            plot_symbols(self.tracePlot, [rel_peak_loc_left, rel_peak_loc_right, rel_peak_loc], [peak_val]*3, 'orange', ['x', 'x', 'o'], [12, 12, 10])
+            if len(peaks_in_win):
+                plot_symbols(self.tracePlot, rel_peaks_in_win, self.filtered_data[peaks_in_win], 'orange', 'o', 10)
+            plot_line(self.tracePlot, [rel_peak_loc, rel_peak_loc], [peak_val, peak_val - self.detection.event_stats.amplitudes[self.ind]], 'orange', 2, pg.QtCore.Qt.DotLine)
+
+            if not np.isnan(self.detection.half_decay[self.ind]):
+                plot_symbols(self.tracePlot, [rel_decay_loc], [self.filtered_data[decay_loc]], 'green', 'o', 10)
+                plot_line(self.tracePlot, [rel_peak_loc, rel_decay_loc], [self.filtered_data[decay_loc], self.filtered_data[decay_loc]], 'green', 2, pg.QtCore.Qt.DotLine)
 
         pen = pg.mkPen(color='k', width=1.5)
 

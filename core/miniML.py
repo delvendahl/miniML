@@ -871,7 +871,7 @@ class EventDetection():
             event_peak_pos = get_event_peak(data=data, event_num=ix, add_points=add_points, window_size=self.window_size, diffs=diffs)
 
             self.event_peak_locations[ix] = int(event_peak_pos)
-            self.event_peak_values[ix] = np.mean(data[int(event_peak_pos - self.window_size//100):int(event_peak_pos + self.window_size//100)])
+            self.event_peak_values[ix] = np.mean(data[int(event_peak_pos - self.window_size//300):int(event_peak_pos + self.window_size//300)])
             
             baseline, baseline_var, bsl_start, bsl_end, bsl_duration = get_event_baseline(data=data, event_num=ix, diffs=diffs, add_points=add_points,
                                                                                           peak_positions=self.event_peak_locations, positions=positions)
