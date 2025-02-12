@@ -1,15 +1,15 @@
 from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
-import os
-from miniML import EventDetection, mEPSC_template, exp_fit
+from miniML import EventDetection, exp_fit
 from scipy.ndimage import maximum_filter1d
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 class miniML_plots():
-    '''miniML plotting class. Allows calling multiple standard plots based on miniML EventDetection objection
+    '''
+    miniML plotting class. Allows calling multiple standard plots based on miniML EventDetection objection
+
     Parameters
     ----------
     data: miniML EventDetection object
@@ -24,6 +24,9 @@ class miniML_plots():
 
         
     def plot_gradient_search(self):
+        '''
+        plot the filtered data trace, the gradient and the filtered gradient with event locations
+        '''
         fig, axs = plt.subplots(3, sharex=True, num='gradient search')
 
         mini_trace = self.detection.trace.data
@@ -61,25 +64,20 @@ class miniML_plots():
         
         events = self.detection.events[self.detection.singular_event_indices]
         event_x = np.arange(0, events.shape[1]) * self.detection.trace.sampling
-            
-        # average
-        ev_average = np.mean(events, axis=0)
-        
-        # fit
-        fitted_ev = exp_fit(event_x[self.detection.avg_decay_fit_start:],
-                            *self.detection.avg_decay_fit) * self.detection.event_direction
+        event_average = np.mean(events, axis=0)
+        event_fit = exp_fit(event_x[self.detection.avg_decay_fit_start:], *self.detection.avg_decay_fit) * self.detection.event_direction
 
         fig = plt.figure('Event average and fit')
         plt.plot(event_x, events.T, c=self.main_trace_color, alpha=0.3)
-        plt.plot(event_x, ev_average, c=self.red_color,linewidth='3', label='average event')
+        plt.plot(event_x, event_average, c=self.red_color, linewidth='3', label='average event')
         
-        plt.plot(event_x[self.detection.avg_decay_fit_start:],
-                 fitted_ev, c=self.orange_color, ls='--', label='fit')
+        plt.plot(event_x[self.detection.avg_decay_fit_start:], event_fit, c=self.orange_color, ls='--', label='fit')
         
         plt.ylabel(f'{self.detection.trace.y_unit}')
         plt.xlabel('time (s)')
         plt.legend(loc='upper right')
         plt.show()
+
 
     def plot_singular_event_average(self):
         '''Plot event overlay + avg for events that have no overlapping events'''
@@ -109,6 +107,7 @@ class miniML_plots():
         plt.ylabel(ylab_str)
         plt.xlabel(xlab_str)
         plt.show()
+
 
     def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, 
                         plot_filtered_trace: bool=False, save_fig: str='') -> None:
@@ -151,31 +150,31 @@ class miniML_plots():
 
             plt.plot(self.detection.trace.time_axis, main_trace, c=self.main_trace_color)
             
-            # try:
-            plt.scatter(self.detection.event_peak_times, main_trace[self.detection.event_peak_locations], c=self.orange_color, s=20, zorder=2, label='peak positions')
+            if hasattr(self.detection, 'event_stats'):
+                plt.scatter(self.detection.event_peak_times, main_trace[self.detection.event_peak_locations], c=self.orange_color, s=20, zorder=2, label='peak positions')
             
-            if plot_event_params:
-                bsl_starts = self.detection.bsl_starts * self.detection.trace.sampling
-                bsl_ends = self.detection.bsl_ends * self.detection.trace.sampling
+                if plot_event_params:
+                    bsl_starts = self.detection.bsl_starts * self.detection.trace.sampling
+                    bsl_ends = self.detection.bsl_ends * self.detection.trace.sampling
 
-                plt.scatter(bsl_starts, self.detection.event_bsls, c=self.red_color, zorder=2, s=20, label='baseline')
-                plt.scatter(bsl_ends, self.detection.event_bsls, c=self.red_color, zorder=2, s=20)
-                plt.hlines(self.detection.event_bsls,
-                        bsl_starts,
-                        bsl_ends, color=self.red_color, zorder=2, ls='--', lw=2)
+                    plt.scatter(bsl_starts, self.detection.event_bsls, c=self.red_color, zorder=2, s=20, label='baseline')
+                    plt.scatter(bsl_ends, self.detection.event_bsls, c=self.red_color, zorder=2, s=20)
+                    plt.hlines(self.detection.event_bsls,
+                            bsl_starts,
+                            bsl_ends, color=self.red_color, zorder=2, ls='--', lw=2)
 
-                ### remove np.nans from halfdecay
-                half_decay_for_plot = self.detection.half_decay[np.argwhere(~np.isnan(self.detection.half_decay)).flatten()].astype(np.int64)
-                half_decay_times_for_plot = self.detection.half_decay_times[np.argwhere(~np.isnan(self.detection.half_decay_times)).flatten()]
-                plt.scatter(half_decay_times_for_plot, main_trace[half_decay_for_plot], c=self.green_color, s=20, zorder=2, label='half decay')
+                    ### remove np.nans from halfdecay
+                    half_decay_for_plot = self.detection.half_decay[np.argwhere(~np.isnan(self.detection.half_decay)).flatten()].astype(np.int64)
+                    half_decay_times_for_plot = self.detection.half_decay_times[np.argwhere(~np.isnan(self.detection.half_decay_times)).flatten()]
+                    plt.scatter(half_decay_times_for_plot, main_trace[half_decay_for_plot], c=self.green_color, s=20, zorder=2, label='half decay')
 
-                plt.scatter(self.detection.min_positions_rise, self.detection.min_values_rise, c='magenta', s=20, zorder=2, label='10-90 rise')
-                plt.scatter(self.detection.max_positions_rise, self.detection.max_values_rise, c='magenta', s=20, zorder=2)
+                    plt.scatter(self.detection.min_positions_rise, self.detection.min_values_rise, c='magenta', s=20, zorder=2, label='10-90 rise')
+                    plt.scatter(self.detection.max_positions_rise, self.detection.max_values_rise, c='magenta', s=20, zorder=2)
 
-            data_range = np.abs(np.max(main_trace) - np.min(main_trace))
-            dat_min = np.min(main_trace)
-            plt.eventplot(self.detection.event_peak_times, lineoffsets=dat_min - data_range/15, 
-                            linelengths=data_range/20, color='k', lw=1.5)
+                data_range = np.abs(np.max(main_trace) - np.min(main_trace))
+                dat_min = np.min(main_trace)
+                plt.eventplot(self.detection.event_peak_times, lineoffsets=dat_min - data_range/15, 
+                                linelengths=data_range/20, color='k', lw=1.5)
 
             plt.tick_params('x')
             plt.ylabel(f'{self.detection.trace.y_unit}')
