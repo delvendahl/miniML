@@ -871,7 +871,7 @@ class EventDetection():
             event_peak_pos = get_event_peak(data=data, event_num=ix, add_points=add_points, window_size=self.window_size, diffs=diffs)
 
             self.event_peak_locations[ix] = int(event_peak_pos)
-            self.event_peak_values[ix] = np.mean(data[int(event_peak_pos - self.window_size//300):int(event_peak_pos + self.window_size//300)])
+            self.event_peak_values[ix] = np.mean(data[event_peak_pos - self.peak_spacer:event_peak_pos + self.peak_spacer])
             
             baseline, baseline_var, bsl_start, bsl_end, bsl_duration = get_event_baseline(data=data, event_num=ix, diffs=diffs, add_points=add_points,
                                                                                           peak_positions=self.event_peak_locations, positions=positions)
@@ -1016,8 +1016,8 @@ class EventDetection():
         event_peak_value = data[event_peak]
         event_peak_value = np.mean(data[int(event_peak-self.peak_spacer):int(event_peak+self.peak_spacer)])
 
-        baseline, baseline_var, bsl_start, bsl_end, bsl_duration = get_event_baseline(data=data, event_num=0, diffs=diffs, 
-                                                                                      add_points=add_points, peak_positions=[event_peak], positions=[add_points])
+        baseline, baseline_var, bsl_start, _, _ = get_event_baseline(data=data, event_num=0, diffs=diffs, 
+                                                                     add_points=add_points, peak_positions=[event_peak], positions=[add_points])
         onset_position = get_event_onset(data=data, peak_position=event_peak, baseline=baseline, baseline_var=baseline_var)
                 
         risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise = get_event_risetime(
@@ -1078,10 +1078,10 @@ class EventDetection():
         self.resampling_factor = 600 / self.window_size if resample_to_600 else 1
         
         # Define peak spacer, i.e. number of points left / right of detected event peaks to use for amplitude calculation.
-        if int(self.window_size/200) < 1:
+        if int(self.window_size/300) < 1:
             self.peak_spacer = 1
         else:
-            self.peak_spacer = int(self.window_size/200)
+            self.peak_spacer = int(self.window_size/300)
 
         self.__predict()
         
