@@ -1,7 +1,7 @@
 # ------- Imports ------- #
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction, 
-                             QTableWidget, QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog,
-                             QLineEdit, QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel)
+                             QTableWidget, QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout,
+                             QLineEdit, QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar)
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
 from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
 import pyqtgraph as pg
@@ -219,6 +219,8 @@ class minimlGuiMain(QMainWindow):
         self.aboutAction = QAction(QIcon('icons/info_24px_blue.svg'), 'About', self)
         self.aboutAction.setShortcut('Ctrl+H')
         # self.tb.addAction(self.aboutAction)
+        self.eventViewerAction = QAction(QIcon('icons/event_mode_24px_blue.svg'), 'Event Viewer', self)
+        self.tb.addAction(self.eventViewerAction)
         
 
     def _connect_actions(self):
@@ -237,6 +239,7 @@ class minimlGuiMain(QMainWindow):
         self.closeAction.triggered.connect(self.close_gui)
         self.aboutAction.triggered.connect(self.about_win)
         self.eventAction.triggered.connect(self.toggle_event_viewer)
+        self.eventViewerAction.triggered.connect(self.show_event_viewer)
 
 
     def _create_table(self):
@@ -253,14 +256,12 @@ class minimlGuiMain(QMainWindow):
 
     def _warning_box(self, message):
         msgbox = QMessageBox()
-        msgbox.setIcon(QMessageBox.Warning)  # You can use Information, Warning, etc.
-        msgbox.setWindowTitle('Message')         # Set the title of the window
-        msgbox.setText(message)  # Set the message text
-        msgbox.setStandardButtons(QMessageBox.Ok)  # Only show the 'OK' button
-        # Show the message box and wait for the user to click 'OK'
+        msgbox.setIcon(QMessageBox.Warning)
+        msgbox.setWindowTitle('Message')
+        msgbox.setText(message)
+        msgbox.setStandardButtons(QMessageBox.Ok)
         msgbox.exec_()
  
-
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.MouseButtonPress:
@@ -910,6 +911,17 @@ class minimlGuiMain(QMainWindow):
             print('no events detected.')
             
 
+    def show_event_viewer(self) -> None:
+        """
+        Start the event viewer.
+        """
+        if not hasattr(self, 'detection'):
+            return
+        
+        event_win = EventViewer(self)
+        event_win.exec_()
+
+
     def save_results(self) -> None:
         if not hasattr(self, 'detection'):
             return
@@ -952,7 +964,7 @@ class minimlGuiMain(QMainWindow):
         self.averagePlot.clear()
         self.averagePlot.setTitle('Average event waveform')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
-        self.averagePlot.plot(time_data, ev_average, pen=pg.mkPen(color=self.settings.colors[0], width=2))
+        self.averagePlot.plot(time_data, ev_average, pen=pg.mkPen(color=self.settings.colors[2], width=2))
         self.averagePlot.setLabel('bottom', 'Time', 's')
         self.averagePlot.setLabel('left', 'Amplitude', 'pA')
 
@@ -1231,7 +1243,7 @@ class CutPanel(QDialog):
         
         self.layout = QFormLayout(self)
         self.layout.addRow('new start (s)', self.start)
-        self.layout.addRow('new end (s)', self.end)    
+        self.layout.addRow('new end (s)', self.end)
 
         finalize_dialog_window(self, title='Cut trace')
 
@@ -1290,6 +1302,225 @@ class FilterPanel(QDialog):
         self.layout.addRow('Hann window size', self.hann_window)
 
         finalize_dialog_window(self, title='Filter settings')
+
+
+class EventViewer(QDialog):
+    def __init__(self, parent=None):
+        super(EventViewer, self).__init__(parent)
+
+        self.resize(750, 600)
+
+        self.detection = parent.detection
+        self.settings = parent.settings
+        self.num_events = parent.num_events
+        self.exclude_events = parent.exclude_events
+        self.use_for_avg = parent.use_for_avg
+
+        self.layout = QGridLayout(self)
+
+        self.toolbar = QToolBar()
+        self.toolbar.setMovable(False)
+
+        self.layout.addWidget(self.toolbar, 0, 0, 1, -1)
+
+        self.testAction = QAction(QIcon('icons/arrow_back_24px_blue.svg'), 'Previous', self.toolbar)
+        self.toolbar.addAction(self.testAction)
+        self.testAction.triggered.connect(self.previous)
+        self.deleteAction = QAction(QIcon('icons/clear_24px_blue.svg'), 'Delete event', self.toolbar)
+        self.toolbar.addAction(self.deleteAction)
+        self.deleteAction.triggered.connect(self.delete_event)
+        self.excludeAction = QAction(QIcon('icons/hide_image_24px_blue.svg'), 'Exclude from average', self.toolbar)
+        self.toolbar.addAction(self.excludeAction)
+        self.excludeAction.triggered.connect(self.exclude_event)
+        self.testAction = QAction(QIcon('icons/arrow_forward_24px_blue.svg'), 'Next', self.toolbar)
+        self.toolbar.addAction(self.testAction)
+        self.testAction.triggered.connect(self.next)
+
+        self.eventPlot = pg.PlotWidget()
+        self.eventPlot.setMinimumSize(480, 360)
+        self.eventPlot.showGrid(x=True, y=True, alpha=0.1)
+        self.eventPlot.setLabel('bottom', 'Time', 's')
+        self.eventPlot.setLabel('left', 'Imon', '')
+        self.layout.addWidget(self.eventPlot, 1, 0, 2, 3)
+
+        self.averagePlot = pg.PlotWidget()
+        self.averagePlot.setMinimumWidth(240)
+        self.layout.addWidget(self.averagePlot, 1, 3, 1, 1)
+
+        self.histPlot = pg.PlotWidget()
+        self.histPlot.setMinimumWidth(240)
+        self.layout.addWidget(self.histPlot, 2, 3, 1, 1)
+
+        self.ind = 0
+        self.left_buffer = int(self.detection.window_size / 2)
+        self.right_buffer = int(self.detection.window_size * 1.5)
+        self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
+
+        self.update_event_plot()
+        self.update_average_plot()
+        self.update_histogram_plot()
+
+        QBtn = (QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox.accepted.connect(self.close_event_viewer)
+        self.buttonBox.rejected.connect(self.cancel_event_viewer)
+
+        self.layout.addWidget(self.buttonBox, 3, 3, 1, 1)
+        self.setWindowTitle('Event Viewer')
+        self.setWindowModality(pg.QtCore.Qt.ApplicationModal)
+
+
+    def cancel_event_viewer(self):
+        self.exclude_events = 0
+        self.use_for_avg = 1
+        self.close()
+    
+    
+    def close_event_viewer(self):
+        rows = np.where(self.exclude_events == 1)[0]
+        self.parent().delete_multiple_events(rows)
+        self.close()
+
+
+    def update_average_plot(self):
+        """
+        Updates the average event plot.
+        """
+        ev_average = np.mean(self.detection.events[self.detection.singular_event_indices], axis=0)
+        self.averagePlot.clear()
+        self.averagePlot.setTitle('Average event waveform')
+        time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
+        self.averagePlot.plot(time_data, ev_average, pen=pg.mkPen(color=self.settings.colors[2], width=2))
+        self.averagePlot.setLabel('bottom', 'Time', 's')
+        self.averagePlot.setLabel('left', 'Amplitude', 'pA')
+
+
+    def update_histogram_plot(self):
+        y, x = np.histogram(self.detection.event_stats.amplitudes, bins='auto')
+        curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
+        self.histPlot.clear()
+        self.histPlot.setTitle('Amplitude histogram')
+        self.histPlot.addItem(curve)
+        self.histPlot.setLabel('bottom', 'Amplitude', 'pA')
+        self.histPlot.setLabel('left', 'Count', '')
+
+
+    def update_event_plot(self):
+        """
+        Updates the event plot.
+        """
+        self.eventPlot.clear()
+
+        event_loc = self.detection.event_locations[self.ind]
+        peak_loc = self.detection.event_peak_locations[self.ind]
+        peak_loc_left = peak_loc - self.detection.peak_spacer
+        peak_loc_right = peak_loc + self.detection.peak_spacer
+        peak_val = self.detection.event_peak_values[self.ind]
+
+        bsl = self.detection.event_bsls[self.ind]
+        min_value_rise = self.detection.min_values_rise[self.ind]
+        max_value_rise = self.detection.max_values_rise[self.ind]
+
+        zero_point = event_loc - self.left_buffer
+        
+        peaks_in_win = self.detection.event_peak_locations[
+            np.logical_and(self.detection.event_peak_locations > peak_loc,
+                           self.detection.event_peak_locations < event_loc + self.right_buffer)]
+        
+        rel_peak_loc = (peak_loc - zero_point) * self.detection.trace.sampling * 1e3
+        rel_peak_loc_left = (peak_loc_left - zero_point) * self.detection.trace.sampling * 1e3
+        rel_peak_loc_right = (peak_loc_right - zero_point) * self.detection.trace.sampling * 1e3
+        rel_bsl_start = (self.detection.bsl_starts[self.ind] - zero_point) * self.detection.trace.sampling * 1e3
+        rel_bsl_end = (self.detection.bsl_ends[self.ind] - zero_point) * self.detection.trace.sampling * 1e3
+        rel_min_rise = (self.detection.min_positions_rise[self.ind] - (zero_point * self.detection.trace.sampling)) * 1e3
+        rel_max_rise = (self.detection.max_positions_rise[self.ind] - (zero_point * self.detection.trace.sampling)) * 1e3
+        
+        if not np.isnan(self.detection.half_decay[self.ind]):
+            decay_loc = int(self.detection.half_decay[self.ind])
+            rel_decay_loc = (decay_loc - zero_point) * self.detection.trace.sampling * 1e3
+
+        if len(peaks_in_win):
+            rel_peaks_in_win = (peaks_in_win - zero_point) * self.detection.trace.sampling * 1e3
+
+        data = self.detection.trace.data[zero_point:event_loc + self.right_buffer]
+        filtered_data = self.filtered_data[zero_point:event_loc + self.right_buffer]
+        
+        time_ax = np.arange(0, data.shape[0]) * self.detection.trace.sampling * 1e3
+
+        data_plot = self.eventPlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=2.5))
+        data_plot.setAlpha(0.5, False)
+        if self.exclude_events[self.ind]:
+            event_color = self.settings.colors[0]
+        elif self.use_for_avg[self.ind] == 0:
+            event_color = self.settings.colors[1]
+        else:
+            event_color = self.settings.colors[3]
+        self.eventPlot.plot(time_ax, filtered_data, pen=pg.mkPen(color=event_color, width=2.5))
+
+        if not self.exclude_events[self.ind]:      
+            bsl_times = [rel_bsl_start, rel_bsl_end]
+            bsl_vals = [bsl, bsl]
+
+            def plot_symbols(trace_plot, x, y, color, symbol, size):
+                pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+                trace_plot.plot(x, y, pen=pen, symbol=symbol, symbolSize=size, symbolpen=color, symbolBrush=color)
+
+            def plot_line(trace_plot, x, y, color, width, style):
+                pen = pg.mkPen(color=color, width=width, style=style)
+                trace_plot.plot(x, y, pen=pen)
+
+            plot_symbols(self.eventPlot, bsl_times, bsl_vals, 'r', 'o', 10)
+            plot_line(self.eventPlot, bsl_times, bsl_vals, 'r', 2.5, pg.QtCore.Qt.DotLine)
+            plot_line(self.eventPlot, [rel_bsl_end, rel_peak_loc], bsl_vals, 'k', 2.5, pg.QtCore.Qt.DotLine)
+
+            plot_symbols(self.eventPlot, [rel_min_rise, rel_max_rise], [min_value_rise, max_value_rise], 'magenta', 'o', 10)
+            plot_line(self.eventPlot, [rel_min_rise, rel_max_rise], [min_value_rise, min_value_rise], 'magenta', 2.5, pg.QtCore.Qt.DotLine)
+            plot_line(self.eventPlot, [rel_max_rise, rel_max_rise], [min_value_rise, max_value_rise], 'magenta', 2.5, pg.QtCore.Qt.DotLine)
+
+            plot_symbols(self.eventPlot, [rel_peak_loc_left, rel_peak_loc_right, rel_peak_loc], [peak_val]*3, 'orange', ['x', 'x', 'o'], [12, 12, 10])
+            if len(peaks_in_win):
+                plot_symbols(self.eventPlot, rel_peaks_in_win, self.filtered_data[peaks_in_win], 'orange', 'o', 10)
+            plot_line(self.eventPlot, [rel_peak_loc, rel_peak_loc], [peak_val, peak_val - self.detection.event_stats.amplitudes[self.ind]], 'orange', 2.5, pg.QtCore.Qt.DotLine)
+
+            if not np.isnan(self.detection.half_decay[self.ind]):
+                plot_symbols(self.eventPlot, [rel_decay_loc], [self.filtered_data[decay_loc]], 'green', 'o', 10)
+                plot_line(self.eventPlot, [rel_peak_loc, rel_decay_loc], [self.filtered_data[decay_loc], self.filtered_data[decay_loc]], 'green', 2.5, pg.QtCore.Qt.DotLine)
+
+        pen = pg.mkPen(color='k', width=1.5)
+
+        if self.use_for_avg[self.ind] == 1:
+            self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: used for average', color='green', border=pen)
+            self.eventPlot.addItem(self.text)
+            self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
+        
+        elif self.use_for_avg[self.ind] == 0:
+            self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: excluded from average', color='red', border=pen)
+            self.eventPlot.addItem(self.text)
+            self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
+
+        self.eventPlot.setLabel('bottom', 'Time', 'ms')
+        self.eventPlot.setLabel('left', 'Amplitude', 'pA')
+
+
+    def previous(self):
+        self.ind = (self.ind - 1) % self.num_events
+        self.update_event_plot()
+
+
+    def delete_event(self):
+        self.exclude_events[self.ind] = (self.exclude_events[self.ind] + 1) % 2
+        self.use_for_avg[self.ind] = (self.exclude_events[self.ind] + 1) % 2
+        self.update_event_plot()
+
+
+    def exclude_event(self):            
+        self.use_for_avg[self.ind] = (self.use_for_avg[self.ind] + 1) % 2
+        self.update_event_plot()   
+    
+
+    def next(self):
+        self.ind = (self.ind + 1) % self.num_events
+        self.update_event_plot()
 
 
 if __name__ == '__main__':
