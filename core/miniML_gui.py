@@ -852,6 +852,8 @@ class minimlGuiMain(QMainWindow):
             if answer == msgbox.No:
                 return
 
+            self.was_analyzed = False
+
             self.predictionPlot.clear()
             self.eventPlot.clear()
             self.averagePlot.clear()
@@ -908,7 +910,7 @@ class minimlGuiMain(QMainWindow):
             self.use_for_avg[self.detection.singular_event_indices] = 1
 
         else:
-            print('no events detected.')
+            self._warning_box(message='No events detected.')
             
 
     def show_event_viewer(self) -> None:
@@ -1457,7 +1459,7 @@ class EventViewer(QDialog):
             event_color = self.settings.colors[3]
         self.eventPlot.plot(time_ax, filtered_data, pen=pg.mkPen(color=event_color, width=2.5))
 
-        if not self.exclude_events[self.ind]:      
+        if not self.exclude_events[self.ind]:
             bsl_times = [rel_bsl_start, rel_bsl_end]
             bsl_vals = [bsl, bsl]
 
