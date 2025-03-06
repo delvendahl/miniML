@@ -344,6 +344,9 @@ class minimlGuiMain(QMainWindow):
             self.detection.events = np.delete(self.detection.events, row, axis=0)
             self.detection.event_scores = np.delete(self.detection.event_scores, row, axis=0)
 
+            self.exclude_events = np.delete(self.exclude_events, row, axis=0)
+            self.use_for_avg = np.delete(self.use_for_avg, row, axis=0)
+            self.detection.singular_event_indices = np.where(self.use_for_avg == 1)[0]
             self.detection._eval_events()
             
             self.update_main_plot()
@@ -464,9 +467,8 @@ class minimlGuiMain(QMainWindow):
         """
         Updates the main plot with the data trace.
         """
-        self.tracePlot.clear()
         pen = pg.mkPen(color=self.settings.colors[3], width=1)
-        self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen)
+        self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen, clear=True)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         label1 = 'Vmon' if self.recording_mode == 'current-clamp' else 'Imon'
         self.tracePlot.setLabel('left', label1, self.trace.y_unit)
@@ -886,10 +888,9 @@ class minimlGuiMain(QMainWindow):
             self.detection.detect_events(stride=self.settings.stride, eval=True, convolve_win=self.settings.convolve_win)
 
             self.was_analyzed = True
-            self.predictionPlot.clear()
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
             prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling
-            self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen)
+            self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen, clear=True)
             self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
                                      pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))
 
@@ -906,7 +907,7 @@ class minimlGuiMain(QMainWindow):
             # Set variables needed for event viewer to work.
             self.num_events = self.detection.event_locations.shape[0]
             self.exclude_events = np.zeros(self.num_events)
-            self.use_for_avg = np.zeros(self.num_events)
+            self.use_for_avg = np.zeros(self.num_events, dtype=int)
             self.use_for_avg[self.detection.singular_event_indices] = 1
 
         else:
@@ -1376,10 +1377,10 @@ class EventViewer(QDialog):
         self.trace_x = np.arange(0, self.detection.trace.data.shape[0], 10) * self.detection.trace.sampling
         self.trace_y = self.detection.trace.data[::10]
 
-        self.update_trace_plot()
+        self.init_trace_plot()
+        self.init_avg_plot()
+        self.init_histogram_plot()
         self.update_event_plot()
-        self.update_average_plot()
-        self.update_histogram_plot()
 
         QBtn = (QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.buttonBox = QDialogButtonBox(QBtn)
@@ -1403,49 +1404,61 @@ class EventViewer(QDialog):
         self.close()
 
 
-    def update_trace_plot(self):
+    def init_trace_plot(self):
         self.tracePlot.clear()
-        self.tracePlot.plot(self.trace_x, self.trace_y, pen=pg.mkPen(color=self.settings.colors[3], width=1))
+        trace = pg.PlotDataItem(self.trace_x, self.trace_y, pen=pg.mkPen(color=self.settings.colors[3], width=1))
+        self.tracePlot.addItem(trace)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Amplitude', self.detection.trace.y_unit)
 
-        # Highlight the current event by a vertical line.
-        peak_loc = self.detection.event_peak_locations[self.ind]
-        # plot vertical line at peal_loc
-        self.tracePlot.plot([peak_loc * self.detection.trace.sampling, peak_loc * self.detection.trace.sampling],
-                            [np.min(self.detection.trace.data), np.max(self.detection.trace.data)],
-                            pen=pg.mkPen(color='orange', width=1, style=pg.QtCore.Qt.DotLine))
+        self.update_trace_plot()
 
-
-    def update_average_plot(self):
-        """
-        Updates the average event plot.
-        """
-        ev_average = np.mean(self.detection.events[self.detection.singular_event_indices], axis=0)
+    
+    def init_avg_plot(self):
         self.averagePlot.clear()
-        self.averagePlot.setTitle('Average event waveform')
-        time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
-        self.averagePlot.plot(time_data, ev_average, pen=pg.mkPen(color=self.settings.colors[2], width=2))
+        self.avg = pg.PlotDataItem(np.mean(self.detection.events[self.detection.singular_event_indices], axis=0), 
+                              pen=pg.mkPen(color=self.settings.colors[2], width=2))
+        self.averagePlot.addItem(self.avg)
         self.averagePlot.setLabel('bottom', 'Time', 's')
         self.averagePlot.setLabel('left', 'Amplitude', self.detection.trace.y_unit)
 
 
-    def update_histogram_plot(self):
-        y, x = np.histogram(self.detection.event_stats.amplitudes, bins='auto')
-        curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
+    def init_histogram_plot(self):
         self.histPlot.clear()
-        self.histPlot.setTitle('Amplitude histogram')
-        self.histPlot.addItem(curve)
+        y, x = np.histogram(self.detection.event_stats.amplitudes, bins='auto')
+        self.curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
+        self.histPlot.addItem(self.curve)
         self.histPlot.setLabel('bottom', 'Amplitude', self.detection.trace.y_unit)
         self.histPlot.setLabel('left', 'Count', '')
+
+
+    def update_avg_plot(self):
+        self.avg.setData(np.mean(self.detection.events[self.use_for_avg == 1], axis=0))
+
+
+    def update_histogram_plot(self):
+        y, x = np.histogram(self.detection.event_stats.amplitudes[self.exclude_events == 0], bins='auto')
+        self.curve.setData(x, y)
+
+
+    def update_trace_plot(self):
+        peak_loc = self.detection.event_peak_locations[self.ind]
+
+        if hasattr(self, 'eventitem'):
+            self.eventitem.setData([peak_loc * self.detection.trace.sampling, peak_loc * self.detection.trace.sampling],
+                                   [np.min(self.detection.trace.data), np.max(self.detection.trace.data)])
+        else:
+            self.eventitem = pg.PlotDataItem([peak_loc * self.detection.trace.sampling, peak_loc * self.detection.trace.sampling],
+                                             [np.min(self.detection.trace.data), np.max(self.detection.trace.data)],
+                                             pen=pg.mkPen(color='orange', width=2, style=pg.QtCore.Qt.DotLine))
+            self.tracePlot.addItem(self.eventitem)
+
 
 
     def update_event_plot(self):
         """
         Updates the event plot.
         """
-        self.eventPlot.clear()
-
         event_loc = self.detection.event_locations[self.ind]
         peak_loc = self.detection.event_peak_locations[self.ind]
         peak_loc_left = peak_loc - self.detection.peak_spacer
@@ -1482,7 +1495,7 @@ class EventViewer(QDialog):
         
         time_ax = np.arange(0, data.shape[0]) * self.detection.trace.sampling * 1e3
 
-        data_plot = self.eventPlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=2.5))
+        data_plot = self.eventPlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=2.5), clear=True)
         data_plot.setAlpha(0.5, False)
         if self.exclude_events[self.ind]:
             event_color = self.settings.colors[0]
@@ -1547,12 +1560,16 @@ class EventViewer(QDialog):
         self.exclude_events[self.ind] = (self.exclude_events[self.ind] + 1) % 2
         self.use_for_avg[self.ind] = (self.exclude_events[self.ind] + 1) % 2
         self.update_event_plot()
+        self.update_avg_plot()
+        self.update_histogram_plot()
 
 
     def exclude_event(self):            
         self.use_for_avg[self.ind] = (self.use_for_avg[self.ind] + 1) % 2
-        self.update_event_plot()   
-    
+        self.update_event_plot()
+        self.update_avg_plot()
+        self.update_histogram_plot()
+
 
     def next(self):
         self.ind = (self.ind + 1) % self.num_events
