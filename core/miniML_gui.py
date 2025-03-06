@@ -1319,11 +1319,21 @@ class EventViewer(QDialog):
         self.use_for_avg = parent.use_for_avg
 
         self.layout = QGridLayout(self)
+        self.layout.setColumnMinimumWidth(0, 200)
+        self.layout.setColumnMinimumWidth(1, 200)
+        self.layout.setColumnMinimumWidth(2, 225)
+        self.layout.setRowMinimumHeight(1, 120)
+        self.layout.setRowMinimumHeight(2, 160)
+        self.layout.setRowMinimumHeight(3, 160)
+
+        self.layout.setColumnStretch(0, 1)
+        self.layout.setColumnStretch(1, 1)
+        self.layout.setColumnStretch(2, 1)
 
         self.toolbar = QToolBar()
         self.toolbar.setMovable(False)
 
-        self.layout.addWidget(self.toolbar, 0, 0, 1, -1)
+        self.layout.addWidget(self.toolbar, 0, 0, 1, 3)
 
         self.testAction = QAction(QIcon('icons/arrow_back_24px_blue.svg'), 'Previous', self.toolbar)
         self.toolbar.addAction(self.testAction)
@@ -1338,26 +1348,35 @@ class EventViewer(QDialog):
         self.toolbar.addAction(self.testAction)
         self.testAction.triggered.connect(self.next)
 
+        self.tracePlot = pg.PlotWidget()
+        self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
+        self.tracePlot.setLabel('bottom', 'Time', 's')
+        self.tracePlot.setLabel('left', 'Imon', '')
+        self.layout.addWidget(self.tracePlot, 1, 0, 1, 3)
+
         self.eventPlot = pg.PlotWidget()
-        self.eventPlot.setMinimumSize(480, 360)
         self.eventPlot.showGrid(x=True, y=True, alpha=0.1)
         self.eventPlot.setLabel('bottom', 'Time', 's')
         self.eventPlot.setLabel('left', 'Imon', '')
-        self.layout.addWidget(self.eventPlot, 1, 0, 2, 3)
+        self.layout.addWidget(self.eventPlot, 2, 0, 2, 2)
 
         self.averagePlot = pg.PlotWidget()
-        self.averagePlot.setMinimumWidth(240)
-        self.layout.addWidget(self.averagePlot, 1, 3, 1, 1)
+        self.layout.addWidget(self.averagePlot, 2, 2, 1, 1)
 
         self.histPlot = pg.PlotWidget()
-        self.histPlot.setMinimumWidth(240)
-        self.layout.addWidget(self.histPlot, 2, 3, 1, 1)
+        self.layout.addWidget(self.histPlot, 3, 2, 1, 1)
 
         self.ind = 0
         self.left_buffer = int(self.detection.window_size / 2)
         self.right_buffer = int(self.detection.window_size * 1.5)
         self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
 
+        # create a downsampled trace for the event plot
+        # downsample trace by factor of 10
+        self.trace_x = np.arange(0, self.detection.trace.data.shape[0], 10) * self.detection.trace.sampling
+        self.trace_y = self.detection.trace.data[::10]
+
+        self.update_trace_plot()
         self.update_event_plot()
         self.update_average_plot()
         self.update_histogram_plot()
@@ -1367,7 +1386,7 @@ class EventViewer(QDialog):
         self.buttonBox.accepted.connect(self.close_event_viewer)
         self.buttonBox.rejected.connect(self.cancel_event_viewer)
 
-        self.layout.addWidget(self.buttonBox, 3, 3, 1, 1)
+        self.layout.addWidget(self.buttonBox, 4, 2, 1, 1)
         self.setWindowTitle('Event Viewer')
         self.setWindowModality(pg.QtCore.Qt.ApplicationModal)
 
@@ -1384,6 +1403,20 @@ class EventViewer(QDialog):
         self.close()
 
 
+    def update_trace_plot(self):
+        self.tracePlot.clear()
+        self.tracePlot.plot(self.trace_x, self.trace_y, pen=pg.mkPen(color=self.settings.colors[3], width=1))
+        self.tracePlot.setLabel('bottom', 'Time', 's')
+        self.tracePlot.setLabel('left', 'Amplitude', self.detection.trace.y_unit)
+
+        # Highlight the current event by a vertical line.
+        peak_loc = self.detection.event_peak_locations[self.ind]
+        # plot vertical line at peal_loc
+        self.tracePlot.plot([peak_loc * self.detection.trace.sampling, peak_loc * self.detection.trace.sampling],
+                            [np.min(self.detection.trace.data), np.max(self.detection.trace.data)],
+                            pen=pg.mkPen(color='orange', width=1, style=pg.QtCore.Qt.DotLine))
+
+
     def update_average_plot(self):
         """
         Updates the average event plot.
@@ -1394,7 +1427,7 @@ class EventViewer(QDialog):
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
         self.averagePlot.plot(time_data, ev_average, pen=pg.mkPen(color=self.settings.colors[2], width=2))
         self.averagePlot.setLabel('bottom', 'Time', 's')
-        self.averagePlot.setLabel('left', 'Amplitude', 'pA')
+        self.averagePlot.setLabel('left', 'Amplitude', self.detection.trace.y_unit)
 
 
     def update_histogram_plot(self):
@@ -1403,7 +1436,7 @@ class EventViewer(QDialog):
         self.histPlot.clear()
         self.histPlot.setTitle('Amplitude histogram')
         self.histPlot.addItem(curve)
-        self.histPlot.setLabel('bottom', 'Amplitude', 'pA')
+        self.histPlot.setLabel('bottom', 'Amplitude', self.detection.trace.y_unit)
         self.histPlot.setLabel('left', 'Count', '')
 
 
@@ -1501,12 +1534,13 @@ class EventViewer(QDialog):
             self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
 
         self.eventPlot.setLabel('bottom', 'Time', 'ms')
-        self.eventPlot.setLabel('left', 'Amplitude', 'pA')
+        self.eventPlot.setLabel('left', 'Amplitude', self.detection.trace.y_unit)
 
 
     def previous(self):
         self.ind = (self.ind - 1) % self.num_events
         self.update_event_plot()
+        self.update_trace_plot()
 
 
     def delete_event(self):
@@ -1523,6 +1557,7 @@ class EventViewer(QDialog):
     def next(self):
         self.ind = (self.ind + 1) % self.num_events
         self.update_event_plot()
+        self.update_trace_plot()
 
 
 if __name__ == '__main__':
