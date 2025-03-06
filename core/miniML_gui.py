@@ -961,7 +961,7 @@ class AboutPanel(QDialog):
         self.website.setOpenExternalLinks(True)
         self.layout.addRow(self.website)
 
-        self.paper = QLabel('Publication: <a href=\"https://doi.org/10.7554/eLife.98485.1\">miniML eLife paper 2024</a>')
+        self.paper = QLabel('Publication: <a href=\"https://doi.org/10.7554/eLife.98485.3\">miniML eLife paper 2024</a>')
         self.paper.setOpenExternalLinks(True)
         self.layout.addRow(self.paper)
 
@@ -1105,7 +1105,6 @@ class FilterPanel(QDialog):
         self.hann = QCheckBox('')
         self.hann_window = QLineEdit('20')
         self.hann_window.setValidator(QIntValidator(3,1000))
-
 
         self.layout = QFormLayout(self)
         self.layout.addRow('Detrend data', self.detrend)
@@ -1270,7 +1269,6 @@ class EventViewer(QDialog):
                                              [np.min(self.detection.trace.data), np.max(self.detection.trace.data)],
                                              pen=pg.mkPen(color='orange', width=2, style=pg.QtCore.Qt.DotLine))
             self.tracePlot.addItem(self.eventitem)
-
 
 
     def update_event_plot(self):
