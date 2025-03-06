@@ -1279,39 +1279,36 @@ class EventViewer(QDialog):
         """
         event_loc = self.detection.event_locations[self.ind]
         peak_loc = self.detection.event_peak_locations[self.ind]
-        peak_loc_left = peak_loc - self.detection.peak_spacer
-        peak_loc_right = peak_loc + self.detection.peak_spacer
         peak_val = self.detection.event_peak_values[self.ind]
-
         bsl = self.detection.event_bsls[self.ind]
         min_value_rise = self.detection.min_values_rise[self.ind]
         max_value_rise = self.detection.max_values_rise[self.ind]
 
         zero_point = event_loc - self.left_buffer
+        sampling_ms = self.detection.trace.sampling * 1e3
         
         peaks_in_win = self.detection.event_peak_locations[
             np.logical_and(self.detection.event_peak_locations > peak_loc,
                            self.detection.event_peak_locations < event_loc + self.right_buffer)]
         
-        rel_peak_loc = (peak_loc - zero_point) * self.detection.trace.sampling * 1e3
-        rel_peak_loc_left = (peak_loc_left - zero_point) * self.detection.trace.sampling * 1e3
-        rel_peak_loc_right = (peak_loc_right - zero_point) * self.detection.trace.sampling * 1e3
-        rel_bsl_start = (self.detection.bsl_starts[self.ind] - zero_point) * self.detection.trace.sampling * 1e3
-        rel_bsl_end = (self.detection.bsl_ends[self.ind] - zero_point) * self.detection.trace.sampling * 1e3
+        rel_peak_loc = (peak_loc - zero_point) * sampling_ms
+        rel_peak_loc_left = (peak_loc - self.detection.peak_spacer - zero_point) * sampling_ms
+        rel_peak_loc_right = (peak_loc + self.detection.peak_spacer - zero_point) * sampling_ms
+        rel_bsl_start = (self.detection.bsl_starts[self.ind] - zero_point) * sampling_ms
+        rel_bsl_end = (self.detection.bsl_ends[self.ind] - zero_point) * sampling_ms
         rel_min_rise = (self.detection.min_positions_rise[self.ind] - (zero_point * self.detection.trace.sampling)) * 1e3
         rel_max_rise = (self.detection.max_positions_rise[self.ind] - (zero_point * self.detection.trace.sampling)) * 1e3
         
         if not np.isnan(self.detection.half_decay[self.ind]):
             decay_loc = int(self.detection.half_decay[self.ind])
-            rel_decay_loc = (decay_loc - zero_point) * self.detection.trace.sampling * 1e3
+            rel_decay_loc = (decay_loc - zero_point) * sampling_ms
 
         if len(peaks_in_win):
-            rel_peaks_in_win = (peaks_in_win - zero_point) * self.detection.trace.sampling * 1e3
+            rel_peaks_in_win = (peaks_in_win - zero_point) * sampling_ms
 
         data = self.detection.trace.data[zero_point:event_loc + self.right_buffer]
         filtered_data = self.filtered_data[zero_point:event_loc + self.right_buffer]
-        
-        time_ax = np.arange(0, data.shape[0]) * self.detection.trace.sampling * 1e3
+        time_ax = np.arange(0, data.shape[0]) * sampling_ms
 
         data_plot = self.eventPlot.plot(time_ax, data, pen=pg.mkPen(color='gray', width=2.5), clear=True)
         data_plot.setAlpha(0.5, False)
@@ -1354,15 +1351,11 @@ class EventViewer(QDialog):
 
         pen = pg.mkPen(color='k', width=1.5)
 
-        if self.use_for_avg[self.ind] == 1:
-            self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: used for average', color='green', border=pen)
-            self.eventPlot.addItem(self.text)
-            self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
-        
-        elif self.use_for_avg[self.ind] == 0:
-            self.text = pg.TextItem(f'event #{self.ind+1}/{self.num_events}: excluded from average', color='red', border=pen)
-            self.eventPlot.addItem(self.text)
-            self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
+        color = 'green' if self.use_for_avg[self.ind] else 'red'
+        text_str = f'event #{self.ind+1}/{self.num_events}: {"used for" if self.use_for_avg[self.ind] else "excluded from"} average'
+        self.text = pg.TextItem(text_str, color=color, border=pen)
+        self.eventPlot.addItem(self.text)
+        self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)
 
         self.eventPlot.setLabel('bottom', 'Time', 'ms')
         self.eventPlot.setLabel('left', 'Amplitude', self.detection.trace.y_unit)
@@ -1396,14 +1389,15 @@ class EventViewer(QDialog):
 
 
     def keyPressEvent(self, event):
-        # print(event.key())
-        if event.key() == 16777236: # forward key.
+        key = event.key()
+        
+        if key == Qt.Key_Right:  # forward key
             self.next()
-        if event.key() == 16777234: # backward key.
+        elif key == Qt.Key_Left:  # backward key
             self.previous()
-        if event.key() == 77: # 'm'
-            self.delete_event()  
-        if event.key() == 78: # 'n' 
+        elif key == Qt.Key_M:  # 'm'
+            self.delete_event()
+        elif key == Qt.Key_N:  # 'n'
             self.exclude_event()
 
 
