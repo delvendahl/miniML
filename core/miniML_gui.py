@@ -1,7 +1,7 @@
 # ------- Imports ------- #
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction, QPushButton,
-                             QTableWidget, QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout,
-                             QLineEdit, QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction,QTableWidget, 
+                             QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout, QLineEdit, 
+                             QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar)
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
 from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
 import pyqtgraph as pg
@@ -45,6 +45,19 @@ def get_hdf_keys(filepath: str) -> list:
 
 
 def load_trace_from_file(file_type: str, file_args: dict) -> MiniTrace:
+    """
+    Loads a trace from file and returns a MiniTrace object.
+
+    Parameters:
+    file_type (str): Type of file to load. Supported types are 'HEKA DAT', 'AXON ABF', and 'HDF5'.
+    file_args (dict): Dictionary of arguments to pass to the file loader.
+
+    Returns:
+    MiniTrace: MiniTrace object created from the loaded data.
+
+    Raises:
+    ValueError: If file_type is not supported.
+    """
     file_loader = {
         'HEKA DAT': MiniTrace.from_heka_file,
         'AXON ABF': MiniTrace.from_axon_file,
@@ -210,6 +223,8 @@ class minimlGuiMain(QMainWindow):
         self.settingsAction = QAction(QIcon('icons/settings_24px_blue.svg'), 'Settings', self)
         self.settingsAction.setShortcut('Ctrl+P')
         self.tb.addAction(self.settingsAction)
+
+        # qActions for MenuBar
         self.closeAction = QAction(QIcon('icons/cancel_24px_blue.svg'), 'Close Window', self)
         self.closeAction.setShortcut('Ctrl+W')
         # self.tb.addAction(self.closeAction)
@@ -249,6 +264,18 @@ class minimlGuiMain(QMainWindow):
 
 
     def _warning_box(self, message):
+        """
+        Display a warning box with a message.
+        
+        Parameters
+        ----------
+        message: str
+            The message to be displayed in the warning box.
+        
+        Returns
+        -------
+        None
+        """
         msgbox = QMessageBox()
         msgbox.setIcon(QMessageBox.Warning)
         msgbox.setWindowTitle('Message')
@@ -544,6 +571,9 @@ class minimlGuiMain(QMainWindow):
 
 
     def close_gui(self) -> None:
+        """
+        Closes the GUI application window.
+        """
         self.close()
     
 
@@ -744,6 +774,12 @@ class minimlGuiMain(QMainWindow):
 
 
     def save_results(self) -> None:
+        """
+        Opens a file dialog for saving the results of the event detection analysis.
+        
+        Depending on the selected file type, the results are saved using the appropriate
+        method from the EventDetection class. Supported file types are CSV, Pickle, and HDF.
+        """
         if not hasattr(self, 'detection'):
             return
         default_filename = Path(self.filename).with_suffix('')
