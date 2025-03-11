@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBo
                              QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout, QLineEdit, 
                              QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar)
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
-from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
+from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap, QValidator
 import pyqtgraph as pg
 import numpy as np
 import tensorflow as tf
@@ -480,7 +480,16 @@ class minimlGuiMain(QMainWindow):
         start_x = int(float(cut_win.start.text()) / self.trace.sampling)
         end_x = int(float(cut_win.end.text()) / self.trace.sampling)
 
-        self.trace.data = self.trace.data[start_x:end_x]
+        mask = np.ones(self.trace.data.shape[0], dtype=bool)
+        mask[:start_x] = False
+        mask[end_x:] = False
+        if float(cut_win.x_section_start.text()) > 0 and float(cut_win.x_section_end.text()) > float(cut_win.x_section_start.text()):
+            segment_start_x = int(float(cut_win.x_section_start.text()) / self.trace.sampling)
+            segment_end_x = int(float(cut_win.x_section_end.text()) / self.trace.sampling)
+            mask[segment_start_x:segment_end_x] = False
+
+        self.trace.data = self.trace.data[mask]
+
         self.update_main_plot()
         self.reset_windows()
         self.was_analyzed = False
@@ -1098,12 +1107,22 @@ class CutPanel(QDialog):
     def __init__(self, parent=None):
         super(CutPanel, self).__init__(parent)
         
+        trace_validator = QDoubleValidator(0.0, parent.trace.total_time, 5)
         self.start = QLineEdit('0.0')
+        self.start.setValidator(trace_validator)
         self.end = QLineEdit(str(np.round(parent.trace.total_time)))
+        self.end.setValidator(trace_validator)
+        self.x_section_start = QLineEdit('0.0')
+        self.x_section_start.setValidator(trace_validator)
+        self.x_section_end = QLineEdit('0.0')
+        self.x_section_end.setValidator(trace_validator)
         
         self.layout = QFormLayout(self)
-        self.layout.addRow('new start (s)', self.start)
-        self.layout.addRow('new end (s)', self.end)
+        self.layout.addRow('new trace start (s)', self.start)
+        self.layout.addRow('new trace end (s)', self.end)
+
+        self.layout.addRow('cut segment start (s)', self.x_section_start)
+        self.layout.addRow('cut segment end (s)', self.x_section_end)
 
         finalize_dialog_window(self, title='Cut trace')
 
