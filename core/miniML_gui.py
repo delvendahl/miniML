@@ -807,14 +807,14 @@ class minimlGuiMain(QMainWindow):
         for event in self.detection.events:
             self.eventPlot.plot(time_data, event, pen=pg.mkPen(color=self.settings.colors[3], width=1))
         self.eventPlot.setLabel('bottom', 'Time', 's')
-        self.eventPlot.setLabel('left', 'Amplitude', 'pA')
+        self.eventPlot.setLabel('left', 'Amplitude', self.detection.trace.y_unit)
 
         y, x = np.histogram(self.detection.event_stats.amplitudes, bins='auto')
         curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
         self.histogramPlot.clear()
         self.histogramPlot.setTitle('Amplitude histogram')
         self.histogramPlot.addItem(curve)
-        self.histogramPlot.setLabel('bottom', 'Amplitude', 'pA')
+        self.histogramPlot.setLabel('bottom', 'Amplitude', self.detection.trace.y_unit)
         self.histogramPlot.setLabel('left', 'Count', '')
 
         ev_average = np.mean(self.detection.events[self.detection.singular_event_indices], axis=0)
@@ -823,7 +823,7 @@ class minimlGuiMain(QMainWindow):
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
         self.averagePlot.plot(time_data, ev_average, pen=pg.mkPen(color=self.settings.colors[2], width=2))
         self.averagePlot.setLabel('bottom', 'Time', 's')
-        self.averagePlot.setLabel('left', 'Amplitude', 'pA')
+        self.averagePlot.setLabel('left', 'Amplitude', self.detection.trace.y_unit)
 
     
     def tabulate_results(self, tableWidget):
