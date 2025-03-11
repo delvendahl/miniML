@@ -482,6 +482,9 @@ class minimlGuiMain(QMainWindow):
 
         self.trace.data = self.trace.data[start_x:end_x]
         self.update_main_plot()
+        self.reset_windows()
+        self.was_analyzed = False
+        self.detection = EventDetection(self.trace)
 
 
     def update_main_plot(self) -> None:
