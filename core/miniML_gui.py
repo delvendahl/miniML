@@ -660,10 +660,10 @@ class minimlGuiMain(QMainWindow):
         self.trace = load_trace_from_file(self.filetype, self.load_args)
         self.recording_mode = 'current-clamp' if 'V' in self.trace.y_unit else 'voltage-clamp'
         
-        self.update_main_plot()
-        self.reset_windows()
         self.was_analyzed = False
         self.detection = EventDetection(self.trace)
+        self.update_main_plot()
+        self.reset_windows()
         
     
     def info_window(self) -> None:
