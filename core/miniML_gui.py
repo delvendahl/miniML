@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBo
                              QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout, QLineEdit, 
                              QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar)
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
-from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap, QValidator
+from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
 import pyqtgraph as pg
 import numpy as np
 import tensorflow as tf
@@ -227,10 +227,8 @@ class minimlGuiMain(QMainWindow):
         # qActions for MenuBar
         self.closeAction = QAction(QIcon('icons/cancel_24px_blue.svg'), 'Close Window', self)
         self.closeAction.setShortcut('Ctrl+W')
-        # self.tb.addAction(self.closeAction)
         self.aboutAction = QAction(QIcon('icons/info_24px_blue.svg'), 'About', self)
         self.aboutAction.setShortcut('Ctrl+H')
-        # self.tb.addAction(self.aboutAction)
         
 
     def _connect_actions(self):
@@ -312,7 +310,7 @@ class minimlGuiMain(QMainWindow):
             self.menu.addAction(inspectAction)
 
             deleteAction = QAction('Delete event', self)
-            deleteAction.triggered.connect(lambda: self.delete_event(event, row))
+            deleteAction.triggered.connect(lambda: self.delete_detected_event(event, row))
             self.menu.addAction(deleteAction)
 
             self.menu.popup(QCursor.pos())
@@ -330,7 +328,7 @@ class minimlGuiMain(QMainWindow):
         self.tracePlot.setYRange(ymin, ymax)
 
 
-    def delete_event(self, event, row) -> None:
+    def delete_detected_event(self, event, row) -> None:
         """
         Deletes an event from the detection object.
 
@@ -344,10 +342,9 @@ class minimlGuiMain(QMainWindow):
         This function prompts the user with a confirmation dialog to delete an event. 
         After deleting the event, the function updates the main plot, plots the detected events, and tabulates the results.
         """
-        msgbox = QMessageBox
-        answer = msgbox.question(self,'', "Do you really want to delete this event?", msgbox.Yes | msgbox.No)
+        answer = QMessageBox.question(self,'', "Do you really want to delete this event?", QMessageBox.Yes | QMessageBox.No)
 
-        if answer == msgbox.Yes:
+        if answer == QMessageBox.Yes:
             self.detection.event_locations = np.delete(self.detection.event_locations, row, axis=0)
             self.detection.event_peak_locations = np.delete(self.detection.event_peak_locations, row, axis=0)
             self.detection.event_peak_times = np.delete(self.detection.event_peak_times, row, axis=0)
@@ -390,10 +387,10 @@ class minimlGuiMain(QMainWindow):
         After deleting the event, the function updates the main plot, plots the detected events, and tabulates the results.
         """        
         if len(rows) > 0:
-            msgbox = QMessageBox
-            answer = msgbox.question(self,'', f"Do you really want to delete {len(rows)} event(s)? This can not be reverted", msgbox.Yes | msgbox.No)
+            answer = QMessageBox.question(self,'', f"Do you really want to delete {len(rows)} event(s)? This can not be reverted", 
+                                          QMessageBox.Yes | QMessageBox.No)
 
-            if answer == msgbox.Yes:
+            if answer == QMessageBox.Yes:
                 self.detection.event_locations = np.delete(self.detection.event_locations, rows, axis=0)
                 self.detection.event_peak_locations = np.delete(self.detection.event_peak_locations, rows, axis=0)
                 self.detection.event_peak_times = np.delete(self.detection.event_peak_times, rows, axis=0)
@@ -514,6 +511,9 @@ class minimlGuiMain(QMainWindow):
 
 
     def toggle_table_win(self) -> None:
+        """
+        Toggle the display of the event table window.
+        """
         if 0 in self.splitter3.sizes():
             self.splitter3.setSizes(self._store_size_c)
         else:
@@ -522,6 +522,9 @@ class minimlGuiMain(QMainWindow):
 
 
     def toggle_plot_win(self) -> None:
+        """
+        Toggle the display of the event plot window.
+        """
         sizes = self.splitter2.sizes()
         if sizes[2] == 0: # panel is hidden
             sizes[0] = 0 if sizes[0] == 0 else self._store_size[0]
@@ -538,6 +541,9 @@ class minimlGuiMain(QMainWindow):
 
 
     def toggle_prediction_win(self) -> None:
+        """
+        Toggle the display of the event prediction window.
+        """
         sizes = self.splitter2.sizes()
         if sizes[0] == 0: # panel is hidden
             sizes[0] = self._store_size_a
@@ -667,6 +673,9 @@ class minimlGuiMain(QMainWindow):
         
     
     def info_window(self) -> None:
+        """
+        Display the File Information window.
+        """
         if not hasattr(self, 'trace'):
             return
 
@@ -675,6 +684,9 @@ class minimlGuiMain(QMainWindow):
     
 
     def summary_window(self) -> None:
+        """
+        Display the analysis summary window.
+        """
         if not hasattr(self, 'trace'):
             return
 
@@ -683,6 +695,9 @@ class minimlGuiMain(QMainWindow):
 
 
     def settings_window(self) -> None:
+        """
+        Display the settings window.
+        """
         settings_win = SettingsPanel(self)
         settings_win.exec_()
         if settings_win.result() == 0:
@@ -810,9 +825,9 @@ class minimlGuiMain(QMainWindow):
 
 
     def plot_events(self):
-        '''
+        """
         Plot events, histogram and average event.
-        '''
+        """
         self.eventPlot.clear()
         self.eventPlot.setTitle('Detected events')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
@@ -839,6 +854,9 @@ class minimlGuiMain(QMainWindow):
 
     
     def tabulate_results(self, tableWidget):
+        """
+        Populate a QTableWidget with the results of the event detection analysis.
+        """
         tableWidget.clear()
         n_events = len(self.detection.event_stats.amplitudes)
         tableWidget.setHorizontalHeaderLabels(['Location', 'Amplitude', 'Area', 'Risetime', 'Decay'])
