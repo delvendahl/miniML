@@ -424,8 +424,8 @@ class MiniTrace():
         before: int
             Number of samples before event position for event extraction. Positions-before must be positive.
         after: int
-            Number of samples after event positions for event extraction. Positions+after must smaller 
-            than total number of samples in self.data.
+            Number of samples after event positions for event extraction. Positions+after must be smaller 
+            than the total number of samples in self.data.
 
         Returns
         ------
@@ -457,9 +457,9 @@ class EventStats():
     charges: np.ndarray
         Charge transfer of individual events.
     risetimes: np.ndarray
-        10-90 percent rise times of events.
+        10-90 percent rise times of individual events.
     halfdecays: np.ndarray
-        Half decay times of events.
+        Half decay times of individual events.
     avg_tau_decay: float
         Average decay time constant (seconds).
     rec_time: float
@@ -546,9 +546,9 @@ class EventDetection():
     model_path: str, default=''
         The path of the model file (.h5) to be used for event detection.
     model: tf.keras.Model, default=None
-        The model instance to be used for event detection. Overrides loading from model_path method if specified.
+        A model instance to be used for event detection. Overrides loading from model_path method if specified.
     model_threshold: float, default=0.5
-        The threshold for the model; range=(0,1).
+        The minimum peak heigth of the model prediction to be considered as an event; range=(0,1).
     compile_model: bool, default=True
         Whether to compile the model.
     callbacks: list, default=[]
@@ -624,7 +624,7 @@ class EventDetection():
 
 
     def load_model(self, filepath: str, threshold: float=0.5, compile: bool=True) -> None:
-        ''' Loads trained miniML model from hdf5 file '''
+        ''' Loads a trained miniML model from hdf5 file '''
         self.model = tf.keras.models.load_model(filepath, compile=compile)
         self.model_threshold = threshold
         if self.verbose:
@@ -634,7 +634,7 @@ class EventDetection():
     def hann_filter(self, data: np.ndarray, filter_size: int) -> np.ndarray:
         '''
         Hann window filter. Start and end of the data are not filtered to avoid artifacts
-        from zero padding.
+        resulting from zero padding.
         '''
         win = signal.windows.hann(filter_size)    
         filtered_data = signal.convolve(data, win, mode='same') / sum(win)
@@ -653,7 +653,7 @@ class EventDetection():
         data_interpolated:
             the interpolated data
         interpol_factor:
-            the factor by which the data was up or downsampled
+            the factor by which the data was up- or downsampled
         '''        
         x = np.arange(0, data.shape[0])
         x_interpol = np.linspace(0, data.shape[0], interpol_to_len)
@@ -681,8 +681,8 @@ class EventDetection():
         if self.event_direction != self.training_direction:
             data *= -1
 
-        win_size = round(self.window_size*self.resampling_factor)
-        stride = round(self.stride_length*self.resampling_factor)
+        win_size = round(self.window_size * self.resampling_factor)
+        stride = round(self.stride_length * self.resampling_factor)
 
         if stride <= 0 or stride > win_size:
             raise ValueError('Invalid stride')
