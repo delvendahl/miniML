@@ -1,7 +1,7 @@
 # ------- Imports ------- #
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction,QTableWidget, 
                              QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout, QLineEdit, 
-                             QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar)
+                             QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar, QHBoxLayout, QVBoxLayout)
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
 from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
 import pyqtgraph as pg
@@ -446,20 +446,6 @@ class minimlGuiMain(QMainWindow):
         if panel.result() == 0:
             return
 
-        if panel.detrend.isChecked():
-            self.trace = self.trace.detrend(num_segments = int(panel.num_segments.text()))
-        if panel.highpass.isChecked():
-            self.trace = self.trace.filter(highpass=float(panel.high.text()), order=int(panel.order.text()))
-        if panel.notch.isChecked():
-            self.trace = self.trace.filter(notch=float(panel.notch_freq.text()))
-        if panel.lowpass.isChecked():
-            if panel.filter_type.currentText() == 'Chebyshev':
-                self.trace = self.trace.filter(lowpass=float(panel.low.text()), order=int(panel.order.text()))
-            else:
-                self.trace = self.trace.filter(savgol=float(panel.window.text()), order=int(panel.order.text()))
-        if panel.hann.isChecked():
-                self.trace = self.trace.filter(hann=int(panel.hann_window.text()))
-
         self.update_main_plot()
 
         
@@ -469,28 +455,30 @@ class minimlGuiMain(QMainWindow):
         """
         if not hasattr(self, 'trace'):
             return
-        cut_win = CutPanel(self)
-        cut_win.exec_()
-        if cut_win.result() == 0:
+        cut_panel = CutPanel(self)
+        cut_panel.exec_()
+        if cut_panel.result() == 0:
             return
 
-        start_x = int(float(cut_win.start.text()) / self.trace.sampling)
-        end_x = int(float(cut_win.end.text()) / self.trace.sampling)
+        def cut_ends():
+            start_x = int(float(cut_panel.start.text()) / self.trace.sampling)
+            end_x = int(float(cut_panel.end.text()) / self.trace.sampling)
 
-        mask = np.ones(self.trace.data.shape[0], dtype=bool)
-        mask[:start_x] = False
-        mask[end_x:] = False
-        if float(cut_win.x_section_start.text()) > 0 and float(cut_win.x_section_end.text()) > float(cut_win.x_section_start.text()):
-            segment_start_x = int(float(cut_win.x_section_start.text()) / self.trace.sampling)
-            segment_end_x = int(float(cut_win.x_section_end.text()) / self.trace.sampling)
-            mask[segment_start_x:segment_end_x] = False
+            self.trace.data = self.trace.data[start_x:end_x]
 
-        self.trace.data = self.trace.data[mask]
+        def cut_section():
+            start_x = int(float(cut_panel.start.text()) / self.trace.sampling)
+            end_x = int(float(cut_panel.end.text()) / self.trace.sampling)
+
+            if start_x > 0 or end_x < len(self.trace.data) - 1:
+                self.trace.data = np.delete(self.trace.data, np.arange(start_x, end_x))
+
+        if cut_panel.switch.isChecked():
+            cut_section()
+        else:
+            cut_ends()
 
         self.update_main_plot()
-        self.reset_windows()
-        self.was_analyzed = False
-        self.detection = EventDetection(self.trace)
 
 
     def update_main_plot(self) -> None:
@@ -844,7 +832,7 @@ class minimlGuiMain(QMainWindow):
         self.histogramPlot.setLabel('bottom', 'Amplitude', self.detection.trace.y_unit)
         self.histogramPlot.setLabel('left', 'Count', '')
 
-        ev_average = np.mean(self.detection.events[self.detection.singular_event_indices], axis=0)
+        ev_average = np.mean(self.detection.events[self.detection.singular_event_indices], axis=0) if len(self.detection.singular_event_indices) > 0 else np.zeros(self.detection.events[0].shape[0])
         self.averagePlot.clear()
         self.averagePlot.setTitle('Average event waveform')
         time_data = np.arange(0, self.detection.events[0].shape[0]) * self.detection.trace.sampling
@@ -1124,53 +1112,189 @@ class SettingsPanel(QDialog):
 class CutPanel(QDialog):
     def __init__(self, parent=None):
         super(CutPanel, self).__init__(parent)
+
+        layout = QVBoxLayout(self)
+        vb = CustomViewBox()
+
+        self.tracePlot = pg.PlotWidget(viewBox=vb)
+        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+        self.tracePlot.setLabel('bottom', 'Time', 's')
+        self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
+
+        self.region = pg.LinearRegionItem(brush=(138,201,38,50), hoverBrush=(138,201,38,100), pen=(46,64,87,50), hoverPen=(0,0,0,255),
+                                          bounds=[0, parent.trace.total_time], swapMode='block')
+        self.region.setZValue(-1)
+        self.region.setRegion([0, parent.trace.total_time])
+        self.tracePlot.addItem(self.region)
         
+        def update_positions():
+            x1, x2 = self.region.getRegion()
+            self.start.setText(str(np.round(x1, 5)))
+            self.end.setText(str(np.round(x2, 5)))
+
+        self.region.sigRegionChanged.connect(update_positions)
+
+
+        def updateRegion():
+            self.region.setRegion([float(self.start.text()), float(self.end.text())])
+
+        def toggle_region_brush():
+            if self.switch.isChecked():
+                self.region.setBrush((255,89,94,50))
+                self.region.setHoverBrush((255,89,94,50))
+            else:
+                self.region.setBrush((138,201,38,50))
+                self.region.setHoverBrush((138,201,38,50))
+            self.tracePlot.update()
+
         trace_validator = QDoubleValidator(0.0, parent.trace.total_time, 5)
+        start_label = QLabel('Position 1 (s)')
+        start_label.setStyleSheet("font-weight: bold;")
         self.start = QLineEdit('0.0')
+        self.start.setMinimumWidth(80)
         self.start.setValidator(trace_validator)
+        self.start.setStyleSheet("font-weight: bold;")
+        self.start.editingFinished.connect(updateRegion)
+
+        end_label = QLabel('Position 2 (s)')
+        end_label.setStyleSheet("font-weight: bold;")
         self.end = QLineEdit(str(np.round(parent.trace.total_time)))
+        self.end.setMinimumWidth(80)
         self.end.setValidator(trace_validator)
-        self.x_section_start = QLineEdit('0.0')
-        self.x_section_start.setValidator(trace_validator)
-        self.x_section_end = QLineEdit('0.0')
-        self.x_section_end.setValidator(trace_validator)
-        
-        self.layout = QFormLayout(self)
-        self.layout.addRow('new trace start (s)', self.start)
-        self.layout.addRow('new trace end (s)', self.end)
+        self.end.setStyleSheet("font-weight: bold;")
+        self.end.editingFinished.connect(updateRegion)
 
-        self.layout.addRow('cut segment start (s)', self.x_section_start)
-        self.layout.addRow('cut segment end (s)', self.x_section_end)
+        self.toggle_label1 = QLabel('Cut between cursors')
+        self.toggle_label1.setStyleSheet("font-weight: bold;")
+        self.switch = QCheckBox()
+        self.switch.setChecked(False)
+        self.switch.setStyleSheet('''
+            QCheckBox::indicator:unchecked {
+                image: url(icons/toggle_off_24px.svg);
+                width: 48;
+                height: 48;
+            }
+            QCheckBox::indicator:checked {
+                image: url(icons/toggle_on_24px.svg);
+                width: 48;
+                height: 48;
+            }
+        ''')
+        self.switch.stateChanged.connect(toggle_region_brush)
 
-        finalize_dialog_window(self, title='Cut trace')
+        lower_layout = QHBoxLayout()
+
+        cursor1_icon = QLabel()
+        cursor1_icon.setPixmap(QPixmap('icons/first_page_24dp.svg'))
+        cursor1_icon.setFixedSize(36, 36)
+        cursor2_icon = QLabel()
+        cursor2_icon.setPixmap(QPixmap('icons/last_page_24dp.svg'))
+        cursor2_icon.setFixedSize(36, 36)
+        lower_layout.addWidget(cursor1_icon)
+        lower_layout.addWidget(start_label)
+        lower_layout.addWidget(self.start)
+        lower_layout.addStretch()
+        lower_layout.addWidget(cursor2_icon)
+        lower_layout.addWidget(end_label)
+        lower_layout.addWidget(self.end)
+        lower_layout.addWidget(self.toggle_label1)
+        lower_layout.addWidget(self.switch)
+    
+        layout.addWidget(self.tracePlot)
+        layout.addLayout(lower_layout)
+        self.setLayout(layout)
+
+        def custom_accept():
+            if self.buttonBox.button(QDialogButtonBox.Ok).underMouse():
+                self.accept()
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+        self.buttonBox.accepted.connect(custom_accept)
+        self.buttonBox.rejected.connect(self.reject)
+        layout.addWidget(self.buttonBox)
+        self.setWindowTitle('Cut trace')
+        self.setWindowModality(Qt.ApplicationModal)
+        self.resize(650, 400)
 
 
 class FilterPanel(QDialog):
     def __init__(self, parent=None):
         super(FilterPanel, self).__init__(parent)
         
+        layout = QVBoxLayout(self)
+
+        self.tracePlot = pg.PlotWidget()
+        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1), clear=True)
+        self.tracePlot.setLabel('bottom', 'Time', 's')
+        self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
+        self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
+
+        self.filtered_trace_plot = pg.PlotDataItem(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+        self.tracePlot.addItem(self.filtered_trace_plot)
+
+        layout.addWidget(self.tracePlot)
+
+
         def comboBoxIndexChanged(index):
             if index == 1:
                 self.window.setEnabled(True)
                 self.low.setEnabled(False)
+                self.order.setEnabled(True)
+                self.hann_window.setEnabled(False)
+            elif index == 2:
+                self.window.setEnabled(False)
+                self.low.setEnabled(False)
+                self.order.setEnabled(True)
+                self.hann_window.setEnabled(True)
             else:
                 self.window.setEnabled(False)
                 self.low.setEnabled(True)
+                self.order.setEnabled(False)
+                self.hann_window.setEnabled(False)
+
+        def filter_toggled():
+            if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.notch.isChecked(), self.detrend.isChecked()]):
+                self.filtered_trace_plot.setData(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+                self.filtered_trace_plot.setPen(pg.mkPen(color='grey', width=1))
+                return
+
+            self.filtered_trace = parent.trace
+            if self.detrend.isChecked():
+                self.filtered_trace = self.filtered_trace.detrend(num_segments = int(self.num_segments.text()))
+            if self.highpass.isChecked():
+                self.filtered_trace = self.filtered_trace.filter(highpass=float(self.high.text()), order=int(self.order.text()))
+            if self.notch.isChecked():
+                self.filtered_trace = self.filtered_trace.filter(notch=float(self.notch_freq.text()))
+            if self.lowpass.isChecked():
+                if self.filter_type.currentText() == 'Chebyshev':
+                    self.filtered_trace = self.filtered_trace.filter(lowpass=float(self.low.text()), order=int(self.order.text()))
+                elif self.filter_type.currentText() == 'Savitzky-Golay':
+                    self.filtered_trace = self.filtered_trace.filter(savgol=float(self.window.text()), order=int(self.order.text()))
+                else:
+                    self.filtered_trace = self.filtered_trace.filter(hann=int(self.hann_window.text()))
+            
+            self.filtered_trace_plot.setData(self.filtered_trace.time_axis, self.filtered_trace.data)
+            self.filtered_trace_plot.setPen(pg.mkPen(color='#ffca3a', width=1))
+
 
         self.detrend = QCheckBox('')
+        self.detrend.stateChanged.connect(filter_toggled)
         self.num_segments = QLineEdit('1')
         self.num_segments.setValidator(QIntValidator(1,99))
         self.highpass = QCheckBox('')
+        self.highpass.stateChanged.connect(filter_toggled)
         self.high = QLineEdit('0.5')
         self.high.setValidator(QDoubleValidator(0.01,99.99,2))
         self.notch = QCheckBox('')
+        self.notch.stateChanged.connect(filter_toggled)
         self.notch_freq = QLineEdit('50')
         self.notch_freq.setValidator(QDoubleValidator(0.9,9999.9,1))
         self.lowpass = QCheckBox('')
+        self.lowpass.stateChanged.connect(filter_toggled)
         self.low = QLineEdit('750')
         self.low.setValidator(QDoubleValidator(0.9,99999.9,1))
         self.filter_type = QComboBox()
-        self.filter_type.addItems(['Chebyshev', 'Savitzky-Golay'])
+        self.filter_type.addItems(['Chebyshev', 'Savitzky-Golay', 'Hann window'])
         self.filter_type.currentIndexChanged.connect(comboBoxIndexChanged)
         self.filter_type.setFixedWidth(200)
         self.window = QLineEdit('5.0')
@@ -1178,26 +1302,44 @@ class FilterPanel(QDialog):
         self.window.setEnabled(False)
         self.order = QLineEdit('4')
         self.order.setValidator(QIntValidator(1,9))        
-        self.hann = QCheckBox('')
         self.hann_window = QLineEdit('20')
         self.hann_window.setValidator(QIntValidator(3,1000))
+        self.hann_window.setEnabled(False)
 
-        self.layout = QFormLayout(self)
-        self.layout.addRow('Detrend data', self.detrend)
-        self.layout.addRow('Number of segments', self.num_segments)
-        self.layout.addRow('High-pass filter', self.highpass)
-        self.layout.addRow('High-pass (Hz)', self.high)
-        self.layout.addRow('Notch filter', self.notch)
-        self.layout.addRow('Notch frequency (Hz)', self.notch_freq)        
-        self.layout.addRow('Lowpass filter', self.lowpass)
-        self.layout.addRow('Filter type', self.filter_type)
-        self.layout.addRow('Low-pass (Hz)', self.low)
-        self.layout.addRow('Window (ms)', self.window)
-        self.layout.addRow('Filter order', self.order)
-        self.layout.addRow('Hann filter', self.hann)
-        self.layout.addRow('Hann window size', self.hann_window)
+        controls1 = QFormLayout()
+        controls1.addRow('Detrend data', self.detrend)
+        controls1.addRow('Number of segments', self.num_segments)
+        controls1.addRow('High-pass filter', self.highpass)
+        controls1.addRow('High-pass (Hz)', self.high)
+        controls1.addRow('Notch filter', self.notch)
+        controls1.addRow('Notch frequency (Hz)', self.notch_freq)        
+        controls2 = QFormLayout()
+        controls2.addRow('Lowpass filter', self.lowpass)
+        controls2.addRow('Filter type', self.filter_type)
+        controls2.addRow('Low-pass (Hz)', self.low)
+        controls2.addRow('Filter order', self.order)
+        controls2.addRow('Window (ms)', self.window)
+        controls2.addRow('Hann window size', self.hann_window)
 
-        finalize_dialog_window(self, title='Filter settings')
+        lower_layout = QHBoxLayout()
+        lower_layout.addLayout(controls1)
+        lower_layout.addLayout(controls2)
+        layout.addLayout(lower_layout)
+
+        def custom_accept():
+            if hasattr(self, 'filtered_trace'):
+                parent.trace = self.filtered_trace
+            self.accept()
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(custom_accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        layout.addWidget(self.buttonBox)
+
+        self.setLayout(layout)
+        self.resize(400, 600)
+        self.setWindowTitle('Filter data')
 
 
 class EventViewer(QDialog):
@@ -1286,12 +1428,12 @@ class EventViewer(QDialog):
         self.table = QTableWidget()
         self.table.verticalHeader().setDefaultSectionSize(10)
         self.table.horizontalHeader().setDefaultSectionSize(90)
-        self.table.setRowCount(8) 
+        self.table.setRowCount(9) 
         self.table.setColumnCount(2)
         self.table.setColumnWidth(0, 90)
         self.table.setColumnWidth(1, 60)
         self.table.setHorizontalHeaderLabels(['Value', 'Unit'])
-        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Decay'])
+        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Decay', 'SNR'])
         self.table.viewport().installEventFilter(self)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.update_table()
@@ -1322,6 +1464,8 @@ class EventViewer(QDialog):
         self.table.setItem(5, 0, QTableWidgetItem(f'{self.detection.event_stats.charges[self.ind]:.5f}'))
         self.table.setItem(6, 0, QTableWidgetItem(f'{self.detection.event_stats.risetimes[self.ind] * 1e3:.5f}'))
         self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}'))
+        bsl_sd = np.std(self.detection.trace.data[self.detection.bsl_starts[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer : self.detection.bsl_ends[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer])
+        self.table.setItem(8, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
 
         self.table.setItem(0, 1, QTableWidgetItem(''))
         self.table.setItem(1, 1, QTableWidgetItem('s'))
@@ -1331,6 +1475,7 @@ class EventViewer(QDialog):
         self.table.setItem(5, 1, QTableWidgetItem(f'{self.detection.trace.y_unit}*s'))
         self.table.setItem(6, 1, QTableWidgetItem('ms'))
         self.table.setItem(7, 1, QTableWidgetItem('ms'))
+        self.table.setItem(8, 1, QTableWidgetItem(''))
 
 
     def cancel_event_viewer(self):
@@ -1383,15 +1528,22 @@ class EventViewer(QDialog):
 
 
     def update_avg_plot(self):
-        self.avg.setData(self.avg_time_ax, np.mean(self.detection.events[self.use_for_avg == 1], axis=0))
+        if np.sum(self.use_for_avg) == 0:
+            self.avg.setData(self.avg_time_ax, np.zeros(self.avg_time_ax.shape))
+        else:
+            self.avg.setData(self.avg_time_ax, np.mean(self.detection.events[self.use_for_avg == 1], axis=0))
 
 
     def update_histogram_plots(self):
-        y, x = np.histogram(self.detection.event_stats.amplitudes[self.exclude_events == 0], bins='auto')
-        self.amp_curve.setData(x, y)
+        if np.sum(self.exclude_events) == self.num_events:
+            self.amp_curve.setData([0, 0], [0])
+            self.decay_curve.setData([0, 0], [0])
+        else:
+            y, x = np.histogram(self.detection.event_stats.amplitudes[self.exclude_events == 0], bins='auto')
+            self.amp_curve.setData(x, y)
 
-        y, x = np.histogram(self.detection.event_stats.halfdecays[self.exclude_events == 0] * 1e3, bins='auto')
-        self.decay_curve.setData(x, y)
+            y, x = np.histogram(self.detection.event_stats.halfdecays[self.exclude_events == 0] * 1e3, bins='auto')
+            self.decay_curve.setData(x, y)
 
 
     def update_trace_plot(self):
@@ -1542,6 +1694,27 @@ class EventViewer(QDialog):
             self.delete_event()
         elif key == Qt.Key_N:
             self.exclude_event()
+
+
+class CustomViewBox(pg.ViewBox):
+    def __init__(self, *args, **kwds):
+        kwds['enableMenu'] = False
+        pg.ViewBox.__init__(self, *args, **kwds)
+        self.setMouseMode(self.RectMode)
+        
+    ## reimplement right-click to zoom out
+    def mouseClickEvent(self, ev):
+        if ev.button() == Qt.MouseButton.RightButton:
+            self.autoRange()
+    
+    ## reimplement mouseDragEvent to disable continuous axis zoom
+    def mouseDragEvent(self, ev, axis=None):
+        if axis is not None and ev.button() == Qt.MouseButton.RightButton:
+            ev.ignore()
+        else:
+            pg.ViewBox.mouseDragEvent(self, ev, axis=axis)
+
+
 
 
 
