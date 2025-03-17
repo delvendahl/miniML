@@ -382,14 +382,14 @@ class MiniTrace():
             sos = signal.cheby2(order, 60, lowpass / nyq, btype='low', analog=False, output='sos', fs=None)
             filtered_data = signal.sosfiltfilt(sos, filtered_data)
         elif savgol:
-            filtered_data = signal.savgol_filter(filtered_data, int(savgol/1000/self.sampling), polyorder=order)
+            filtered_data = signal.savgol_filter(filtered_data, int(savgol / 1000 / self.sampling), polyorder=order)
         if hann:
             win = signal.windows.hann(hann)    
             filtered_data = signal.convolve(filtered_data, win, mode='same') / sum(win)
             
             # Hann window generates edge artifacts due to zero-padding. Retain unfiltered data at edges.
             filtered_data[:hann] = self.data[:hann]
-            filtered_data[filtered_data.shape[0]-hann:filtered_data.shape[0]] = self.data[filtered_data.shape[0]-hann:filtered_data.shape[0]]
+            filtered_data[filtered_data.shape[0] - hann : filtered_data.shape[0]] = self.data[filtered_data.shape[0] - hann : filtered_data.shape[0]]
 
         return MiniTrace(filtered_data, sampling_interval=self.sampling, y_unit=self.y_unit, filename=self.filename)
 
@@ -742,8 +742,8 @@ class EventDetection():
         trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
         
         gradient = np.gradient(trace_convolved, self.trace.sampling)
-        gradient[:int(self.convolve_win*1.5)] = 0
-        gradient[-int(self.convolve_win*1.5):] = 0
+        gradient[:int(self.convolve_win * 1.5)] = 0
+        gradient[-int(self.convolve_win * 1.5):] = 0
 
         smth_gradient = self.hann_filter(data=gradient, filter_size=self.gradient_convolve_win)
         smth_gradient[:self.gradient_convolve_win] = 0
@@ -797,8 +797,8 @@ class EventDetection():
             peaks, peak_params = signal.find_peaks(x=self.smth_gradient[self.start_pnts[i]:self.end_pnts[i]], 
                                                    height=self.grad_threshold, prominence=self.grad_threshold)
             
-            if peaks.shape[0] > 1: # If > 1 peak found; apply relative prominence cutoff of .25
-                rel_prom = peak_params['prominences']/np.max(peak_params['prominences'])
+            if peaks.shape[0] > 1: # If > 1 peak found; apply relative prominence cutoff
+                rel_prom = peak_params['prominences'] / np.max(peak_params['prominences'])
                 inds = np.argwhere(rel_prom >= rel_prom_cutoff).flatten()
                 peaks = peaks[inds]
                 for my_param in peak_params:
@@ -951,7 +951,7 @@ class EventDetection():
 
                 charge = get_event_charge(data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
                 calculate_charge = True
-            if calculate_charge: # Charge was caclulated; check how many potentially overlapping events contributed.
+            if calculate_charge: # Charge was calculated; check how many potentially overlapping events contributed.
                 charge = [charge / combined_charge_events] * combined_charge_events
                 for ix_adjuster in range(len(charge)):
                     self.charges[ix - ix_adjuster] = charge[ix_adjuster]
@@ -1078,10 +1078,10 @@ class EventDetection():
         self.resampling_factor = 600 / self.window_size if resample_to_600 else 1
         
         # Define peak spacer, i.e. number of points left / right of detected event peaks to use for amplitude calculation.
-        if int(self.window_size/300) < 1:
+        if int(self.window_size / 300) < 1:
             self.peak_spacer = 1
         else:
-            self.peak_spacer = int(self.window_size/300)
+            self.peak_spacer = int(self.window_size / 300)
 
         self.__predict()
         
@@ -1090,8 +1090,7 @@ class EventDetection():
         self.start_pnts, self.end_pnts, scores = self._get_prediction_peaks(peak_w=peak_w)
         self.gradient, self.smth_gradient = self._make_smth_gradient()
         self.grad_threshold = self._get_grad_threshold(grad=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts)
-        self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points,
-                                                                             scores=scores,
+        self.event_locations, self.event_scores = self._find_event_locations(limit=self.window_size + self.add_points, scores=scores,
                                                                              rel_prom_cutoff=rel_prom_cutoff)
         self._remove_duplicate_locations()
 
