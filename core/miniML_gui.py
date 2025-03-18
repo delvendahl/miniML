@@ -1244,13 +1244,14 @@ class FilterPanel(QDialog):
             elif index == 2:
                 self.window.setEnabled(False)
                 self.low.setEnabled(False)
-                self.order.setEnabled(True)
+                self.order.setEnabled(False)
                 self.hann_window.setEnabled(True)
             else:
                 self.window.setEnabled(False)
                 self.low.setEnabled(True)
-                self.order.setEnabled(False)
+                self.order.setEnabled(True)
                 self.hann_window.setEnabled(False)
+            filter_toggled()
 
         def filter_toggled():
             if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.notch.isChecked(), self.detrend.isChecked()]):
@@ -1293,6 +1294,7 @@ class FilterPanel(QDialog):
         self.lowpass.stateChanged.connect(filter_toggled)
         self.low = QLineEdit('750')
         self.low.setValidator(QDoubleValidator(0.9,99999.9,1))
+        self.low.editingFinished.connect(filter_toggled)
         self.filter_type = QComboBox()
         self.filter_type.addItems(['Chebyshev', 'Savitzky-Golay', 'Hann window'])
         self.filter_type.currentIndexChanged.connect(comboBoxIndexChanged)
@@ -1300,11 +1302,14 @@ class FilterPanel(QDialog):
         self.window = QLineEdit('5.0')
         self.window.setValidator(QDoubleValidator(0.001,999.9,3))
         self.window.setEnabled(False)
+        self.window.editingFinished.connect(filter_toggled)
         self.order = QLineEdit('4')
-        self.order.setValidator(QIntValidator(1,9))        
+        self.order.setValidator(QIntValidator(1,9))
+        self.order.editingFinished.connect(filter_toggled)     
         self.hann_window = QLineEdit('20')
         self.hann_window.setValidator(QIntValidator(3,1000))
         self.hann_window.setEnabled(False)
+        self.hann_window.editingFinished.connect(filter_toggled)
 
         controls1 = QFormLayout()
         controls1.addRow('Detrend data', self.detrend)
@@ -1338,7 +1343,7 @@ class FilterPanel(QDialog):
         layout.addWidget(self.buttonBox)
 
         self.setLayout(layout)
-        self.resize(400, 600)
+        self.resize(600, 500)
         self.setWindowTitle('Filter data')
 
 
