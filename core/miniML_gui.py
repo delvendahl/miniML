@@ -1214,7 +1214,7 @@ class CutPanel(QDialog):
         layout.addWidget(self.buttonBox)
         self.setWindowTitle('Cut trace')
         self.setWindowModality(Qt.ApplicationModal)
-        self.resize(650, 400)
+        self.resize(600, 400)
 
 
 class FilterPanel(QDialog):
