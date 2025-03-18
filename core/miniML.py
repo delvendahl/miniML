@@ -383,7 +383,7 @@ class MiniTrace():
             filtered_data = signal.sosfiltfilt(sos, filtered_data)
         elif savgol:
             filtered_data = signal.savgol_filter(filtered_data, int(savgol / 1000 / self.sampling), polyorder=order)
-        if hann:
+        elif hann:
             win = signal.windows.hann(hann)    
             filtered_data = signal.convolve(filtered_data, win, mode='same') / sum(win)
             
