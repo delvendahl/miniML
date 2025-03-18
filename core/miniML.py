@@ -386,7 +386,6 @@ class MiniTrace():
         elif hann:
             win = signal.windows.hann(hann)    
             filtered_data = signal.convolve(filtered_data, win, mode='same') / sum(win)
-            
             # Hann window generates edge artifacts due to zero-padding. Retain unfiltered data at edges.
             filtered_data[:hann] = self.data[:hann]
             filtered_data[filtered_data.shape[0] - hann : filtered_data.shape[0]] = self.data[filtered_data.shape[0] - hann : filtered_data.shape[0]]
@@ -660,6 +659,7 @@ class EventDetection():
         
         interpol_factor = len(x_interpol) / len(x)
         data_interpolated = np.interp(x_interpol, x, data, left=None, right=None, period=None)
+
         return data_interpolated, interpol_factor
 
 
@@ -884,8 +884,10 @@ class EventDetection():
             onset_position = get_event_onset(data=data, peak_position=event_peak_pos, baseline=baseline, baseline_var=baseline_var)
             self.event_start[ix] = onset_position
 
-            risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise = get_event_risetime(
-                data=data[bsl_start:int(event_peak_pos)], sampling_rate=self.trace.sampling_rate, baseline=baseline, amplitude=self.event_peak_values[ix] - baseline)
+            risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise = get_event_risetime(data=data[bsl_start:int(event_peak_pos)], 
+                                                                                                                sampling_rate=self.trace.sampling_rate, 
+                                                                                                                baseline=baseline, 
+                                                                                                                amplitude=self.event_peak_values[ix] - baseline)
             self.risetimes[ix] = risetime
             self.min_positions_rise[ix] = min_position_rise
             self.min_values_rise[ix] = min_value_rise
@@ -895,7 +897,7 @@ class EventDetection():
 
             half_amplitude_level = baseline + (data[event_peak_pos] - baseline) / 2
             if diffs[ix] < add_points: # next event close; check if we can get halfdecay
-                right_lim = diffs[ix]+add_points # Right limit is the onset of the next event
+                right_lim = diffs[ix] + add_points # Right limit is the onset of the next event
                 test_arr =  data[event_peak_pos:right_lim]
                 if test_arr[test_arr < half_amplitude_level].shape[0]: # means that event goes below 50% ampliude before max rise of the next event; 1/2 decay can be calculated
                     halfdecay_position, halfdecay_time = get_event_halfdecay_time(data=data[0:right_lim], peak_position=event_peak_pos, baseline=baseline)
@@ -1283,9 +1285,9 @@ class EventDetection():
             self.event_stats.avg_tau_decay,
             self.event_stats.frequency()))
         
-        colnames = [f'event_{i}' for i in range(len(self.event_locations))]
+        column_names = [f'event_{i}' for i in range(len(self.event_locations))]
 
-        individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime'], columns=colnames)
+        individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime'], columns=column_names)
         avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'tau_avg', 'frequency'])
         
         individual.to_csv(f'{filename}_individual.csv')
