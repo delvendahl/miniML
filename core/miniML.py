@@ -1048,7 +1048,7 @@ class EventDetection():
 
 
     def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w: int=5, 
-                      rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win: int=None) -> None:
+                      rel_prom_cutoff: float=0.25, convolve_win: int=20, gradient_convolve_win: int=0) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -1067,7 +1067,7 @@ class EventDetection():
             an event, any detected peak must have at least 25% prominence of the largest detected prominence.
         convolve_win: int, default = 20
             Window size for the hanning window used to filter the data for event analysis.
-        gradient_convolve_win: int, default = None
+        gradient_convolve_win: int, default = 0
             Window size for the hanning window used to filter the derivative for event analysis
         '''   
         self.peak_w = peak_w

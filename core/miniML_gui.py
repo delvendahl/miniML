@@ -696,9 +696,11 @@ class minimlGuiMain(QMainWindow):
         self.settings.model_path = str(settings_win.model.currentText())
         self.settings.model_name = str(settings_win.model.currentText())
         self.settings.event_threshold = float(settings_win.thresh.text()) if settings_win.thresh.hasAcceptableInput() else 0.5
+        self.settings.minimum_peak_width = int(settings_win.peak_w.text()) if settings_win.peak_w.hasAcceptableInput() else 5
         self.settings.direction = str(settings_win.direction.currentText())
         self.settings.batch_size = int(settings_win.batchsize.text())
         self.settings.convolve_win = int(settings_win.convolve_window.text())
+        self.settings.gradient_convolve_win = int(settings_win.gradient_convolve_window.text())
 
 
     def run_analysis(self) -> None:
@@ -746,7 +748,8 @@ class minimlGuiMain(QMainWindow):
                                             verbose=0,
                                             callbacks=CustomCallback())
 
-            self.detection.detect_events(stride=self.settings.stride, eval=True, convolve_win=self.settings.convolve_win)
+            self.detection.detect_events(stride=self.settings.stride, eval=True, peak_w=self.settings.minimum_peak_width, 
+                                         convolve_win=self.settings.convolve_win, gradient_convolve_win=self.settings.gradient_convolve_win)
 
             self.was_analyzed = True
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
@@ -1079,6 +1082,9 @@ class SettingsPanel(QDialog):
         validator.setNotation(QDoubleValidator.StandardNotation)
         self.thresh.setValidator(validator)
 
+        self.peak_w = QLineEdit(str(parent.settings.minimum_peak_width))   
+        self.peak_w.setValidator(QIntValidator(1, 1000))
+
         self.model = QComboBox()
         self.model.addItems(get_available_models())
         index = self.model.findText(parent.settings.model_name)
@@ -1097,14 +1103,19 @@ class SettingsPanel(QDialog):
         self.convolve_window = QLineEdit(str(parent.settings.convolve_win))
         self.convolve_window.setValidator(QIntValidator(1, 10000))
 
+        self.gradient_convolve_window = QLineEdit(str(parent.settings.gradient_convolve_win))
+        self.gradient_convolve_window.setValidator(QIntValidator(1, 10000))
+
         self.layout = QFormLayout(self)
         self.layout.addRow('Stride length (samples)', self.stride)
         self.layout.addRow('Event length (samples)', self.ev_len)
         self.layout.addRow('Min. peak height (0-1)', self.thresh)
+        self.layout.addRow('Min. peak width (samples)', self.peak_w)
         self.layout.addRow('Model', self.model)
         self.layout.addRow('Event direction', self.direction)
         self.layout.addRow('Batch size', self.batchsize)
         self.layout.addRow('Filter window', self.convolve_window)
+        self.layout.addRow('Gradient filter window', self.gradient_convolve_window)
 
         finalize_dialog_window(self, title='miniML settings')
 
