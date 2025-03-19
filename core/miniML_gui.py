@@ -12,7 +12,7 @@ import h5py
 import pyabf
 from qt_material import build_stylesheet
 import sys
-from miniML import MiniTrace, EventDetection
+from miniML import MiniTrace, EventDetection, is_keras_model
 from miniML_settings import MinimlSettings
 import FileImport.HekaReader as heka
 
@@ -31,7 +31,7 @@ def get_available_models() -> list:
     The list only contains relative paths.
     """
     models_dir = Path(__file__).parent.parent / 'models'
-    models = [str(p.relative_to(models_dir)) for p in models_dir.glob('**/*.h5')]
+    models = [str(p.relative_to(models_dir)) for p in models_dir.glob('**/*.h5') if is_keras_model(str(p))]
 
     return models
 

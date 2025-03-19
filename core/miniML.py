@@ -59,6 +59,14 @@ def mEPSC_template(x: np.ndarray, amplitude: float, t_rise: float, t_decay: floa
     return y
 
 
+def is_keras_model(filepath: str) -> bool:
+    """
+    Checks if a given HDF5 contains a keras model.
+    """
+    with h5py.File(filepath, 'r') as f:
+        return 'keras_version' in f.attrs
+    
+
 @tf.function
 def minmax_scaling(x: tf.Tensor) -> tf.Tensor:
     """
@@ -624,6 +632,8 @@ class EventDetection():
 
     def load_model(self, filepath: str, threshold: float=0.5, compile: bool=True) -> None:
         ''' Loads a trained miniML model from hdf5 file '''
+        if not is_keras_model(filepath):
+            raise ValueError('Model file is not a valid Keras model')
         self.model = tf.keras.models.load_model(filepath, compile=compile)
         self.model_threshold = threshold
         if self.verbose:
