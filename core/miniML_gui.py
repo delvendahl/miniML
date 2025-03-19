@@ -419,13 +419,10 @@ class minimlGuiMain(QMainWindow):
 
         if len(self.detection.event_locations) > 0:
             self.detection._eval_events()
-            
             self.update_main_plot()
-
             self.tabulate_results(tableWidget=self.tableWidget)
             self.plot_events()
             self.num_events = self.detection.event_locations.shape[0]
-
         else:
             self.num_events = 0
             self._warning_box(message='All detected events were deleted.')
@@ -437,7 +434,6 @@ class minimlGuiMain(QMainWindow):
         Otherwise, it applies various filters (detrend, highpass, notch, lowpass) to the trace data based on the user-selected options in the FilterPanel.
         The function then updates the main plot with the filtered data.
         """
-
         if not hasattr(self, 'trace'):
             return
 
