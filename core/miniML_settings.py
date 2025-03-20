@@ -7,18 +7,22 @@ class MinimlSettings():
                  event_length: int=600,
                  model: str='GC_lstm_model.h5',
                  event_threshold: float=0.5,
+                 minimum_peak_width: int=5,
                  direction: str='negative',
                  batch_size: int=512,
-                 convolve_win: int=20):
+                 convolve_win: int=20,
+                 gradient_convolve_win: int=0) -> None:
 
         self.stride = stride
         self.event_window = event_length
         self.model_path = model
         self.model_name = model
         self.event_threshold = event_threshold
+        self.minimum_peak_width = minimum_peak_width
         self.direction = direction
         self.batch_size = batch_size
         self.convolve_win = convolve_win
+        self.gradient_convolve_win = gradient_convolve_win
         self.colors = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"]
 
 
@@ -68,6 +72,19 @@ class MinimlSettings():
         self._event_threshold = value
 
     @property
+    def minimum_peak_width(self) -> int:
+        return self._minimum_peak_width
+    
+    @minimum_peak_width.setter
+    def minimum_peak_width(self, value) -> None:
+        if value < 1:
+            raise ValueError('Minimum peak width must be larger than 0')
+        if type(value) is not int:
+            raise ValueError('Minimum peak width must be an integer')
+
+        self._minimum_peak_width = value
+
+    @property
     def batch_size(self) -> int:
         return self._batch_size
     
@@ -92,3 +109,16 @@ class MinimlSettings():
 
         self._convolve_win = value
 
+
+    @property
+    def gradient_convolve_win(self) -> int:
+        return self._gradient_convolve_win
+    
+    @gradient_convolve_win.setter
+    def gradient_convolve_win(self, value) -> None:
+        if value < 0:
+            raise ValueError('Convolution window must be positive')
+        if type(value) is not int:
+            raise ValueError('Convolution window must be an integer')
+
+        self._gradient_convolve_win = value
