@@ -8,8 +8,8 @@
 
 
 This repository contains the code described in the following publication:  
-O'Neill P.S., Baccino-Calace M., Rupprecht P., Friedrich R.W., Müller, M., and Delvendahl, I. 
-(2024) Deep learning-based synaptic event detection. _eLife_ ([doi:10.7554/eLife.98485.1](https://doi.org/10.7554/eLife.98485.1))  
+O'Neill P.S., Baccino-Calace M., Rupprecht P., Lee, S., Hao, Y.A., Lin, M.Z., Friedrich R.W., Müller, M., and Delvendahl, I. 
+(2025) A deep learning framework for automated and generalized synaptic event analysis. _eLife_ 13:RP98485 ([doi:10.7554/eLife.98485](https://doi.org/10.7554/eLife.98485))  
 
 
 ### 🧠 ABOUT
@@ -21,10 +21,12 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 📢 UPDATES
 
-#### 8 January 2024
-We have updated the documentation for miniML. The latest version of the documentation is available [here](https://delvendahl.github.io/miniML/intro.html).
+#### 20 March 2025
 
-Please also see the updated preprint at [bioRxiv](https://www.biorxiv.org/content/10.1101/2023.11.02.565316v3).
+The latest update introduces updated GUI functionality. The GUI now includes a new version of the EventViewer that allows for more detailed inspection of detected events. The EventViewer now includes infomration on each event, the location in the datatrace, as well as the ability to delete individual events. We also updated the filter and cutout functionality, with enhanced user control.
+
+#### 8 January 2025
+We have updated the documentation for miniML. The latest version of the documentation is available [here](https://delvendahl.github.io/miniML/intro.html).
 
 
 ### 💻 INSTALLATION
@@ -89,14 +91,18 @@ The repository contains trained models for several event detection scenarios, as
 
 If you use miniML in your work, please cite:
 ```BibTeX
-@article{ONeill2024,
+@article{ONeill2025,
+  article_type = {journal},
   title = {A deep learning framework for automated and generalized synaptic event analysis},
-  url = {http://dx.doi.org/10.7554/eLife.98485.1},
-  DOI = {10.7554/elife.98485.1},
-  publisher = {eLife Sciences Publications,  Ltd},
-  author = {O’Neill,  Philipp S. and Baccino-Calace,  Martín and Rupprecht,  Peter and Friedrich,  Rainer W. and M\"{u}ller,  Martin and Delvendahl,  Igor},
-  year = {2024},
-  month = jun 
+  author = {O'Neill, Philipp S and Baccino-Calace, Martín and Rupprecht, Peter and Lee, Sungmoo and Hao, Yukun A and Lin, Michael Z and Friedrich, Rainer W and Mueller, Martin and Delvendahl, Igor},
+  volume = 13,
+  year = 2025,
+  month = {mar},
+  pub_date = {2025-03-05},
+  pages = {RP98485},
+  citation = {eLife 2025;13:RP98485},
+  doi = {10.7554/eLife.98485},
+  url = {https://doi.org/10.7554/eLife.98485},
 }
 ```
 
