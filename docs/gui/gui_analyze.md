@@ -31,3 +31,8 @@ Inspecting the event will show the selected event in the main plot window on a s
 ![miniml GUI event inspection](../images/GUI_inspect.png "Event inspection")
 
 Deleting an event will remove it from the analysis and update all plots.
+
+```{hint}
+Use the EventViewer to inspect and delete events with more functionality.
+```
+

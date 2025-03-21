@@ -31,3 +31,12 @@ Click on the **Load** button to load data from a file. After selecting a file in
 - **Exclude selected series**: List of series to exlcude (optional)
 - **Scaling factor**: scaling factor of the data
 - **Data unit**: y unit of the data
+
+
+## Successful loading
+
+The miniML window will display the trace after loading from file:
+
+![The GUI with trace](../images/GUI_trace.png "miniML GUI with trace")
+
+Now you can pre-process the data (e.g., apply filters), adjust the analysis settings, and proceed with the analysis by clicking the **Analyze** button.
