@@ -204,7 +204,7 @@ class MiniTrace():
             Scaling factor applied to the data. Defaults to 1e12 (i.e. pA)
         unit: str, default=''
             Data unit, to be set when using scaling factor.
-        resample: boolean, default=rue
+        resample: boolean, default=True
             Resample data in case of sampling rate mismatch.
 
         Returns
