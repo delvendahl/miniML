@@ -697,6 +697,7 @@ class minimlGuiMain(QMainWindow):
         self.settings.batch_size = int(settings_win.batchsize.text())
         self.settings.convolve_win = int(settings_win.convolve_window.text())
         self.settings.gradient_convolve_win = int(settings_win.gradient_convolve_window.text())
+        self.settings.relative_prominence = float(settings_win.relative_prominence.text())
 
 
     def run_analysis(self) -> None:
@@ -745,7 +746,8 @@ class minimlGuiMain(QMainWindow):
                                             callbacks=CustomCallback())
 
             self.detection.detect_events(stride=self.settings.stride, eval=True, peak_w=self.settings.minimum_peak_width, 
-                                         convolve_win=self.settings.convolve_win, gradient_convolve_win=self.settings.gradient_convolve_win)
+                                         convolve_win=self.settings.convolve_win, gradient_convolve_win=self.settings.gradient_convolve_win,
+                                         rel_prom_cutoff=self.settings.relative_prominence)
 
             self.was_analyzed = True
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
@@ -1102,6 +1104,9 @@ class SettingsPanel(QDialog):
         self.gradient_convolve_window = QLineEdit(str(parent.settings.gradient_convolve_win))
         self.gradient_convolve_window.setValidator(QIntValidator(1, 10000))
 
+        self.relative_prominence = QLineEdit(str(parent.settings.relative_prominence))
+        self.relative_prominence.setValidator(validator)
+
         self.layout = QFormLayout(self)
         self.layout.addRow('Stride length (samples)', self.stride)
         self.layout.addRow('Event length (samples)', self.ev_len)
@@ -1112,6 +1117,7 @@ class SettingsPanel(QDialog):
         self.layout.addRow('Batch size', self.batchsize)
         self.layout.addRow('Filter window', self.convolve_window)
         self.layout.addRow('Gradient filter window', self.gradient_convolve_window)
+        self.layout.addRow('Relative prominence', self.relative_prominence)
 
         finalize_dialog_window(self, title='miniML settings')
 

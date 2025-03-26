@@ -33,7 +33,8 @@ class MinimlSettings():
                  direction: str='negative',
                  batch_size: int=512,
                  convolve_win: int=20,
-                 gradient_convolve_win: int=0) -> None:
+                 gradient_convolve_win: int=0,
+                 relative_prominence: float=0.25) -> None:
 
         self.stride = stride
         self.event_window = event_length
@@ -45,6 +46,7 @@ class MinimlSettings():
         self.batch_size = batch_size
         self.convolve_win = convolve_win
         self.gradient_convolve_win = gradient_convolve_win
+        self.relative_prominence = relative_prominence
         self.colors = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"]
 
 
@@ -144,3 +146,15 @@ class MinimlSettings():
             raise ValueError('Convolution window must be an integer')
 
         self._gradient_convolve_win = value
+
+    @property
+    def relative_prominence(self) -> float:
+        return self._relative_prominence
+    
+    @relative_prominence.setter
+    def relative_prominence(self, value) -> None:
+        if value < 0 or value > 1:
+            raise ValueError('Relative prominence must be within (0,1)')
+
+        self._relative_prominence = value
+        
