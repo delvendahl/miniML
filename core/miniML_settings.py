@@ -2,6 +2,28 @@ import os
 
 
 class MinimlSettings():
+    """
+    Class to store the analysis settings for miniML. The settings are:
+    - stride: int, default=20
+        The stride of the sliding window used to extract the features from the data.
+    - event_length: int, default=600
+        The length of the event window in samples.
+    - model: str, default='GC_lstm_model.h5'
+        The path of the model file to use for the prediction.
+    - event_threshold: float, default=0.5
+        The minimum peak height to use for the event detection.
+    - minimum_peak_width: int, default=5
+        The minimum width of the prediction peak to be considered an event.
+    - direction: str, default='negative'
+        The direction of the event to detect. Can be 'positive' or 'negative'.
+    - batch_size: int, default=512
+        The batch size to use for model inference.
+    - convolve_win: int, default=20
+        The Hann window size to use for filtering the trace during peak finding.
+    - gradient_convolve_win: int, default=0
+        The Hann window size to use for filtering the first derivative of the 
+        data trace (used for determining event location).
+    """
     def __init__(self, 
                  stride: int=20, 
                  event_length: int=600,
