@@ -1,0 +1,684 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>miniML model training &#8212; miniML documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=a3416100" />
+    <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css?v=13237357" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css?v=be8a1c11" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-thebe.css?v=4fa983c6" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>let toggleHintShow = 'Click to show';</script>
+    <script>let toggleHintHide = 'Click to hide';</script>
+    <script>let toggleOpenOnPrint = 'true';</script>
+    <script src="../_static/togglebutton.js?v=4a39c7ea"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
+    <script async="async" src="../_static/sphinx-thebe.js?v=c100c467"></script>
+    <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script>const THEBE_JS_URL = "https://unpkg.com/thebe@0.8.2/lib/index.js"; const thebe_selector = ".thebe,.cell"; const thebe_selector_input = "pre"; const thebe_selector_output = ".output, .cell_output"</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'training/model_training';</script>
+    <link rel="icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Training a full model" href="full_training.html" />
+    <link rel="prev" title="Save analysis results" href="../gui/gui_save.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search this book..."
+         aria-label="Search this book..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../intro.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="miniML documentation - Home"/>
+    <img src="../_static/logo.png" class="logo__image only-dark pst-js-only" alt="miniML documentation - Home"/>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../intro.html">
+                    miniML documentation
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">USING MINIML</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../general/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../general/tutorial.html">miniML Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../general/loading_data.html">Loading data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../general/tutorial_resampling.html">Using existing models for out-of-sample data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../general/batch_analysis.html">Batch analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../general/models.html">miniML models</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">GUI</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../gui/gui_intro.html">The miniML GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui/gui_display.html">Using the GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui/gui_load.html">Loading data using the GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui/gui_analyze.html">Analyze a recording using the GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui/gui_eventview.html">The EventViewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../gui/gui_save.html">Save analysis results</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">MODEL TRAINING</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">miniML model training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="full_training.html">Training a full model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TL_training.html">Training a transfer learning model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial_TL_model.html">Using a transfer learning model</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/delvendahl/miniML" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/delvendahl/miniML/issues/new?title=Issue%20on%20page%20%2Ftraining/model_training.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/training/model_training.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>miniML model training</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#selecting-a-window-size">Selecting a window size</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extracting-training-data">Extracting training data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scoring-training-data">Scoring training data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#training-a-model">Training a model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-a-new-model-on-your-data">Using a new model on your data</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-new-model-path">Set new model path</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-new-window-size">Set new window size</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#define-event-direction-and-training-direction">Define event direction and training direction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adjust-filter-window-size">Adjust filter window size</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-the-resample-flag">Set the resample flag</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sharing-of-trained-models">Sharing of trained models</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="miniml-model-training">
+<h1>miniML model training<a class="headerlink" href="#miniml-model-training" title="Link to this heading">#</a></h1>
+<p>Training a new miniML model generally requires the following steps:</p>
+<ul class="simple">
+<li><p>Identify the correct window size for your data</p></li>
+<li><p>Extracting training data</p></li>
+<li><p>Scoring the training data</p></li>
+<li><p>Model training (either full training or re-training via transfer learning)</p></li>
+<li><p>Use the new model: List of the parameters that may need to be adjusted</p></li>
+</ul>
+<p>All the files and links to train your own model are provided in the GitHub repository. This documentation will show you how to use them and guide you through the process of training your own model, and apply it to your data, step by step. For the steps that have a corresponding file on GitHub, the directory and filename are indicated.</p>
+<section id="selecting-a-window-size">
+<h2>Selecting a window size<a class="headerlink" href="#selecting-a-window-size" title="Link to this heading">#</a></h2>
+<p>miniML is a classifier that predicts whether a given data stretch contains a synaptic event or not. For good classification performance, the stretch of data must be large enough to contain the entire event. In the case of our recordings in cerebellar granule cells, this corresponds to 600 data points (samples) or about 12 ms given a sampling rate of 50 kHz (see figure below).</p>
+<p><img alt="mEPSC example" src="../_images/GC_mEPSC_example.svg" /></p>
+<p>If event kinetics and/or sampling rate are different in other data, 600 points may be too much or too little. For example, to capture a synaptic event in current clamp in the same cell, the window size needs to be expanded to 3000 points. Because the model expects an input size of 600 points, we resample the trace based on the provided window size for inference. For example, the window size is set to 3000 points, and a recording containing 6,000,000 points is provided. In this case, we can down-sample the whole trace by a factor of 5, to 1,200,000 points. Now the signal of interest fits into the 600-point window that the model expects (see figure below). This only concerns the prediction by the model. To analyze the detected events, e.g., to read out amplitudes, the original recording is used again. To give an idea what window sizes we chose, in the following there are a few examples from different preparations used in the manuscript. Red dotted lines indicate the 600-point window that is classified by the model.</p>
+<p><img alt="resampling example" src="../_images/resampling_examples.svg" /></p>
+<p>If our model does not perform well in your data, this could be a reason and simply adjusting the window size and resampling the data may help. This is especially the case if the event kinetics or even the cell type is the same, but a different sampling rate was used during the recordings. However, if the overall shape of the event and the noise characteristics are too different, it may be necessary to train a new model. This is explained in the following.</p>
+</section>
+<section id="extracting-training-data">
+<h2>Extracting training data<a class="headerlink" href="#extracting-training-data" title="Link to this heading">#</a></h2>
+<p>After identifying the proper window size, we need compile a training dataset. We extract training data with an implementation of template matching, which worked well in our hands. However, any method that can extract short data stretches as shown below is suitable. A good training dataset should contain:</p>
+<ul class="simple">
+<li><p>Clear examples of synaptic events:
+<img alt="example 1" src="../_images/model_training_nice_example.svg" /></p></li>
+<li><p>Examples of synaptic events that are “less nice”, e.g. because they are smaller in amplitude and have a limited signal to noise ratio:
+<img alt="example 2" src="../_images/model_training_mid_example.svg" /></p></li>
+<li><p>Negative examples of signals that may resemble a synaptic event but would be considered a false positive.
+<img alt="example 3" src="../_images/model_training_FP.svg" /></p></li>
+<li><p>Negative examples that contain purely noise (as far as it’s possible to judge):
+<img alt="example 4" src="../_images/model_training_noise.svg" /></p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It should be noted that the criteria of what is or is not a synaptic event will depend on the preparation and recording conditions. We do not claim that the examples used here are representative for all situations.</p>
+</div>
+<p>The dataset should be balanced, i.e., the ratio of positive and negative examples should be close to one. Additionally, we recommend including examples from multiple recordings to help the model generalize. To extract training data, we use template matching, but any method that provides data stretches as shown above works. An advantage of template matching is the possibility to control how many false positives are picked up by adjusting the threshold. For each provided recording, template matching can be used to:</p>
+<ul class="simple">
+<li><p>Extract clear positive examples by using a relatively high threshold.</p></li>
+<li><p>Extract clear negative examples by using a very low threshold, and extracting noise stretches from whatever data is left.</p></li>
+<li><p>Extract “less nice” events, that may typically be missed and false positives that can get picked up by using an intermediate threshold.</p></li>
+</ul>
+<p>We estimate all parameters of template matching based on the provided window size. This usually works well enough, but parameters may need to be further adjusted if events are systematically missed (for example if there are two different inputs with very different event shapes).</p>
+</section>
+<section id="scoring-training-data">
+<h2>Scoring training data<a class="headerlink" href="#scoring-training-data" title="Link to this heading">#</a></h2>
+<p>Once extracted, the training data needs to be scored manually. We provide a script that allows scoring of a training dataset using mouse and keyboard. The scores for any given stretch of data should either be 1 (is a synaptic event) or 0 (is not a synaptic event). We added the option to give a data stretch the score 2. This allows to mark events that need to be excluded, e.g., because it is not clear how to score it, because it is a duplicate, etc. They have to be excluded later for the actual training, however.</p>
+<p>Scoring the training data is arguably the most important step in the entire workflow. How well the model performs largely depends on the training data, and it is worth spending some time on curating it.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As mentioned above, a good training dataset contains clear events with good signal-to-noise ratio, smaller more “messy” events, false positives that may be picked up and pure noise. Given that we want to keep the ratio of positive and negative scores around one, that means that we can modify our dataset by changing the ratio of nice events to more messy events and the ratio of false positives to pure noise. In our experience, including more messy events will lead to less restrictive models that will more readily classify data as being an event. Conversely, increasing the number of false positives in the training data leads to more restrictive models.</p>
+</div>
+<p>To give a practical example, one could generate a training dataset that contains 100 nice events and 500 not so nice events with score “1” as well as 50 false positives and 550 pure nose stretches with score “0”. This model will likely be quite liberal with what it accepts as an event and may pick up false positives. If that is the case, one can start playing around with the two ratios. For example, one could include 300 nice events, 300 not so nice events and leave the negative scores as above. We would expect the new model to be more restrictive than the previous one. If it still picks up false positives, one can continue to change these ratios and, in the end, choose the model that seems to work best for the data in question. A toy example of such a process is summarized in the table below.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>nice events</p></th>
+<th class="head"><p>not so nice events</p></th>
+<th class="head"><p>false positives</p></th>
+<th class="head"><p>pure noise</p></th>
+<th class="head"><p>Expected performance</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>100</p></td>
+<td><p>500</p></td>
+<td><p>50</p></td>
+<td><p>50</p></td>
+<td><p>Liberal model</p></td>
+</tr>
+<tr class="row-odd"><td><p>300</p></td>
+<td><p>300</p></td>
+<td><p>50</p></td>
+<td><p>550</p></td>
+<td><p>More restrictive</p></td>
+</tr>
+<tr class="row-even"><td><p>300</p></td>
+<td><p>300</p></td>
+<td><p>300</p></td>
+<td><p>300</p></td>
+<td><p>Intermediate</p></td>
+</tr>
+<tr class="row-odd"><td><p>300</p></td>
+<td><p>300</p></td>
+<td><p>500</p></td>
+<td><p>100</p></td>
+<td><p>Restrictive Model</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="training-a-model">
+<h2>Training a model<a class="headerlink" href="#training-a-model" title="Link to this heading">#</a></h2>
+<p>We use cloud services by Kaggle to train our models. Kaggle is an online data science community platform owned by Google that allows using a GPU to train machine learning models. For GPU use, verification via a phone number is required by Kaggle. If you prefer not to or cannot register a phone number, models can also be trained without GPU use (about 80s for a transfer learning dataset containing 1000 entries). Of course, you can also train models locally on your computer using the code in the Jupyter notebooks provided on Kaggle. With the following links you will find a script to train a model using transfer learning, a script to train a model from scratch and a Kaggle dataset. The Kaggle dataset contains mEPSC training data from cerebellar granule cells, the model we trained with it, and a smaller mEPSP training dataset also from cerebellar GCs:</p>
+<p><a class="reference external" href="https://www.kaggle.com/code/philipponeill/miniml-transfer-learning">Transfer learning</a></p>
+<p><a class="reference external" href="https://www.kaggle.com/code/philipponeill/miniml-full-training">Full training</a></p>
+<p><a class="reference external" href="https://www.kaggle.com/datasets/philipponeill/miniml-training-data">The dataset</a></p>
+<p>To train a model, the previously scored dataset needs to be uploaded to a Kaggle dataset. To train a model from scratch, uploading the dataset and running the from-scratch script should suffice. For transfer learning, additionally a base model is needed. We provide one such model (GC_lstm_model.h5) in the Kaggle dataset. After training, the best fitting model (lstm_transfer.h5) can be downloaded from the Output directory:
+<img alt="download model" src="../_images/model_training_kaggle_input_ouput.png" /></p>
+</section>
+<section id="using-a-new-model-on-your-data">
+<h2>Using a new model on your data<a class="headerlink" href="#using-a-new-model-on-your-data" title="Link to this heading">#</a></h2>
+<p>Once downloaded, the new model can readily be applied with the following adjustments:</p>
+<section id="set-new-model-path">
+<h3>Set new model path<a class="headerlink" href="#set-new-model-path" title="Link to this heading">#</a></h3>
+<p>To use another model, we need to change the <em>model_path</em> to the path of the new model.</p>
+<p><img alt="model path" src="../_images/TL_Changes_model.png" /></p>
+</section>
+<section id="set-new-window-size">
+<h3>Set new window size<a class="headerlink" href="#set-new-window-size" title="Link to this heading">#</a></h3>
+<p>If the new model has a different window size, we need to change the <em>win_size</em> parameter.</p>
+<p><img alt="win size" src="../_images/TL_Changes_win.png" /></p>
+</section>
+<section id="define-event-direction-and-training-direction">
+<h3>Define event direction and training direction<a class="headerlink" href="#define-event-direction-and-training-direction" title="Link to this heading">#</a></h3>
+<p>Every model requires defining <em>event_direction</em> and <em>training_direction</em>. Both can be ‘positive’ or ‘negative’, and default to ‘negative’. There are two separate parameters, because the direction during training may not correspond to the direction in actual data. This is usually the case when training a TL model for positive events, such as mEPSPs from cerebellar granule cells. Inverting the mEPSPs during TL improved model performance, presumably because the events are more similar to the negative mEPSCs the base model was trained on. In that case, the raw data needs to be inverted for inference, but not for downstream analysis. Keep this in mind and make sure the parameters are set appropriately, otherwise the prediction or the downstream analysis will not work properly</p>
+<p><img alt="direction" src="../_images/TL_Changes_BSL_direction.png" /></p>
+</section>
+<section id="adjust-filter-window-size">
+<h3>Adjust filter window size<a class="headerlink" href="#adjust-filter-window-size" title="Link to this heading">#</a></h3>
+<p>To analyze the detected events, we identify an event location (point of steepest rise) using the first derivative. Based on that, we find peak position, onset position etc. to read out quantitative values such as the event amplitude. Additionally, we use this approach to identify overlapping events (see below). To find event locations and other points of interest we first need to filter the data. We use a Hann window for that purpose. In our hands, using a Hann window allowed us to filter the data and remove noise peaks without distorting event kinetics too much. <em>convolve_win</em> is the only parameter that needs to be adjusted. <em>convolve_win</em> is the size of the Hann window (not to be confused with the window size, win_size, used for inference). While it does not affect the detection itself, it is important for the downstream analysis of the events. Filtering the data too little can lead to noise peaks being detected as event location, peak, onset, etc. Conversely, filtering the data too much can lead to heavily distorted event kinetics and a decrease in absolute signal amplitude, and therefore lead to slower kinetics and lower amplitudes.</p>
+<p><img alt="convolve win" src="../_images/TL_Changes_conv_win.png" /></p>
+<p>We include two examples here of an event being filtered too much (<em>convolve_win</em> = 150) or too little (<em>convolve_win</em> = 3). In the two examples below, the middle column (<em>convolve_win</em> = 20) would be a good filter setting. The second example also shows how overlapping events are being detected.</p>
+<p>Example 1:</p>
+<p><img alt="Example 1" src="../_images/TL_example_1.svg" /></p>
+<p>Example 2:</p>
+<p><img alt="Example 2" src="../_images/TL_example_2.svg" /></p>
+</section>
+<section id="set-the-resample-flag">
+<h3>Set the resample flag<a class="headerlink" href="#set-the-resample-flag" title="Link to this heading">#</a></h3>
+<p><em>resample_to_600</em> is a Boolean flag (set to True/False). If True, the data gets resampled based on the window size. See also section 1, “select a window size”. For transfer learning this will always be <strong>True</strong>. If you train a model from scratch with a window size different from 600, this needs to be set to <strong>False</strong>.</p>
+<p><img alt="resampling flag" src="../_images/TL_Changes_resample.png" /></p>
+</section>
+</section>
+<section id="sharing-of-trained-models">
+<h2>Sharing of trained models<a class="headerlink" href="#sharing-of-trained-models" title="Link to this heading">#</a></h2>
+<p>If you do train a new model for your favorite preparation, and you are happy with the model performance, feel free to share it with the community. You can either create a pull request on GitHub, or get in touch via email to provide the model to other scientists.</p>
+</section>
+</section>
+
+    <script type="text/x-thebe-config">
+    {
+        requestKernel: true,
+        binderOptions: {
+            repo: "binder-examples/jupyter-stacks-datascience",
+            ref: "master",
+        },
+        codeMirrorConfig: {
+            theme: "abcdef",
+            mode: "python"
+        },
+        kernelOptions: {
+            name: "python3",
+            path: "./training"
+        },
+        predefinedOutput: true
+    }
+    </script>
+    <script>kernelName = 'python3'</script>
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../gui/gui_save.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Save analysis results</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="full_training.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Training a full model</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#selecting-a-window-size">Selecting a window size</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#extracting-training-data">Extracting training data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scoring-training-data">Scoring training data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#training-a-model">Training a model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-a-new-model-on-your-data">Using a new model on your data</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-new-model-path">Set new model path</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-new-window-size">Set new window size</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#define-event-direction-and-training-direction">Define event direction and training direction</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adjust-filter-window-size">Adjust filter window size</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#set-the-resample-flag">Set the resample flag</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sharing-of-trained-models">Sharing of trained models</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By PS O'Neill & I Delvendahl
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2025.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
