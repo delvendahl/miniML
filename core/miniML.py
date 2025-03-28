@@ -395,12 +395,12 @@ class MiniTrace():
         if lowpass:
             if savgol:
                 print('Warning: Two lowpass filters selected, Savgol filter is ignored.')
-            sos = signal.cheby2(order, 60, lowpass / nyq, btype='low', analog=False, output='sos', fs=None)
+            sos = signal.butter(order, lowpass / nyq, btype='low', analog=False, output='sos', fs=None)
             filtered_data = signal.sosfiltfilt(sos, filtered_data)
         elif savgol:
             filtered_data = signal.savgol_filter(filtered_data, int(savgol / 1000 / self.sampling), polyorder=order)
         elif hann:
-            win = signal.windows.hann(hann)    
+            win = signal.windows.hann(hann)
             filtered_data = signal.convolve(filtered_data, win, mode='same') / sum(win)
             # Hann window generates edge artifacts due to zero-padding. Retain unfiltered data at edges.
             filtered_data[:hann] = self.data[:hann]

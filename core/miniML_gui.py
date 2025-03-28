@@ -555,9 +555,9 @@ class minimlGuiMain(QMainWindow):
 
         if answer == msgbox.Yes:
             self.trace = load_trace_from_file(self.filetype, self.load_args)
+            self.was_analyzed = False
             self.update_main_plot()
             self.reset_windows()
-            self.was_analyzed = False
             self.detection = EventDetection(self.trace)
 
 
@@ -1274,7 +1274,7 @@ class FilterPanel(QDialog):
             if self.line_noise.isChecked():
                 self.filtered_trace = self.filtered_trace.filter(line_freq=float(self.line_freq.text()), width=float(self.notch_width.text()))
             if self.lowpass.isChecked():
-                if self.filter_type.currentText() == 'Chebyshev':
+                if self.filter_type.currentText() == 'Butterworth':
                     self.filtered_trace = self.filtered_trace.filter(lowpass=float(self.low.text()), order=int(self.order.text()))
                 elif self.filter_type.currentText() == 'Savitzky-Golay':
                     self.filtered_trace = self.filtered_trace.filter(savgol=float(self.window.text()), order=int(self.order.text()))
@@ -1305,7 +1305,7 @@ class FilterPanel(QDialog):
         self.low.setValidator(QDoubleValidator(0.9,99999.9,1))
         self.low.editingFinished.connect(filter_toggled)
         self.filter_type = QComboBox()
-        self.filter_type.addItems(['Chebyshev', 'Savitzky-Golay', 'Hann window'])
+        self.filter_type.addItems(['Butterworth', 'Savitzky-Golay', 'Hann window'])
         self.filter_type.currentIndexChanged.connect(comboBoxIndexChanged)
         self.filter_type.setFixedWidth(200)
         self.window = QLineEdit('5.0')
