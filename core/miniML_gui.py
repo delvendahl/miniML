@@ -1478,7 +1478,7 @@ class EventViewer(QDialog):
         self.table.setItem(4, 0, QTableWidgetItem(f'{self.detection.event_stats.amplitudes[self.ind]:.5f}'))
         self.table.setItem(5, 0, QTableWidgetItem(f'{self.detection.event_stats.charges[self.ind]:.5f}'))
         self.table.setItem(6, 0, QTableWidgetItem(f'{self.detection.event_stats.risetimes[self.ind] * 1e3:.5f}'))
-        self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.slopes[self.ind]:.5f}'))
+        self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.slopes[self.ind]* 1e-3:.5f}'))
         self.table.setItem(8, 0, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}'))
         bsl_sd = np.std(self.detection.trace.data[self.detection.bsl_starts[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer : self.detection.bsl_ends[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer])
         self.table.setItem(9, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
@@ -1490,7 +1490,7 @@ class EventViewer(QDialog):
         self.table.setItem(4, 1, QTableWidgetItem(self.detection.trace.y_unit))
         self.table.setItem(5, 1, QTableWidgetItem(f'{self.detection.trace.y_unit}*s'))
         self.table.setItem(6, 1, QTableWidgetItem('ms'))
-        self.table.setItem(7, 1, QTableWidgetItem(self.detection.trace.y_unit + '/s'))
+        self.table.setItem(7, 1, QTableWidgetItem(self.detection.trace.y_unit + '/ms'))
         self.table.setItem(8, 1, QTableWidgetItem('ms'))
         self.table.setItem(9, 1, QTableWidgetItem(''))
 
