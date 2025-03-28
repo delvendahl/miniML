@@ -204,7 +204,7 @@ class MiniTrace():
             Scaling factor applied to the data. Defaults to 1e12 (i.e. pA)
         unit: str, default=''
             Data unit, to be set when using scaling factor.
-        resample: boolean, default=True
+        resample: boolean, default=rue
             Resample data in case of sampling rate mismatch.
 
         Returns
@@ -350,15 +350,17 @@ class MiniTrace():
         return MiniTrace(detrended, self.sampling, y_unit=self.y_unit, filename=self.filename)
 
 
-    def filter(self, notch: float=None, highpass: float=None, lowpass: float=None, order: int=4,
+    def filter(self, line_freq: float=None, width: float=None, highpass: float=None, lowpass: float=None, order: int=4,
                savgol: float=None, hann: int=None) -> MiniTrace:
-        ''' Filters trace with a combination of notch, high- and lowpass filters.
+        ''' Filters trace with a combination of line frequency, high- and lowpass filters.
         If both lowpass and savgol arguments are passed, only the lowpass filter is applied. 
 
         Parameters
         ----------
-        notch: float, default=None
-            Notch filter frequency (Hz)
+        line_freq: float, default=None
+            Line noise filter frequency (Hz). Line noise is removed by spectrum interpolation.
+        width: float, default=None
+            Width of the line noise filter (Hz).
         highpass: float, default=None
             Highpass cutoff frequency (Hz).
         lowpass: float, default=None
@@ -378,9 +380,15 @@ class MiniTrace():
         filtered_data = self.data.copy()
         nyq = 0.5 * self.sampling_rate
 
-        if notch:
-            b_notch, a_notch = signal.iirnotch(notch, 2.0, self.sampling_rate)
-            filtered_data = signal.filtfilt(b_notch, a_notch, filtered_data)
+        if line_freq:
+            from scipy.fftpack import rfft, irfft, rfftfreq
+            fft = rfft(filtered_data)
+            xf = rfftfreq(filtered_data.shape[0], 1 / self.sampling_rate)
+            multiples = 6
+            for freq in np.arange(line_freq, (multiples * line_freq), line_freq):
+                fft[np.where(xf > freq - width/2)[0][0]:np.where(xf > freq + width/2)[0][0]] = 0
+
+            filtered_data = irfft(fft)
         if highpass:
             sos = signal.butter(order, highpass / nyq, btype='high', output='sos')
             filtered_data = signal.sosfilt(sos, filtered_data)

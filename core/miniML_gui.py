@@ -697,7 +697,6 @@ class minimlGuiMain(QMainWindow):
         self.settings.batch_size = int(settings_win.batchsize.text())
         self.settings.convolve_win = int(settings_win.convolve_window.text())
         self.settings.gradient_convolve_win = int(settings_win.gradient_convolve_window.text())
-        self.settings.relative_prominence = float(settings_win.relative_prominence.text())
 
 
     def run_analysis(self) -> None:
@@ -746,8 +745,7 @@ class minimlGuiMain(QMainWindow):
                                             callbacks=CustomCallback())
 
             self.detection.detect_events(stride=self.settings.stride, eval=True, peak_w=self.settings.minimum_peak_width, 
-                                         convolve_win=self.settings.convolve_win, gradient_convolve_win=self.settings.gradient_convolve_win,
-                                         rel_prom_cutoff=self.settings.relative_prominence)
+                                         convolve_win=self.settings.convolve_win, gradient_convolve_win=self.settings.gradient_convolve_win)
 
             self.was_analyzed = True
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
@@ -1104,9 +1102,6 @@ class SettingsPanel(QDialog):
         self.gradient_convolve_window = QLineEdit(str(parent.settings.gradient_convolve_win))
         self.gradient_convolve_window.setValidator(QIntValidator(1, 10000))
 
-        self.relative_prominence = QLineEdit(str(parent.settings.relative_prominence))
-        self.relative_prominence.setValidator(validator)
-
         self.layout = QFormLayout(self)
         self.layout.addRow('Stride length (samples)', self.stride)
         self.layout.addRow('Event length (samples)', self.ev_len)
@@ -1117,7 +1112,6 @@ class SettingsPanel(QDialog):
         self.layout.addRow('Batch size', self.batchsize)
         self.layout.addRow('Filter window', self.convolve_window)
         self.layout.addRow('Gradient filter window', self.gradient_convolve_window)
-        self.layout.addRow('Relative prominence', self.relative_prominence)
 
         finalize_dialog_window(self, title='miniML settings')
 
@@ -1267,7 +1261,7 @@ class FilterPanel(QDialog):
             filter_toggled()
 
         def filter_toggled():
-            if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.notch.isChecked(), self.detrend.isChecked()]):
+            if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.line_noise.isChecked(), self.detrend.isChecked()]):
                 self.filtered_trace_plot.setData(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
                 self.filtered_trace_plot.setPen(pg.mkPen(color='grey', width=1))
                 return
@@ -1277,8 +1271,8 @@ class FilterPanel(QDialog):
                 self.filtered_trace = self.filtered_trace.detrend(num_segments = int(self.num_segments.text()))
             if self.highpass.isChecked():
                 self.filtered_trace = self.filtered_trace.filter(highpass=float(self.high.text()), order=int(self.order.text()))
-            if self.notch.isChecked():
-                self.filtered_trace = self.filtered_trace.filter(notch=float(self.notch_freq.text()))
+            if self.line_noise.isChecked():
+                self.filtered_trace = self.filtered_trace.filter(line_freq=float(self.line_freq.text()), width=float(self.notch_width.text()))
             if self.lowpass.isChecked():
                 if self.filter_type.currentText() == 'Chebyshev':
                     self.filtered_trace = self.filtered_trace.filter(lowpass=float(self.low.text()), order=int(self.order.text()))
@@ -1299,10 +1293,12 @@ class FilterPanel(QDialog):
         self.highpass.stateChanged.connect(filter_toggled)
         self.high = QLineEdit('0.5')
         self.high.setValidator(QDoubleValidator(0.01,99.99,2))
-        self.notch = QCheckBox('')
-        self.notch.stateChanged.connect(filter_toggled)
-        self.notch_freq = QLineEdit('50')
-        self.notch_freq.setValidator(QDoubleValidator(0.9,9999.9,1))
+        self.line_noise = QCheckBox('')
+        self.line_noise.stateChanged.connect(filter_toggled)
+        self.line_freq = QLineEdit('50')
+        self.line_freq.setValidator(QDoubleValidator(0.9,9999.9,1))
+        self.notch_width = QLineEdit('3.0')
+        self.notch_width.setValidator(QDoubleValidator(0.01,9999.9,2))
         self.lowpass = QCheckBox('')
         self.lowpass.stateChanged.connect(filter_toggled)
         self.low = QLineEdit('750')
@@ -1329,8 +1325,9 @@ class FilterPanel(QDialog):
         controls1.addRow('Number of segments', self.num_segments)
         controls1.addRow('High-pass filter', self.highpass)
         controls1.addRow('High-pass (Hz)', self.high)
-        controls1.addRow('Notch filter', self.notch)
-        controls1.addRow('Notch frequency (Hz)', self.notch_freq)        
+        controls1.addRow('Line noise filter', self.line_noise)
+        controls1.addRow('Line noise frequency (Hz)', self.line_freq) 
+        controls1.addRow('Line noise width (Hz)', self.notch_width)       
         controls2 = QFormLayout()
         controls2.addRow('Lowpass filter', self.lowpass)
         controls2.addRow('Filter type', self.filter_type)
