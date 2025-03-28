@@ -22,7 +22,7 @@ def get_event_peak(data: np.ndarray, event_num: int, add_points: int, window_siz
         right_window_limit = int(diffs[event_num]/2)
     
     else:
-        right_window_limit = int(data.shape[0]/6)
+        right_window_limit = int(data.shape[0]/5)
 
     peak_position = np.argmax(data[add_points:add_points+right_window_limit]) + add_points
 
