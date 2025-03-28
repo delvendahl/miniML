@@ -486,11 +486,12 @@ class EventStats():
     ----------
     event_count: number of events
     '''
-    def __init__(self, amplitudes, scores, charges, risetimes, decaytimes, tau, time, unit: str) -> None:
+    def __init__(self, amplitudes, scores, charges, risetimes, slopes, decaytimes, tau, time, unit: str) -> None:
         self.amplitudes = amplitudes
         self.event_scores = scores
         self.charges = charges
         self.risetimes = risetimes
+        self.slopes = slopes
         self.halfdecays = decaytimes
         self.avg_tau_decay = tau
         self.rec_time = time
@@ -1114,6 +1115,8 @@ class EventDetection():
                                                                              rel_prom_cutoff=rel_prom_cutoff)
         self._remove_duplicate_locations()
 
+        self.slopes = self.smth_gradient[self.event_locations]
+
         if self.event_locations.shape[0] > 0:
             self._get_singular_event_indices()
             self.events = self.trace._extract_event_data(positions=self.event_locations, 
@@ -1204,6 +1207,7 @@ class EventDetection():
                                       tau=self.avg_decay_fit[1],
                                       charges=self.charges,
                                       risetimes=self.risetimes,
+                                      slopes=self.slopes,
                                       decaytimes=self.decaytimes,
                                       time=self.trace.total_time,
                                       unit=self.trace.y_unit)
