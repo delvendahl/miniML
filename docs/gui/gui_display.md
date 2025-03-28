@@ -12,7 +12,8 @@ Load a new recording. Accepts .h5, .abf, and .dat files.
 
 ### Filter
 
-Apply filters to the recording. Includes options to detrend the data, filter the data using high-pass or different types of low-pass filters, and apply a notch filter. The raw data is dispalyed in grea and a preview of the filtered data is shown in yellow upon selection of eitehr filter option. Detrending, high-pass, and notch filteres are applied before any low-pass filter.
+Apply filters to the recording. Includes options to detrend the data, filter the data using high-pass or different types of low-pass filters, and apply a line noise filter. The raw data is displayed in gray and a preview of the filtered data is shown in yellow upon selection of either filter option. Detrending, high-pass, and line noise filteres are applied before any low-pass filter.
+To remove line noise, spectrum interpolation is used. Low-pass filtering is based on a forward-backward approach using a Butterworth filter.
 
 ![The filter window](../images/GUI_filter.png "miniML Filter")
 
