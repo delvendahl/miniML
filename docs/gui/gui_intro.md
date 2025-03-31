@@ -19,3 +19,4 @@ The GUI includes a toolbar with icons for various tasks, plot windows, and an ev
 
 ![miniml GUI annotated](../images/GUI_overview.svg "miniML GUI")
 
+To start analysing a recording, click on the open icon in the status bar or open the file menu and select "Open". This will open a file dialog where you can select the data file to load. The GUI supports loading HEKA .dat files, Axon .abf files, and HDF .h5 files.

@@ -12,7 +12,7 @@ Load a new recording. Accepts .h5, .abf, and .dat files.
 
 ### Filter
 
-Apply a filter to the recording. Includes options to detrend the data, filter the data using high-pass or low-pass filters, and apply a notch filter.
+Apply filters to the recording. Includes options to detrend the data, filter the data using high-pass or different types of low-pass filters, and apply a notch filter. The raw data is dispalyed in grea and a preview of the filtered data is shown in yellow upon selection of eitehr filter option. Detrending, high-pass, and notch filteres are applied before any low-pass filter.
 
 ![The filter window](../images/GUI_filter.png "miniML Filter")
 
@@ -24,7 +24,9 @@ Display information about the trace and file.
 
 ### Cut
 
-Cut data from the current recording at either the start or end of the trace.
+Cut the data trace. Start and end of the selection can be adjusted by dragging the cursors or by specifying a time. By default, data not selected at the beginning and end of the recording will be cut out. Toggle the 'cut between cursors' button to cut out the data between the cursors instead.
+
+![The cut window](../images/GUI_cut.png "miniML File Info")
 
 ### Reload
 
@@ -42,6 +44,8 @@ Toggle display of the prediction plot.
 
 Show summary statistics for the analyzed recording.
 
+![The summary window](../images/GUI_summary.png "Analysis summary")
+
 ### Event graphs
 
 Toggle display of the event graphs.
@@ -49,6 +53,10 @@ Toggle display of the event graphs.
 ### Event table
 
 Toggle display of the event table.
+
+### Event viewer
+
+Display the event viewer window after an analysis. This allows inspection of individual events and deletion of events.
 
 ### Save
 

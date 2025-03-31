@@ -18,7 +18,9 @@ parts:
     - file: gui/gui_display
     - file: gui/gui_load
     - file: gui/gui_analyze
+    - file: gui/gui_eventview
     - file: gui/gui_save
+    - file: gui/gui_settings
  - caption: MODEL TRAINING
    chapters:
      - file: training/model_training
