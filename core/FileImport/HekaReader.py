@@ -1001,7 +1001,9 @@ class Data(object):
         trace = pul[index[0]][index[1]][index[2]][index[3]]
         fh = open(self.bundle.file_name, 'rb')
         fh.seek(trace.Data)
-        dtype = convertDataFormatToNP(trace.DataFormat)
+        dtype = np.dtype(convertDataFormatToNP(trace.DataFormat))
+        if not trace.DataKind['IsLittleEndian']: #  for big endian data, we need to swap
+            dtype = dtype.newbyteorder('>')
         data = np.fromfile(fh, count=trace.DataPoints, dtype=dtype)
         fh.close()
 
