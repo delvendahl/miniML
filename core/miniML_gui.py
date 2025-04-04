@@ -15,6 +15,7 @@ import sys
 from miniML import MiniTrace, EventDetection, is_keras_model
 from miniML_settings import MinimlSettings
 import FileImport.HekaReader as heka
+from scipy.interpolate import  interp1d
 
 
 
@@ -482,7 +483,9 @@ class minimlGuiMain(QMainWindow):
         Updates the main plot with the data trace.
         """
         pen = pg.mkPen(color=self.settings.colors[3], width=1)
-        self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen, clear=True)
+        # self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen, clear=True)
+        self.plotData = self.tracePlot.plot(self.time_ax_display, self.data_display, pen=pen, clear=True)
+
         self.tracePlot.setLabel('bottom', 'Time', 's')
         label1 = 'Vmon' if self.recording_mode == 'current-clamp' else 'Imon'
         self.tracePlot.setLabel('left', label1, self.trace.y_unit)
@@ -555,6 +558,17 @@ class minimlGuiMain(QMainWindow):
 
         if answer == msgbox.Yes:
             self.trace = load_trace_from_file(self.filetype, self.load_args)
+            if self.trace.data.shape[0] > 89000000:
+                point_ax = np.arange(0, self.trace.data.shape[0])
+                point_ax_interpol = np.linspace(0, self.trace.data.shape[0]-1, 1000000)
+                f = interp1d(point_ax, self.trace.data)
+                self.data_display = f(point_ax_interpol)
+                self.time_ax_display = np.linspace(self.trace.time_axis[0], self.trace.time_axis[-1], self.data_display.shape[0])
+            else:
+                self.data_display = self.trace.data
+                self.time_ax_display = self.trace.time_axis
+
+
             self.update_main_plot()
             self.reset_windows()
             self.was_analyzed = False
@@ -648,6 +662,16 @@ class minimlGuiMain(QMainWindow):
                               'unit': panel.e3.text() if (panel.e3.text() != '') else None}
             
         self.trace = load_trace_from_file(self.filetype, self.load_args)
+        if self.trace.data.shape[0] > 89000000:
+            point_ax = np.arange(0, self.trace.data.shape[0])
+            point_ax_interpol = np.linspace(0, self.trace.data.shape[0]-1, 1000000)
+            f = interp1d(point_ax, self.trace.data)
+            self.data_display = f(point_ax_interpol)
+            self.time_ax_display = np.linspace(self.trace.time_axis[0], self.trace.time_axis[-1], self.data_display.shape[0])
+        else:
+            self.data_display = self.trace.data
+            self.time_ax_display = self.trace.time_axis
+
         self.recording_mode = 'current-clamp' if 'V' in self.trace.y_unit else 'voltage-clamp'
         
         self.was_analyzed = False
@@ -752,7 +776,18 @@ class minimlGuiMain(QMainWindow):
             self.was_analyzed = True
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
             prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling
-            self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen, clear=True)
+            
+            if self.trace.data.shape[0] > 89000000:
+                point_ax = np.arange(0, len(self.detection.prediction))
+                point_ax_interpol = np.linspace(0, len(self.detection.prediction)-1, 1000000)
+                f = interp1d(point_ax, self.detection.prediction)
+                prediction_display = f(point_ax_interpol)
+                prediction_x_display = np.linspace(prediction_x[0], prediction_x[-1], prediction_display.shape[0])
+                self.predictionPlot.plot(prediction_x_display, prediction_display, pen=pen, clear=True)
+            else:
+                self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen, clear=True)
+            
+            
             self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
                                      pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))
 
@@ -1538,7 +1573,7 @@ class EventViewer(QDialog):
         self.ampHistPlot.setLabel('bottom', 'Amplitude', self.detection.trace.y_unit)
         self.ampHistPlot.setLabel('left', 'Count', '')
 
-        y, x = np.histogram(self.detection.event_stats.halfdecays * 1e3, bins='auto')
+        y, x = np.histogram(self.detection.event_stats.halfdecays[~np.isnan(self.detection.event_stats.halfdecays)]  * 1e3, bins='auto')
         self.decay_curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
         self.decayHistPlot.addItem(self.decay_curve)
         self.decayHistPlot.setLabel('bottom', 'Decay time (ms)', '')
