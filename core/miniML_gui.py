@@ -1538,7 +1538,7 @@ class EventViewer(QDialog):
         self.ampHistPlot.setLabel('bottom', 'Amplitude', self.detection.trace.y_unit)
         self.ampHistPlot.setLabel('left', 'Count', '')
 
-        y, x = np.histogram(self.detection.event_stats.halfdecays * 1e3, bins='auto')
+        y, x = np.histogram(self.detection.event_stats.halfdecays[~np.isnan(self.detection.event_stats.halfdecays)]  * 1e3, bins='auto')
         self.decay_curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
         self.decayHistPlot.addItem(self.decay_curve)
         self.decayHistPlot.setLabel('bottom', 'Decay time (ms)', '')
@@ -1560,7 +1560,10 @@ class EventViewer(QDialog):
             y, x = np.histogram(self.detection.event_stats.amplitudes[self.exclude_events == 0], bins='auto')
             self.amp_curve.setData(x, y)
 
-            y, x = np.histogram(self.detection.event_stats.halfdecays[self.exclude_events == 0] * 1e3, bins='auto')
+            
+            values_for_plot = self.detection.event_stats.halfdecays[self.exclude_events == 0]
+            values_for_plot = values_for_plot[~np.isnan(values_for_plot)]
+            y, x = np.histogram(values_for_plot * 1e3, bins='auto')
             self.decay_curve.setData(x, y)
 
 
