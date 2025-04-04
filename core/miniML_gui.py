@@ -1595,7 +1595,10 @@ class EventViewer(QDialog):
             y, x = np.histogram(self.detection.event_stats.amplitudes[self.exclude_events == 0], bins='auto')
             self.amp_curve.setData(x, y)
 
-            y, x = np.histogram(self.detection.event_stats.halfdecays[self.exclude_events == 0] * 1e3, bins='auto')
+            
+            values_for_plot = self.detection.event_stats.halfdecays[self.exclude_events == 0]
+            values_for_plot = values_for_plot[~np.isnan(values_for_plot)]
+            y, x = np.histogram(values_for_plot * 1e3, bins='auto')
             self.decay_curve.setData(x, y)
 
 
