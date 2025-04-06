@@ -452,6 +452,9 @@ class minimlGuiMain(QMainWindow):
         """
         if not hasattr(self, 'trace'):
             return
+        if self.was_analyzed:
+            print('cutting data only possible before analysis')
+            return
         cut_panel = CutPanel(self)
         cut_panel.exec_()
         if cut_panel.result() == 0:
@@ -482,6 +485,8 @@ class minimlGuiMain(QMainWindow):
         """
         Updates the main plot with the data trace.
         """
+        self.data_display, self.time_ax_display = self.resample_for_display(data=self.trace.data, time_axis=self.trace.time_axis)
+
         pen = pg.mkPen(color=self.settings.colors[3], width=1)
         # self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen, clear=True)
         self.plotData = self.tracePlot.plot(self.time_ax_display, self.data_display, pen=pen, clear=True)
@@ -558,22 +563,38 @@ class minimlGuiMain(QMainWindow):
 
         if answer == msgbox.Yes:
             self.trace = load_trace_from_file(self.filetype, self.load_args)
-            if self.trace.data.shape[0] > 89000000:
-                point_ax = np.arange(0, self.trace.data.shape[0])
-                point_ax_interpol = np.linspace(0, self.trace.data.shape[0]-1, 1000000)
-                f = interp1d(point_ax, self.trace.data)
-                self.data_display = f(point_ax_interpol)
-                self.time_ax_display = np.linspace(self.trace.time_axis[0], self.trace.time_axis[-1], self.data_display.shape[0])
-            else:
-                self.data_display = self.trace.data
-                self.time_ax_display = self.trace.time_axis
-
 
             self.update_main_plot()
             self.reset_windows()
             self.was_analyzed = False
             self.detection = EventDetection(self.trace)
 
+    def resample_for_display(self, data, time_axis):
+        """
+        Data > about 89000000 points crashes pyqtgraph. Resample for display only to prevent crash.
+        
+        Arguments:
+            data: np.array
+                the original data
+            time_axis: np.array
+                the original time axis
+        
+        Returns:
+            data_display: np.array
+                the resampled data
+            time_ax_display: np.array
+                the resampled time axis
+        """
+        if data.shape[0] > 89000000:
+            point_ax = np.arange(0, data.shape[0])
+            point_ax_interpol = np.linspace(0, data.shape[0]-1, 80000000)
+            f = interp1d(point_ax, data)
+            data_display = f(point_ax_interpol)
+            time_ax_display = np.linspace(time_axis[0], time_axis[-1], data_display.shape[0])
+        else:
+            data_display = data
+            time_ax_display = time_axis
+        return data_display, time_ax_display
 
     def reset_windows(self) -> None:
         """
@@ -662,16 +683,6 @@ class minimlGuiMain(QMainWindow):
                               'unit': panel.e3.text() if (panel.e3.text() != '') else None}
             
         self.trace = load_trace_from_file(self.filetype, self.load_args)
-        if self.trace.data.shape[0] > 89000000:
-            point_ax = np.arange(0, self.trace.data.shape[0])
-            point_ax_interpol = np.linspace(0, self.trace.data.shape[0]-1, 1000000)
-            f = interp1d(point_ax, self.trace.data)
-            self.data_display = f(point_ax_interpol)
-            self.time_ax_display = np.linspace(self.trace.time_axis[0], self.trace.time_axis[-1], self.data_display.shape[0])
-        else:
-            self.data_display = self.trace.data
-            self.time_ax_display = self.trace.time_axis
-
         self.recording_mode = 'current-clamp' if 'V' in self.trace.y_unit else 'voltage-clamp'
         
         self.was_analyzed = False
@@ -777,17 +788,9 @@ class minimlGuiMain(QMainWindow):
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
             prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling
             
-            if self.trace.data.shape[0] > 89000000:
-                point_ax = np.arange(0, len(self.detection.prediction))
-                point_ax_interpol = np.linspace(0, len(self.detection.prediction)-1, 1000000)
-                f = interp1d(point_ax, self.detection.prediction)
-                prediction_display = f(point_ax_interpol)
-                prediction_x_display = np.linspace(prediction_x[0], prediction_x[-1], prediction_display.shape[0])
-                self.predictionPlot.plot(prediction_x_display, prediction_display, pen=pen, clear=True)
-            else:
-                self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen, clear=True)
-            
-            
+            prediction_display, prediction_x_display = self.resample_for_display(data=self.detection.prediction, time_axis=prediction_x)            
+            self.predictionPlot.plot(prediction_x_display, prediction_display, pen=pen, clear=True)
+
             self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
                                      pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))
 
@@ -1165,7 +1168,9 @@ class CutPanel(QDialog):
         vb = CustomViewBox()
 
         self.tracePlot = pg.PlotWidget(viewBox=vb)
-        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+        # self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+        self.plotData = self.tracePlot.plot(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
 
@@ -1321,18 +1326,8 @@ class FilterPanel(QDialog):
                     self.filtered_trace = self.filtered_trace.filter(savgol=float(self.window.text()), order=int(self.order.text()))
                 else:
                     self.filtered_trace = self.filtered_trace.filter(hann=int(self.hann_window.text()))
-            
-            if self.filtered_trace.data.shape[0] > 89000000:
-                point_ax = np.arange(0, self.filtered_trace.data.shape[0])
-                point_ax_interpol = np.linspace(0, self.filtered_trace.data.shape[0]-1, 1000000)
-                f = interp1d(point_ax, self.filtered_trace.data)
-                self.data_display = f(point_ax_interpol)
-                self.time_ax_display = np.linspace(self.filtered_trace.time_axis[0], self.filtered_trace.time_axis[-1], self.data_display.shape[0])
-            else:
-                self.data_display = self.filtered_trace.data
-                self.time_ax_display = self.filtered_trace.time_axis
 
-
+            self.data_display, self.time_ax_display = parent.resample_for_display(data=self.filtered_trace.data, time_axis=self.filtered_trace.time_axis)
             self.filtered_trace_plot.setData(self.time_ax_display, self.data_display)
             self.filtered_trace_plot.setPen(pg.mkPen(color='#ffca3a', width=1))
 
