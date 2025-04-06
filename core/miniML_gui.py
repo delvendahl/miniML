@@ -1272,12 +1272,12 @@ class FilterPanel(QDialog):
         layout = QVBoxLayout(self)
 
         self.tracePlot = pg.PlotWidget()
-        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1), clear=True)
+        self.plotData = self.tracePlot.plot(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1), clear=True)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
         self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
 
-        self.filtered_trace_plot = pg.PlotDataItem(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+        self.filtered_trace_plot = pg.PlotDataItem(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1))
         self.tracePlot.addItem(self.filtered_trace_plot)
 
         layout.addWidget(self.tracePlot)
@@ -1303,7 +1303,7 @@ class FilterPanel(QDialog):
 
         def filter_toggled():
             if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.notch.isChecked(), self.detrend.isChecked()]):
-                self.filtered_trace_plot.setData(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+                self.filtered_trace_plot.setData(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1))
                 self.filtered_trace_plot.setPen(pg.mkPen(color='grey', width=1))
                 return
 
@@ -1322,7 +1322,18 @@ class FilterPanel(QDialog):
                 else:
                     self.filtered_trace = self.filtered_trace.filter(hann=int(self.hann_window.text()))
             
-            self.filtered_trace_plot.setData(self.filtered_trace.time_axis, self.filtered_trace.data)
+            if self.filtered_trace.data.shape[0] > 89000000:
+                point_ax = np.arange(0, self.filtered_trace.data.shape[0])
+                point_ax_interpol = np.linspace(0, self.filtered_trace.data.shape[0]-1, 1000000)
+                f = interp1d(point_ax, self.filtered_trace.data)
+                self.data_display = f(point_ax_interpol)
+                self.time_ax_display = np.linspace(self.filtered_trace.time_axis[0], self.filtered_trace.time_axis[-1], self.data_display.shape[0])
+            else:
+                self.data_display = self.filtered_trace.data
+                self.time_ax_display = self.filtered_trace.time_axis
+
+
+            self.filtered_trace_plot.setData(self.time_ax_display, self.data_display)
             self.filtered_trace_plot.setPen(pg.mkPen(color='#ffca3a', width=1))
 
 
@@ -1469,9 +1480,13 @@ class EventViewer(QDialog):
         self.right_buffer = int(self.detection.window_size * 1.5)
         self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
 
-        # create a downsampled trace for the event plot
-        self.trace_x = np.arange(0, self.detection.trace.data.shape[0], 10) * self.detection.trace.sampling
-        self.trace_y = self.detection.trace.data[::10]
+        if self.detection.trace.data.shape[0] > 89000000:
+            self.trace_x = parent.time_ax_display[::10]
+            self.trace_y = parent.data_display[::10]
+        else:
+            self.trace_x = np.arange(0, self.detection.trace.data.shape[0], 10) * self.detection.trace.sampling
+            self.trace_y = self.detection.trace.data[::10]
+
 
         self.init_trace_plot()
         self.init_avg_plot()
