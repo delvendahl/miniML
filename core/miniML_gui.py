@@ -488,7 +488,6 @@ class minimlGuiMain(QMainWindow):
         self.data_display, self.time_ax_display = self.resample_for_display(data=self.trace.data, time_axis=self.trace.time_axis)
 
         pen = pg.mkPen(color=self.settings.colors[3], width=1)
-        # self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen, clear=True)
         self.plotData = self.tracePlot.plot(self.time_ax_display, self.data_display, pen=pen, clear=True)
 
         self.tracePlot.setLabel('bottom', 'Time', 's')
@@ -569,9 +568,11 @@ class minimlGuiMain(QMainWindow):
             self.was_analyzed = False
             self.detection = EventDetection(self.trace)
 
+
     def resample_for_display(self, data, time_axis):
         """
-        Data > about 89000000 points crashes pyqtgraph. Resample for display only to prevent crash.
+        Data > about 89000000 points crashes pyqtgraph on the hardware it was tested on.
+        Resample for display only to prevent crash with large number of datapoints.
         
         Arguments:
             data: np.array
@@ -585,9 +586,9 @@ class minimlGuiMain(QMainWindow):
             time_ax_display: np.array
                 the resampled time axis
         """
-        if data.shape[0] > 89000000:
+        if data.shape[0] > 89_000_000:
             point_ax = np.arange(0, data.shape[0])
-            point_ax_interpol = np.linspace(0, data.shape[0]-1, 80000000)
+            point_ax_interpol = np.linspace(0, data.shape[0]-1, 80_000_000)
             f = interp1d(point_ax, data)
             data_display = f(point_ax_interpol)
             time_ax_display = np.linspace(time_axis[0], time_axis[-1], data_display.shape[0])
@@ -595,6 +596,7 @@ class minimlGuiMain(QMainWindow):
             data_display = data
             time_ax_display = time_axis
         return data_display, time_ax_display
+
 
     def reset_windows(self) -> None:
         """
@@ -1475,13 +1477,8 @@ class EventViewer(QDialog):
         self.right_buffer = int(self.detection.window_size * 1.5)
         self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
 
-        if self.detection.trace.data.shape[0] > 89000000:
-            self.trace_x = parent.time_ax_display[::10]
-            self.trace_y = parent.data_display[::10]
-        else:
-            self.trace_x = np.arange(0, self.detection.trace.data.shape[0], 10) * self.detection.trace.sampling
-            self.trace_y = self.detection.trace.data[::10]
-
+        self.trace_x = parent.time_ax_display[::10]
+        self.trace_y = parent.data_display[::10]
 
         self.init_trace_plot()
         self.init_avg_plot()
