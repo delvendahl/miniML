@@ -106,6 +106,16 @@ If you use miniML in your work, please cite:
 }
 ```
 
+### 🙏 ACKNOWLEDGEMENTS
+
+The development of miniML was funded by the Swiss National Science Foundation, the University of Zurich Research Talent Development Fund, and the German Research Foundation.
+
+The GUI uses Material Icons by Google (https://fonts.google.com/icons).
+
+The Python code to read HEKA Patchmaster files was adapted from https://github.com/campagnola/heka_reader
+
+The template matching implementation was adapted from https://github.com/samuroi/SamuROI
+
 ### 🐛 ISSUES
 
 Please feel free to contact us in case of questions, either via email, or by opening an [Issue](https://github.com/delvendahl/miniML/issues) here on GitHub.
