@@ -1035,18 +1035,16 @@ class EventDetection():
 
             
     def _get_average_event_properties(self) -> dict:
-        '''extracts event properties for the event average the same way the individual events are analysed'''
-        ### Prepare data
-        diffs = [int(self.window_size / 3) * 10] * 3 # Difference in points between the event locations
+        '''
+        Extract properties of the event average the same way the individual events are analysed.
+        '''
         add_points = int(self.window_size / 3)
-
-        ### Set parameters for charge calculation
-        charge_factor = 4
+        diffs = [add_points * 10] # Set right limit larger than window size
+        charge_factor = 4 # Charge window is 4 * decay time
         data = np.mean(self.events[self.singular_event_indices], axis=0) * self.event_direction
 
         event_peak = get_event_peak(data=data, event_num=0, add_points=add_points, window_size=self.window_size, diffs=diffs)
         event_peak_value = data[event_peak]
-        event_peak_value = np.mean(data[int(event_peak-self.peak_spacer):int(event_peak+self.peak_spacer)])
 
         baseline, baseline_var, bsl_start, _, _ = get_event_baseline(data=data, event_num=0, diffs=diffs, 
                                                                      add_points=add_points, peak_positions=[event_peak], positions=[add_points])
@@ -1142,7 +1140,9 @@ class EventDetection():
 
 
     def _get_average_event_decay(self) -> float:
-        ''' Returns the decay time constant of the averaged events '''
+        '''
+        Returns the decay time constant of the averaged events.
+        '''
         events_for_avg = self.events[self.singular_event_indices]
 
         event_x = np.arange(0, events_for_avg.shape[1]) * self.trace.sampling
