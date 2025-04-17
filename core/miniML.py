@@ -1163,45 +1163,6 @@ class EventDetection():
             return np.nan
 
 
-    def _fit_event(self, data: np.ndarray, amplitude: float=1, t_rise: float=1, t_decay: float=1, x_offset: float=1) -> dict:
-        '''
-        Performs a rudimentary fit to input event. If not starting values are provided, the data is fitted with
-        all starting values set to one.
-        
-        Parameters
-        ------
-        data: np.ndarray
-            The data to be fitted.
-        amplitude: float
-            Amplitude estimate
-        t_rise: float
-            Rise Tau estimate
-        t_decay: float
-            Decay Tau estimate
-        x_offset: float
-            Baseline period estimate
-
-        Returns
-        ------
-        results: dict
-            Dictionary containing the fitted parameters.
-        '''
-        x = np.arange(0, data.shape[0], dtype=float) * self.trace.sampling
-        try:
-            popt, _ = curve_fit(mEPSC_template, x, data, p0=[amplitude, t_rise, t_decay, x_offset], 
-                                bounds=([-np.inf, 0, 0, 0], [np.inf, 1e3, 1e3, self.window_size * self.trace.sampling]))
-        except RuntimeError:
-            popt = np.array([np.nan] * 4)
-        
-        results = {'amplitude':popt[0],
-                   'risetime':popt[1],
-                   't_decay':popt[2],
-                   'x_offset':popt[3]
-                   }
-        
-        return results
-
-
     def _eval_events(self) -> None:
         ''' Evaluates events. Calculates mean, std and median of amplitudes & charge, as well as decay tau and
         frequency of events. Results are stored as EventStats object in self.event_stats.
