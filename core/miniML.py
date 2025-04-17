@@ -1187,7 +1187,7 @@ class EventDetection():
         self.event_peak_times = self.event_peak_locations * self.trace.sampling
         self.half_decay_times = self.half_decay * self.trace.sampling
         self.event_start_times = self.event_start * self.trace.sampling
-        self.interevent_intervals = np.diff(self.event_peak_times)
+        self.interevent_intervals = np.diff(self.event_peak_times, prepend=np.NaN)
 
         if self.verbose:
             self.event_stats.print()
