@@ -1192,6 +1192,54 @@ class EventDetection():
         if self.verbose:
             self.event_stats.print()
 
+    
+    def delete_events(self, event_indices: list=[], eval: bool=True) -> None:
+        '''
+        Deletes events from the event list. The indices of the events to be deleted are passed as an array.
+
+        Parameters
+        ----------
+        event_indices: list
+            Indices of the events to be deleted.
+        eval: bool
+            Whether to re-evaluate the events after deletion. If False, the event statistics will not be updated.
+
+        Raises
+        ------
+        ValueError
+            When the event index does not exist.
+        '''
+        if not self.events_present():
+            return
+        
+        if not hasattr(self, 'event_stats'):
+            self._eval_events()
+
+        for event in event_indices:
+            if event not in self.event_locations:
+                raise ValueError(f'Event {event} does not exist.')
+
+        self.detection.event_locations = np.delete(self.detection.event_locations, event_indices, axis=0)
+        self.detection.event_peak_locations = np.delete(self.detection.event_peak_locations, event_indices, axis=0)
+        self.detection.event_peak_times = np.delete(self.detection.event_peak_times, event_indices, axis=0)
+        self.detection.event_peak_values = np.delete(self.detection.event_peak_values, event_indices, axis=0)
+        self.detection.event_start = np.delete(self.detection.event_start, event_indices, axis=0)
+        self.detection.decaytimes = np.delete(self.detection.decaytimes, event_indices, axis=0)
+        self.detection.risetimes = np.delete(self.detection.risetimes, event_indices, axis=0)
+        self.detection.charges = np.delete(self.detection.charges, event_indices, axis=0)
+        self.detection.event_bsls = np.delete(self.detection.event_bsls, event_indices, axis=0)
+        self.detection.bsl_starts = np.delete(self.detection.bsl_starts, event_indices, axis=0)
+        self.detection.bsl_ends = np.delete(self.detection.bsl_ends, event_indices, axis=0)
+        self.detection.min_positions_rise = np.delete(self.detection.min_positions_rise, event_indices, axis=0)
+        self.detection.max_positions_rise = np.delete(self.detection.max_positions_rise, event_indices, axis=0)
+        self.detection.half_decay = np.delete(self.detection.half_decay, event_indices, axis=0)
+        self.detection.events = np.delete(self.detection.events, event_indices, axis=0)
+        self.detection.event_scores = np.delete(self.detection.event_scores, event_indices, axis=0)
+        
+        if eval:
+            self.detection._get_singular_event_indices()
+            self.detection._eval_events()
+
 
     def save_to_h5(self, filename: str, include_prediction: bool=False) -> None:
         ''' Save detection results to an hdf5 (.h5) file.
