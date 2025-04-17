@@ -1446,12 +1446,12 @@ class EventViewer(QDialog):
         self.table = QTableWidget()
         self.table.verticalHeader().setDefaultSectionSize(10)
         self.table.horizontalHeader().setDefaultSectionSize(90)
-        self.table.setRowCount(10) 
+        self.table.setRowCount(11) 
         self.table.setColumnCount(2)
         self.table.setColumnWidth(0, 90)
         self.table.setColumnWidth(1, 60)
         self.table.setHorizontalHeaderLabels(['Value', 'Unit'])
-        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Slope', 'Decay', 'SNR'])
+        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Slope', 'Decay', 'SNR', 'Interval'])
         self.table.viewport().installEventFilter(self)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.update_table()
@@ -1485,6 +1485,7 @@ class EventViewer(QDialog):
         self.table.setItem(8, 0, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}'))
         bsl_sd = np.std(self.detection.trace.data[self.detection.bsl_starts[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer : self.detection.bsl_ends[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer])
         self.table.setItem(9, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
+        self.table.setItem(10, 0, QTableWidgetItem(f'{self.detection.interevent_intervals[self.ind]:.5f}'))
 
         self.table.setItem(0, 1, QTableWidgetItem(''))
         self.table.setItem(1, 1, QTableWidgetItem('s'))
@@ -1496,6 +1497,7 @@ class EventViewer(QDialog):
         self.table.setItem(7, 1, QTableWidgetItem(self.detection.trace.y_unit + '/ms'))
         self.table.setItem(8, 1, QTableWidgetItem('ms'))
         self.table.setItem(9, 1, QTableWidgetItem(''))
+        self.table.setItem(10, 1, QTableWidgetItem('s'))
 
 
     def cancel_event_viewer(self):
