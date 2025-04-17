@@ -15,6 +15,7 @@ import sys
 from miniML import MiniTrace, EventDetection, is_keras_model
 from miniML_settings import MinimlSettings
 import FileImport.HekaReader as heka
+from scipy.interpolate import  interp1d
 
 
 
@@ -451,6 +452,9 @@ class minimlGuiMain(QMainWindow):
         """
         if not hasattr(self, 'trace'):
             return
+        if self.was_analyzed:
+            print('cutting data only possible before analysis')
+            return
         cut_panel = CutPanel(self)
         cut_panel.exec_()
         if cut_panel.result() == 0:
@@ -481,8 +485,11 @@ class minimlGuiMain(QMainWindow):
         """
         Updates the main plot with the data trace.
         """
+        self.data_display, self.time_ax_display = self.resample_for_display(data=self.trace.data, time_axis=self.trace.time_axis)
+
         pen = pg.mkPen(color=self.settings.colors[3], width=1)
-        self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen, clear=True)
+        self.plotData = self.tracePlot.plot(self.time_ax_display, self.data_display, pen=pen, clear=True)
+
         self.tracePlot.setLabel('bottom', 'Time', 's')
         label1 = 'Vmon' if self.recording_mode == 'current-clamp' else 'Imon'
         self.tracePlot.setLabel('left', label1, self.trace.y_unit)
@@ -555,10 +562,40 @@ class minimlGuiMain(QMainWindow):
 
         if answer == msgbox.Yes:
             self.trace = load_trace_from_file(self.filetype, self.load_args)
+
             self.update_main_plot()
             self.reset_windows()
             self.was_analyzed = False
             self.detection = EventDetection(self.trace)
+
+
+    def resample_for_display(self, data, time_axis):
+        """
+        Data > about 89000000 points crashes pyqtgraph on the hardware it was tested on.
+        Resample for display only to prevent crash with large number of datapoints.
+        
+        Arguments:
+            data: np.array
+                the original data
+            time_axis: np.array
+                the original time axis
+        
+        Returns:
+            data_display: np.array
+                the resampled data
+            time_ax_display: np.array
+                the resampled time axis
+        """
+        if data.shape[0] > 89_000_000:
+            point_ax = np.arange(0, data.shape[0])
+            point_ax_interpol = np.linspace(0, data.shape[0]-1, 80_000_000)
+            f = interp1d(point_ax, data)
+            data_display = f(point_ax_interpol)
+            time_ax_display = np.linspace(time_axis[0], time_axis[-1], data_display.shape[0])
+        else:
+            data_display = data
+            time_ax_display = time_axis
+        return data_display, time_ax_display
 
 
     def reset_windows(self) -> None:
@@ -752,7 +789,10 @@ class minimlGuiMain(QMainWindow):
             self.was_analyzed = True
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
             prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling
-            self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen, clear=True)
+            
+            prediction_display, prediction_x_display = self.resample_for_display(data=self.detection.prediction, time_axis=prediction_x)            
+            self.predictionPlot.plot(prediction_x_display, prediction_display, pen=pen, clear=True)
+
             self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
                                      pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))
 
@@ -1130,7 +1170,9 @@ class CutPanel(QDialog):
         vb = CustomViewBox()
 
         self.tracePlot = pg.PlotWidget(viewBox=vb)
-        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+        # self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+        self.plotData = self.tracePlot.plot(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
 
@@ -1237,12 +1279,12 @@ class FilterPanel(QDialog):
         layout = QVBoxLayout(self)
 
         self.tracePlot = pg.PlotWidget()
-        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1), clear=True)
+        self.plotData = self.tracePlot.plot(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1), clear=True)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
         self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
 
-        self.filtered_trace_plot = pg.PlotDataItem(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+        self.filtered_trace_plot = pg.PlotDataItem(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1))
         self.tracePlot.addItem(self.filtered_trace_plot)
 
         layout.addWidget(self.tracePlot)
@@ -1268,7 +1310,7 @@ class FilterPanel(QDialog):
 
         def filter_toggled():
             if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.notch.isChecked(), self.detrend.isChecked()]):
-                self.filtered_trace_plot.setData(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+                self.filtered_trace_plot.setData(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1))
                 self.filtered_trace_plot.setPen(pg.mkPen(color='grey', width=1))
                 return
 
@@ -1286,8 +1328,9 @@ class FilterPanel(QDialog):
                     self.filtered_trace = self.filtered_trace.filter(savgol=float(self.window.text()), order=int(self.order.text()))
                 else:
                     self.filtered_trace = self.filtered_trace.filter(hann=int(self.hann_window.text()))
-            
-            self.filtered_trace_plot.setData(self.filtered_trace.time_axis, self.filtered_trace.data)
+
+            self.data_display, self.time_ax_display = parent.resample_for_display(data=self.filtered_trace.data, time_axis=self.filtered_trace.time_axis)
+            self.filtered_trace_plot.setData(self.time_ax_display, self.data_display)
             self.filtered_trace_plot.setPen(pg.mkPen(color='#ffca3a', width=1))
 
 
@@ -1434,9 +1477,8 @@ class EventViewer(QDialog):
         self.right_buffer = int(self.detection.window_size * 1.5)
         self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
 
-        # create a downsampled trace for the event plot
-        self.trace_x = np.arange(0, self.detection.trace.data.shape[0], 10) * self.detection.trace.sampling
-        self.trace_y = self.detection.trace.data[::10]
+        self.trace_x = parent.time_ax_display[::10]
+        self.trace_y = parent.data_display[::10]
 
         self.init_trace_plot()
         self.init_avg_plot()

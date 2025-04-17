@@ -895,8 +895,7 @@ class EventDetection():
             self.event_start[ix] = onset_position
 
             risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise = get_event_risetime(data=data[bsl_start:int(event_peak_pos)], 
-                                                                                                                sampling_rate=self.trace.sampling_rate, 
-                                                                                                                baseline=baseline, 
+                                                                                                                sampling_rate=self.trace.sampling_rate, baseline=baseline, 
                                                                                                                 amplitude=self.event_peak_values[ix] - baseline)
             self.risetimes[ix] = risetime
             self.min_positions_rise[ix] = min_position_rise
