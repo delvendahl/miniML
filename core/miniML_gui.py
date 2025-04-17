@@ -1450,6 +1450,13 @@ class AutoSettingsWindow(QDialog):
         label_2 = QLabel('Window size (ms)')
         label_2.setStyleSheet("font-weight: bold;")
         controls.addRow(label_2, self.window_time)
+
+        auto_win_size = QPushButton('Auto window size')
+        auto_win_size.setMinimumWidth(150)
+        auto_win_size.setMaximumWidth(150)
+        auto_win_size.clicked.connect(self.auto_window_size)
+        controls.addRow(auto_win_size)
+
         controls.addRow(QLabel(''))
         label_3 = QLabel('Filter factor')
         label_3.setStyleSheet("font-weight: bold;")
@@ -1508,19 +1515,13 @@ class AutoSettingsWindow(QDialog):
             event_data = np.zeros((len(self.eventPlot.listDataItems()), before + after))
             for i, item in enumerate(self.eventPlot.listDataItems()):
                 event_data[i] = item.getData()[1]
-            avg_event = np.mean(event_data, axis=0)
-            self.eventPlot.plot(self.parent.trace.time_axis[:before + after], avg_event,
+            self.avg_event = np.mean(event_data, axis=0)
+            self.eventPlot.plot(self.parent.trace.time_axis[:before + after], self.avg_event,
                                 pen=pg.mkPen(color=self.parent.settings.colors[3], width=4))
         else:
             return
 
-        self.region = pg.LinearRegionItem(brush=(138,201,38,50), hoverBrush=(138,201,38,90), pen=(138,201,38,255), hoverPen=(0,0,0,255),
-                                          bounds=[0, self.parent.trace.time_axis[before + after]], swapMode='block')
-        self.region.setZValue(-1)
-        win_start = np.argmax(np.abs(avg_event)) - self.parent.settings.event_window // 5
-        win_end = np.argmax(np.abs(avg_event)) + self.parent.settings.event_window // 1.25
-        self.region.setRegion([win_start * self.parent.trace.sampling, win_end * self.parent.trace.sampling])
-        self.eventPlot.addItem(self.region)
+        self.draw_window_region(self.parent.settings.event_window)
 
         # calculate the gradient
         self.gradientPlot.clear()
@@ -1530,6 +1531,19 @@ class AutoSettingsWindow(QDialog):
             self.gradientPlot.plot(self.parent.trace.time_axis[: before + after], gradient,
                                    pen=pg.mkPen(color=(*hex_to_rgb(self.parent.settings.colors[3]),100), width=2))
                                     
+
+    def draw_window_region(self, win_size):     
+        win_start = np.argmax(np.abs(self.avg_event)) - win_size // 5
+        win_end = np.argmax(np.abs(self.avg_event)) + win_size // 1.25
+
+        if not hasattr(self, 'region'):
+            x_max = self.eventPlot.viewRange()[0][1]
+            self.region = pg.LinearRegionItem(brush=(138,201,38,50), hoverBrush=(138,201,38,90), pen=(138,201,38,255), hoverPen=(0,0,0,255),
+                                            bounds=[0, x_max], swapMode='block')
+            self.region.setZValue(-1)
+            self.eventPlot.addItem(self.region)
+        self.region.setRegion([win_start * self.parent.trace.sampling, win_end * self.parent.trace.sampling])
+
 
     def clear_cursors(self):
         for item in self.tracePlot.items():
@@ -1560,6 +1574,22 @@ class AutoSettingsWindow(QDialog):
                                     brush=pg.mkBrush(color=(255, 202, 58, 100)),
                                     hoverBrush=pg.mkBrush(color=(255, 89, 94, 100)))
             self.tracePlot.addItem(cursor)
+
+
+    def auto_window_size(self):
+        """
+        Automatically detect the window size based on xxx.
+        """
+        t1 = np.argmax(np.abs(self.avg_event))
+        bsl = np.mean(np.abs(self.avg_event[0 : int(t1 // 1.5)]))
+        t2 = np.argmax(np.abs(self.avg_event[t1:]) < bsl) + t1
+        
+        suggested_window = t2 - t1
+        # round to next larger multiple of 100
+        suggested_window = (suggested_window // 100 + 1) * 100
+        self.window_size.setText(str(suggested_window))
+        self.window_time.setText(str(suggested_window * self.parent.trace.sampling * 1000))
+        self.draw_window_region(suggested_window)
 
 
 
