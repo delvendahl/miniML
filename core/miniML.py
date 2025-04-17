@@ -607,6 +607,7 @@ class EventDetection():
         elif model_path:
             self.load_model(filepath=model_path, threshold=model_threshold, compile=compile_model)
             self.callbacks = callbacks
+        self.deleted_events = 0
         
     @property
     def event_direction(self):
@@ -1236,6 +1237,8 @@ class EventDetection():
         self.detection.events = np.delete(self.detection.events, event_indices, axis=0)
         self.detection.event_scores = np.delete(self.detection.event_scores, event_indices, axis=0)
         
+        self.deleted_events += len(event_indices)
+
         if eval:
             self.detection._get_singular_event_indices()
             self.detection._eval_events()
@@ -1287,9 +1290,14 @@ class EventDetection():
             f.attrs['source_filename'] = self.trace.filename
             f.attrs['miniml_model'] = self.model_path
             f.attrs['miniml_model_threshold'] = self.model_threshold
+            f.attrs['minimum_peak'] = self.peak_w
             f.attrs['stride'] = self.stride_length
             f.attrs['window'] = self.window_size
             f.attrs['event_direction'] = self.event_direction
+            f.attrs['filter_factor'] = self.filter_factor
+            f.attrs['gradient_convolve_win'] = self.gradient_convolve_win
+            f.attrs['relative_prominence'] = self.rel_prom_cutoff
+            f.attrs['deleted_events'] = self.deleted_events
 
             if include_prediction:
                 f.create_dataset('prediction', data=self.prediction)
@@ -1319,7 +1327,7 @@ class EventDetection():
             self.event_stats.charges,
             self.event_stats.risetimes,
             self.event_stats.halfdecays,
-            self.event_stats.interevent_intervals))
+            self.interevent_intervals))
         
         avgs = np.array((
             self.event_stats.mean(self.event_stats.amplitudes),
@@ -1419,7 +1427,8 @@ class EventDetection():
                 'gradient_convolve_win':self.gradient_convolve_win,
                 'min_peak_w':self.peak_w,
                 'rel_prom_cutoff':self.rel_prom_cutoff,
-                'event_direction':self.event_direction},
+                'event_direction':self.event_direction,
+                'deleted_events':self.deleted_events},
             'events':self.events}
 
         if include_prediction:
