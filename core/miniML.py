@@ -1267,6 +1267,7 @@ class EventDetection():
             f.create_dataset('event_params/event_risetimes', data=self.event_stats.risetimes)
             f.create_dataset('event_params/event_halfdecays', data=self.event_stats.halfdecays)
             f.create_dataset('event_params/event_bsls', data=np.array(self.event_bsls))
+            f.create_dataset('event_params/event_intervals', data=np.array(self.interevent_intervals))
             f.create_dataset('event_statistics/amplitude_average', data=self.event_stats.mean(self.event_stats.amplitudes))
             f.create_dataset('event_statistics/amplitude_stdev', data=self.event_stats.std(self.event_stats.amplitudes))
             f.create_dataset('event_statistics/amplitude_median', data=self.event_stats.median(self.event_stats.amplitudes))
@@ -1278,6 +1279,8 @@ class EventDetection():
             f.create_dataset('event_statistics/decaytime_median', data=self.event_stats.median(self.event_stats.halfdecays))
             f.create_dataset('event_statistics/decay_from_fit', data=self.event_stats.avg_tau_decay)
             f.create_dataset('event_statistics/frequency', data=self.event_stats.frequency())
+            f.create_dataset('event_statistics/iei_mean', data=self.event_stats.mean(self.interevent_intervals))
+            f.create_dataset('event_statistics/iei_median', data=self.event_stats.median(self.interevent_intervals))
 
             f.attrs['amplitude_unit'] = self.trace.y_unit
             f.attrs['recording_time'] = self.trace.data.shape[0] * self.trace.sampling
@@ -1315,7 +1318,8 @@ class EventDetection():
             self.event_stats.amplitudes,
             self.event_stats.charges,
             self.event_stats.risetimes,
-            self.event_stats.halfdecays))
+            self.event_stats.halfdecays,
+            self.event_stats.interevent_intervals))
         
         avgs = np.array((
             self.event_stats.mean(self.event_stats.amplitudes),
@@ -1325,12 +1329,13 @@ class EventDetection():
             self.event_stats.mean(self.event_stats.risetimes),
             self.event_stats.mean(self.event_stats.halfdecays),
             self.event_stats.avg_tau_decay,
-            self.event_stats.frequency()))
+            self.event_stats.frequency(),
+            self.event_stats.mean(self.interevent_intervals)))
         
         column_names = [f'event_{i}' for i in range(len(self.event_locations))]
 
-        individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime'], columns=column_names)
-        avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'tau_avg', 'frequency'])
+        individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime', 'interval'], columns=column_names)
+        avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'tau_avg', 'frequency', 'iei mean'], columns=['value'])
         
         individual.to_csv(f'{filename}_individual.csv')
         avgs.to_csv(f'{filename}_avgs.csv', header=False)
@@ -1375,7 +1380,8 @@ class EventDetection():
                 'amplitudes':self.event_stats.amplitudes,
                 'charges':self.event_stats.charges,
                 'risetimes':self.event_stats.risetimes,
-                'half_decaytimes':self.event_stats.halfdecays},            
+                'half_decaytimes':self.event_stats.halfdecays,
+                'event_intervals':self.interevent_intervals},            
             
             'average_values':{
                 'amplitude mean':self.event_stats.mean(self.event_stats.amplitudes),
@@ -1385,7 +1391,9 @@ class EventDetection():
                 'risetime mean':self.event_stats.mean(self.event_stats.risetimes),
                 'half_decaytime mean':self.event_stats.mean(self.event_stats.halfdecays),
                 'decay_tau':self.event_stats.avg_tau_decay*1000,
-                'frequency':self.event_stats.frequency()},
+                'frequency':self.event_stats.frequency(),
+                'iei_mean':self.event_stats.mean(self.interevent_intervals),
+                'iei_median':self.event_stats.median(self.interevent_intervals)},
             
             'average_event_properties':self.average_event_properties,
             'metadata':{
