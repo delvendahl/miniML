@@ -18,8 +18,8 @@ class MinimlSettings():
         The direction of the event to detect. Can be 'positive' or 'negative'.
     - batch_size: int, default=512
         The batch size to use for model inference.
-    - convolve_win: int, default=20
-        The Hann window size to use for filtering the trace during peak finding.
+    - filter_factor: float, default=20
+        The filter factor used for low-pass filtering of the trace during peak finding.
     - gradient_convolve_win: int, default=0
         The Hann window size to use for filtering the first derivative of the 
         data trace (used for determining event location).
@@ -32,8 +32,8 @@ class MinimlSettings():
                  minimum_peak_width: int=5,
                  direction: str='negative',
                  batch_size: int=512,
-                 convolve_win: int=20,
-                 gradient_convolve_win: int=0,
+                 filter_factor: float=20,
+                 gradient_convolve_win: int=25,
                  relative_prominence: float=0.25) -> None:
 
         self.stride = stride
@@ -44,7 +44,7 @@ class MinimlSettings():
         self.minimum_peak_width = minimum_peak_width
         self.direction = direction
         self.batch_size = batch_size
-        self.convolve_win = convolve_win
+        self.filter_factor = filter_factor
         self.gradient_convolve_win = gradient_convolve_win
         self.relative_prominence = relative_prominence
         self.colors = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"]
@@ -121,17 +121,15 @@ class MinimlSettings():
 
 
     @property
-    def convolve_win(self) -> int:
-        return self._convolve_win
+    def filter_factor(self) -> int:
+        return self._filter_factor
     
-    @convolve_win.setter
-    def convolve_win(self, value) -> None:
-        if value < 1:
-            raise ValueError('Convolution window must be larger than 0')
-        if type(value) is not int:
-            raise ValueError('Convolution window must be an integer')
+    @filter_factor.setter
+    def filter_factor(self, value) -> None:
+        if value < 0:
+            raise ValueError('filter_factor must be larger than 0')
 
-        self._convolve_win = value
+        self._filter_factor = value
 
 
     @property

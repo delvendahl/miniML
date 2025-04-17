@@ -666,6 +666,8 @@ class EventDetection():
         Hann window filter. Start and end of the data are not filtered to avoid artifacts
         resulting from zero padding.
         '''
+        if filter_size == 0:
+            return data
         win = signal.windows.hann(filter_size)    
         filtered_data = signal.convolve(data, win, mode='same') / sum(win)
         filtered_data[:filter_size] = data[:filter_size]
@@ -1077,7 +1079,7 @@ class EventDetection():
 
 
     def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w: int=5, 
-                      rel_prom_cutoff: float=0.25, filter_factor: int=20, gradient_convolve_win: int=0) -> None:
+                      rel_prom_cutoff: float=0.25, filter_factor: float=20.0, gradient_convolve_win: int=0) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -1094,7 +1096,7 @@ class EventDetection():
         rel_prom_cutoff: int, float = 0.25
             The relative prominence cutoff. Overlapping events are separated based on a peak-finding in the first derivative. To be considered
             an event, any detected peak must have at least 25% prominence of the largest detected prominence.
-        filter_factor: int, default = 20
+        filter_factor: float, default = 20
             Fitler factor for the lowpass filter used to filter the data for event analysis. Fraction of sampling rate (20 = 1/20 of sampling rate)
         gradient_convolve_win: int, default = 0
             Window size for the hanning window used to filter the derivative for event analysis
@@ -1217,25 +1219,25 @@ class EventDetection():
             self._eval_events()
 
         for event in event_indices:
-            if event not in self.event_locations:
+            if event < 0 or event >= self.event_locations.shape[0]:
                 raise ValueError(f'Event {event} does not exist.')
 
-        self.detection.event_locations = np.delete(self.detection.event_locations, event_indices, axis=0)
-        self.detection.event_peak_locations = np.delete(self.detection.event_peak_locations, event_indices, axis=0)
-        self.detection.event_peak_times = np.delete(self.detection.event_peak_times, event_indices, axis=0)
-        self.detection.event_peak_values = np.delete(self.detection.event_peak_values, event_indices, axis=0)
-        self.detection.event_start = np.delete(self.detection.event_start, event_indices, axis=0)
-        self.detection.decaytimes = np.delete(self.detection.decaytimes, event_indices, axis=0)
-        self.detection.risetimes = np.delete(self.detection.risetimes, event_indices, axis=0)
-        self.detection.charges = np.delete(self.detection.charges, event_indices, axis=0)
-        self.detection.event_bsls = np.delete(self.detection.event_bsls, event_indices, axis=0)
-        self.detection.bsl_starts = np.delete(self.detection.bsl_starts, event_indices, axis=0)
-        self.detection.bsl_ends = np.delete(self.detection.bsl_ends, event_indices, axis=0)
-        self.detection.min_positions_rise = np.delete(self.detection.min_positions_rise, event_indices, axis=0)
-        self.detection.max_positions_rise = np.delete(self.detection.max_positions_rise, event_indices, axis=0)
-        self.detection.half_decay = np.delete(self.detection.half_decay, event_indices, axis=0)
-        self.detection.events = np.delete(self.detection.events, event_indices, axis=0)
-        self.detection.event_scores = np.delete(self.detection.event_scores, event_indices, axis=0)
+        self.event_locations = np.delete(self.event_locations, event_indices, axis=0)
+        self.event_peak_locations = np.delete(self.event_peak_locations, event_indices, axis=0)
+        self.event_peak_times = np.delete(self.event_peak_times, event_indices, axis=0)
+        self.event_peak_values = np.delete(self.event_peak_values, event_indices, axis=0)
+        self.event_start = np.delete(self.event_start, event_indices, axis=0)
+        self.decaytimes = np.delete(self.decaytimes, event_indices, axis=0)
+        self.risetimes = np.delete(self.risetimes, event_indices, axis=0)
+        self.charges = np.delete(self.charges, event_indices, axis=0)
+        self.event_bsls = np.delete(self.event_bsls, event_indices, axis=0)
+        self.bsl_starts = np.delete(self.bsl_starts, event_indices, axis=0)
+        self.bsl_ends = np.delete(self.bsl_ends, event_indices, axis=0)
+        self.min_positions_rise = np.delete(self.min_positions_rise, event_indices, axis=0)
+        self.max_positions_rise = np.delete(self.max_positions_rise, event_indices, axis=0)
+        self.half_decay = np.delete(self.half_decay, event_indices, axis=0)
+        self.events = np.delete(self.events, event_indices, axis=0)
+        self.event_scores = np.delete(self.event_scores, event_indices, axis=0)
         
         self.deleted_events += len(event_indices)
 

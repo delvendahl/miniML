@@ -698,7 +698,7 @@ class minimlGuiMain(QMainWindow):
         self.settings.minimum_peak_width = int(settings_win.peak_w.text()) if settings_win.peak_w.hasAcceptableInput() else 5
         self.settings.direction = str(settings_win.direction.currentText())
         self.settings.batch_size = int(settings_win.batchsize.text())
-        self.settings.convolve_win = int(settings_win.convolve_window.text())
+        self.settings.filter_factor = int(settings_win.filter_factor.text())
         self.settings.gradient_convolve_win = int(settings_win.gradient_convolve_window.text())
 
 
@@ -748,7 +748,7 @@ class minimlGuiMain(QMainWindow):
                                             callbacks=CustomCallback())
 
             self.detection.detect_events(stride=self.settings.stride, eval=True, peak_w=self.settings.minimum_peak_width, 
-                                         convolve_win=self.settings.convolve_win, gradient_convolve_win=self.settings.gradient_convolve_win)
+                                         filter_factor=self.settings.filter_factor, gradient_convolve_win=self.settings.gradient_convolve_win)
 
             self.was_analyzed = True
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
@@ -1017,7 +1017,7 @@ class AboutPanel(QDialog):
         self.website.setOpenExternalLinks(True)
         self.layout.addRow(self.website)
 
-        self.paper = QLabel('Publication: <a href=\"https://doi.org/10.7554/eLife.98485.3\">miniML eLife paper 2024</a>')
+        self.paper = QLabel('Publication: <a href=\"https://doi.org/10.7554/eLife.98485.3\">miniML eLife paper 2025</a>')
         self.paper.setOpenExternalLinks(True)
         self.layout.addRow(self.paper)
 
@@ -1031,6 +1031,7 @@ class SummaryPanel(QDialog):
         self.populate_fields(parent)
         self.layout.addRow('Filename:', self.filename)
         self.layout.addRow('Events found:', self.event_count)
+        self.layout.addRow('Events deleted:', self.deleted_event_count)
         self.layout.addRow('Event frequency (Hz):', self.event_frequency)
         self.layout.addRow('Average score:', self.average_score)
         self.layout.addRow(f'Average amplitude ({parent.detection.trace.y_unit}):', self.average_amplitude)
@@ -1049,6 +1050,8 @@ class SummaryPanel(QDialog):
         self.filename.setReadOnly(True)
         self.event_count = QLineEdit(str(parent.detection.event_stats.event_count))
         self.event_count.setReadOnly(True)
+        self.deleted_event_count = QLineEdit(str(parent.detection.deleted_events))
+        self.deleted_event_count.setReadOnly(True)
         self.event_frequency = QLineEdit(f'{parent.detection.event_stats.frequency():.5f}')
         self.event_frequency.setReadOnly(True)
         self.average_score = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.event_scores):.5f}')
@@ -1099,8 +1102,8 @@ class SettingsPanel(QDialog):
         self.direction.setFixedWidth(200)
         self.batchsize = QLineEdit(str(parent.settings.batch_size))
 
-        self.convolve_window = QLineEdit(str(parent.settings.convolve_win))
-        self.convolve_window.setValidator(QIntValidator(1, 10000))
+        self.filter_factor = QLineEdit(str(parent.settings.filter_factor))
+        self.filter_factor.setValidator(QDoubleValidator(0.0, 1000.0, 1))
 
         self.gradient_convolve_window = QLineEdit(str(parent.settings.gradient_convolve_win))
         self.gradient_convolve_window.setValidator(QIntValidator(1, 10000))
@@ -1113,7 +1116,7 @@ class SettingsPanel(QDialog):
         self.layout.addRow('Model', self.model)
         self.layout.addRow('Event direction', self.direction)
         self.layout.addRow('Batch size', self.batchsize)
-        self.layout.addRow('Filter window', self.convolve_window)
+        self.layout.addRow('Filter factor', self.filter_factor)
         self.layout.addRow('Gradient filter window', self.gradient_convolve_window)
 
         finalize_dialog_window(self, title='miniML settings')
@@ -1432,7 +1435,8 @@ class EventViewer(QDialog):
         self.ind = 0
         self.left_buffer = int(self.detection.window_size / 2)
         self.right_buffer = int(self.detection.window_size * 1.5)
-        self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
+
+        self.filtered_data = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
 
         # create a downsampled trace for the event plot
         self.trace_x = np.arange(0, self.detection.trace.data.shape[0], 10) * self.detection.trace.sampling
