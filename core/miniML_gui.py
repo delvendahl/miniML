@@ -11,8 +11,9 @@ from pathlib import Path
 import h5py
 import pyabf
 from qt_material import build_stylesheet
-from scipy.signal import find_peaks, convolve
+from scipy.signal import find_peaks, convolve, resample
 from scipy.signal.windows import hann
+from sklearn.preprocessing import scale, minmax_scale
 import sys
 from miniML import MiniTrace, EventDetection, is_keras_model
 from miniML_settings import MinimlSettings
@@ -1358,6 +1359,9 @@ class AutoSettingsWindow(QDialog):
     def __init__(self, parent=None):
         super(AutoSettingsWindow, self).__init__(parent)
         self.parent = parent
+
+        self.peak_window = 200 # window in samples to search for peak after steepest rise point # TO DO: replace hard-coded value
+
         layout = QVBoxLayout(self)
 
         top_layout = QHBoxLayout()
@@ -1465,6 +1469,12 @@ class AutoSettingsWindow(QDialog):
         label_4.setStyleSheet("font-weight: bold;")
         controls.addRow(label_4, self.convolve_window)
 
+        auto_filter = QPushButton('Auto filter factor')
+        auto_filter.setMinimumWidth(150)
+        auto_filter.setMaximumWidth(150)
+        auto_filter.clicked.connect(self.auto_filter_settings)
+        controls.addRow(auto_filter)
+
         bottom_layout.addLayout(controls)
 
         self.gradientPlot = pg.PlotWidget()
@@ -1497,6 +1507,9 @@ class AutoSettingsWindow(QDialog):
 
     def transfer_events(self):
         self.eventPlot.clear()
+        self.region = None
+        self.ev_positions = []
+
         extract_window = int(float(self.time.text()) * 1e-3 / self.parent.trace.sampling)
         before = extract_window // 5
         after = extract_window - before
@@ -1506,10 +1519,12 @@ class AutoSettingsWindow(QDialog):
                 # get the x position of the cursor, and the index of the closest point in the trace
                 x = item.pos()[0]
                 index = np.argmin(np.abs(self.parent.trace.time_axis - x))
+                event_location = np.argmax(np.abs(self.gradient[index - self.peak_window : index])) + index - self.peak_window
                 self.eventPlot.plot(self.parent.trace.time_axis[: before + after],
-                                    self.parent.trace.data[index - before : index + after],
+                                    self.parent.trace.data[event_location - before : event_location + after],
                                     pen=pg.mkPen(color=(0,0,0,90), width=2))
-        
+                self.ev_positions.append(event_location)
+
         # average events
         if len(self.eventPlot.listDataItems()) > 0:
             event_data = np.zeros((len(self.eventPlot.listDataItems()), before + after))
@@ -1527,22 +1542,27 @@ class AutoSettingsWindow(QDialog):
         self.gradientPlot.clear()
         win = hann(self.parent.settings.gradient_convolve_win)
         for i, item in enumerate(self.eventPlot.listDataItems()):
-            gradient = convolve(np.gradient(item.getData()[1], self.parent.trace.sampling), win, mode='same') / sum(win)
+            if item.opts['pen'].width() == 4:
+                continue
+            filtered_ev = self.parent.detection.lowpass_filter(data=item.getData()[1], 
+                                                               cutoff=self.parent.detection.trace.sampling_rate / self.parent.settings.filter_factor, order=4)
+            gradient = convolve(np.gradient(filtered_ev, self.parent.trace.sampling), win, mode='same') / sum(win)
             self.gradientPlot.plot(self.parent.trace.time_axis[: before + after], gradient,
                                    pen=pg.mkPen(color=(*hex_to_rgb(self.parent.settings.colors[3]),100), width=2))
-                                    
 
-    def draw_window_region(self, win_size):     
-        win_start = np.argmax(np.abs(self.avg_event)) - win_size // 5
-        win_end = np.argmax(np.abs(self.avg_event)) + win_size // 1.25
 
-        if not hasattr(self, 'region'):
+    def draw_window_region(self, win_size):
+        peak = np.argmax(np.abs(scale(self.avg_event)))
+        win_start = (peak - win_size // 5) * self.parent.trace.sampling
+        win_end = (peak + win_size // 1.25) * self.parent.trace.sampling
+
+        if not hasattr(self, 'region') or self.region is None:
             x_max = self.eventPlot.viewRange()[0][1]
             self.region = pg.LinearRegionItem(brush=(138,201,38,50), hoverBrush=(138,201,38,90), pen=(138,201,38,255), hoverPen=(0,0,0,255),
-                                            bounds=[0, x_max], swapMode='block')
+                                            bounds=[0, x_max*2], swapMode='block')
             self.region.setZValue(-1)
             self.eventPlot.addItem(self.region)
-        self.region.setRegion([win_start * self.parent.trace.sampling, win_end * self.parent.trace.sampling])
+        self.region.setRegion([win_start, win_end])
 
 
     def clear_cursors(self):
@@ -1555,41 +1575,115 @@ class AutoSettingsWindow(QDialog):
         """
         Automatically detect events based on the first derivative.
         """
-        gradient = np.gradient(self.parent.detection.lowpass_filter(data=self.parent.detection.trace.data, cutoff=self.parent.detection.trace.sampling_rate / 50, order=4))
-        threshold = np.std(np.abs(gradient)) * 20
-        peaks, properties = find_peaks(np.abs(gradient), height=threshold, width=10, distance=500)
+        normalized_trace = scale(self.parent.detection.trace.data)
+        self.filtered_trace = self.parent.detection.lowpass_filter(data=normalized_trace, cutoff=self.parent.detection.trace.sampling_rate / 50, order=4)
+        self.gradient = np.gradient(self.filtered_trace)
+        threshold = np.std(np.abs(self.gradient)) * 20
+        peaks, properties = find_peaks(np.abs(self.gradient), height=threshold, width=10, distance=500)
 
         if len(peaks) == 0:
             self._warning_box(message='No events detected.')
             return
         elif len(peaks) > 10:
             peaks = peaks[np.argsort(properties['peak_heights'])[-10:]]
+          
         for peak in peaks:
-            raw_data = np.abs(self.parent.detection.trace.data[peak: peak + 100]) # TO DO: replace hard-coded value
-            peak = np.argmax(raw_data) + peak
+            peak = np.argmax(np.abs(self.filtered_trace[peak: peak + self.peak_window])) + peak
 
-            cursor = pg.TargetItem(pos=(self.parent.trace.time_axis[peak], self.parent.trace.data[peak]), label=f'x={self.parent.trace.time_axis[peak]:.2f}', size=12,
-                                    pen=pg.mkPen(color=(255, 202, 58, 255), width=2),
-                                    hoverPen=pg.mkPen(color=(255, 89, 94, 255), width=2),
-                                    brush=pg.mkBrush(color=(255, 202, 58, 100)),
-                                    hoverBrush=pg.mkBrush(color=(255, 89, 94, 100)))
+            cursor = pg.TargetItem(pos=(self.parent.trace.time_axis[peak], self.parent.trace.data[peak]), label=f'x={self.parent.trace.time_axis[peak]:.2f}', 
+                                   size=12, pen=pg.mkPen(color=(255, 202, 58, 255), width=2), hoverPen=pg.mkPen(color=(255, 89, 94, 255), width=2),
+                                   brush=pg.mkBrush(color=(255, 202, 58, 100)), hoverBrush=pg.mkBrush(color=(255, 89, 94, 100)))
             self.tracePlot.addItem(cursor)
 
 
     def auto_window_size(self):
         """
-        Automatically detect the window size based on xxx.
+        Automatically detect the window size based on return to baseline.
         """
-        t1 = np.argmax(np.abs(self.avg_event))
-        bsl = np.mean(np.abs(self.avg_event[0 : int(t1 // 1.5)]))
-        t2 = np.argmax(np.abs(self.avg_event[t1:]) < bsl) + t1
+        t1 = np.argmax(np.abs(scale(self.avg_event))) # peak_index
+        event_avg_copy = np.copy(self.avg_event)
+
+        if event_avg_copy[t1] < np.mean(event_avg_copy[0 : int(t1 // 1.5)]):
+            event_avg_copy *= -1
         
-        suggested_window = t2 - t1
+        bsl = np.mean(event_avg_copy[0 : int(t1 // 1.5)])
+        t2 = np.argmax(event_avg_copy[t1:] < bsl) + t1
+        if t2 == t1:
+            t2 = len(event_avg_copy) * 0.75
+        
         # round to next larger multiple of 100
-        suggested_window = (suggested_window // 100 + 1) * 100
-        self.window_size.setText(str(suggested_window))
-        self.window_time.setText(str(suggested_window * self.parent.trace.sampling * 1000))
-        self.draw_window_region(suggested_window)
+        suggested_window = ((t2 - t1) // 100 + 1) * 100
+        
+        model = tf.keras.models.load_model(self.parent.settings.model_path)
+        scores, window_sizes = [], []
+        for factor in [0.6, 0.8, 1, 1.2, 1.4, 1.6]:
+            window_size = (int(suggested_window * factor) // 100) * 100
+            window_sizes.append(window_size)
+
+            win_start = (t1 - window_size // 5)
+            if win_start < 0:
+                win_start = 0
+            win_end = (t1 + window_size // 1.25)
+            if win_end > len(event_avg_copy):
+                win_end = len(event_avg_copy)
+            data = event_avg_copy[int(win_start): int(win_end)]
+
+            # resample to 600 points and normalize, then predict using the model
+            scores.append(np.squeeze(model(np.expand_dims(minmax_scale(resample(data, 600) * -1), axis=(0, -1)))))
+
+        # find the best score
+        best_score = np.argmax(scores)
+
+        self.window_size.setText(str(window_sizes[best_score]))
+        self.window_time.setText(str(np.round(window_sizes[best_score] * self.parent.trace.sampling * 1000, 5)))
+        self.draw_window_region(window_sizes[best_score])
+
+
+    def auto_filter_settings(self):
+        """
+        Auto suggest filter settings based on the SNR of the first derivative.
+        """
+        test_values = np.arange(5, 50, 5)
+        before = int(int(self.window_size.text()) // 5)
+        after = int(self.window_size.text()) - before
+
+        SNR_data = []
+        for pos in self.ev_positions:
+            ev_data = self.parent.trace.data[pos - before : pos + after]
+            SNR_data.append(np.max(np.abs(scale(ev_data))) / np.std(np.abs(scale(ev_data)[0:before//2])))
+        raw_SNR = np.mean(np.abs(SNR_data))
+
+        result = []
+        from itertools import product
+        for window, filter_factor in product(test_values, test_values):
+            win = hann(window)
+            SNR_filtered = []
+            for pos in self.ev_positions:
+                ev_data = self.parent.trace.data[pos - before : pos + after]
+                filtered_ev = self.parent.detection.lowpass_filter(data=ev_data, cutoff=self.parent.trace.sampling_rate / filter_factor, order=4)
+                gradient = convolve(np.gradient(filtered_ev, self.parent.trace.sampling), win, mode='same') / sum(win)
+                SNR_filtered.append(np.max(np.abs(gradient)) / np.std(np.abs(gradient[0:before//2])))
+
+            result.append(np.mean(np.abs(SNR_filtered)) / raw_SNR)
+
+        result = np.array(result).reshape((len(test_values), len(test_values)))
+
+        target_value = 1.5
+        closest_value = np.unravel_index(np.abs(result - target_value).argmin(), result.shape)
+
+        self.filter_factor.setText(str(test_values[closest_value[1]]))
+        self.convolve_window.setText(str(test_values[closest_value[0]]))
+
+        self.gradientPlot.clear()
+        win = hann(test_values[closest_value[0]])
+        for i, item in enumerate(self.eventPlot.listDataItems()):
+            if item.opts['pen'].width() == 4:
+                continue
+            filtered_ev = self.parent.detection.lowpass_filter(data=item.getData()[1], 
+                                                               cutoff=self.parent.trace.sampling_rate / test_values[closest_value[1]], order=4)
+            gradient = convolve(np.gradient(filtered_ev, self.parent.trace.sampling), win, mode='same') / sum(win)
+            self.gradientPlot.plot(self.parent.trace.time_axis[: filtered_ev.shape[0]], gradient,
+                                   pen=pg.mkPen(color=(*hex_to_rgb(self.parent.settings.colors[3]),100), width=2))
 
 
 
