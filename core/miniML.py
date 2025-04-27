@@ -1129,7 +1129,7 @@ class EventDetection():
         else:
             fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
         if fit_start > events_for_avg.shape[1] - int(0.2 * self.window_size): # not a valid starting point
-            return np.nan
+            return np.full(3, np.nan)
         try:
             self.avg_decay_fit_start = fit_start
             fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
@@ -1137,7 +1137,7 @@ class EventDetection():
                                bounds=([0, 0, -np.inf], [np.inf, 1e3, events_for_avg.shape[1] * self.trace.sampling]))
             return fit
         except RuntimeError:
-            return np.nan
+            return np.full(3, np.nan)
 
 
     def _fit_event(self, data: np.ndarray, amplitude: float=1, t_rise: float=1, t_decay: float=1, x_offset: float=1) -> dict:
