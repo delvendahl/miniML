@@ -502,7 +502,10 @@ class EventStats():
 
     def median(self, values: np.ndarray) -> float:
         ''' Returns median of event parameter '''
-        return np.median(values)
+        if ~np.all(np.isnan(values)) and self.event_count:
+            return np.nanmedian(values)
+        else:
+            return np.nan
 
     def cv(self, values: np.ndarray) -> float:
         ''' Returns coefficient of variation of event parameter '''
