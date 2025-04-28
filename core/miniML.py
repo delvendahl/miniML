@@ -1137,7 +1137,7 @@ class EventDetection():
             self.avg_decay_fit_start = fit_start
             fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
                                p0=[np.amax(event_avg) + 1, events_for_avg.shape[1] / 50 * self.trace.sampling, 0],
-                               bounds=([0, 0, -np.inf], [np.inf, 1e3, events_for_avg.shape[1] * self.trace.sampling]))
+                               bounds=([0, 0, -np.inf], [np.inf, 1e3, np.inf]))
             return fit
         except RuntimeError:
             return np.full(3, np.nan)
