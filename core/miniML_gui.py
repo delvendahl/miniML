@@ -562,11 +562,10 @@ class minimlGuiMain(QMainWindow):
 
         if answer == msgbox.Yes:
             self.trace = load_trace_from_file(self.filetype, self.load_args)
-
-            self.update_main_plot()
-            self.reset_windows()
             self.was_analyzed = False
             self.detection = EventDetection(self.trace)
+            self.update_main_plot()
+            self.reset_windows()
 
 
     def resample_for_display(self, data, time_axis):
