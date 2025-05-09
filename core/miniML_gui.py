@@ -1582,7 +1582,7 @@ class AutoSettingsWindow(QDialog):
         peaks, properties = find_peaks(np.abs(self.gradient), height=threshold, width=10, distance=500)
 
         if len(peaks) == 0:
-            self._warning_box(message='No events detected.')
+            self.parent._warning_box(message='No events detected.')
             return
         elif len(peaks) > 10:
             peaks = peaks[np.argsort(properties['peak_heights'])[-10:]]
