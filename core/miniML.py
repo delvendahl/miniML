@@ -740,6 +740,9 @@ class EventDetection():
                                                prominence=self.model_threshold, width=peak_w*self.interpol_factor)
 
         start_pnts = np.array(peak_properties['left_ips'] + self.window_size/4, dtype=np.int64)
+        # check if start_pnts are larger than right_ips and limit to this value minus buffer of a quarter of peak width
+        boolean_indices = start_pnts > peak_properties['right_ips']
+        start_pnts[boolean_indices] = peak_properties['right_ips'][boolean_indices] - peak_properties['widths'][boolean_indices] / 4
         end_pnts =  np.array(peak_properties['right_ips'] + self.window_size/2, dtype=np.int64)
         scores = peak_properties['peak_heights']
 
