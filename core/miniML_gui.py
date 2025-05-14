@@ -672,13 +672,16 @@ class minimlGuiMain(QMainWindow):
             self.protocol = rectype
             group_no, _ = panel.group.currentText().split(' - ')
             try:
-                series_list = [int(s) for s in panel.e1.text().replace(',', ';').split(';')]
+                series_list = [int(s) - 1 for s in panel.e1.text().replace(',', ';').split(';')]
             except ValueError:
-                series_list = [] if panel.load_option.isChecked() else [int(series_no)]
+                series_list = [] 
             
+            load_series = [] if panel.load_option.isChecked() else [int(series_no) - 1]
+
             self.load_args = {'filename': self.filename,
                               'rectype': rectype,
-                              'group': int(group_no),
+                              'group': int(group_no) - 1,
+                              'series': load_series,
                               'exclude_series': series_list,
                               'scaling': float(panel.e2.text()),
                               'unit': panel.e3.text() if (panel.e3.text() != '') else None}

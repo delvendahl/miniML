@@ -184,8 +184,8 @@ class MiniTrace():
 
 
     @classmethod
-    def from_heka_file(cls, filename: str, rectype: str, group: int=1, exclude_series:list=[], exclude_sweeps:dict={},
-                        scaling: float=1, unit: str=None, resample: bool=True) -> MiniTrace:
+    def from_heka_file(cls, filename: str, rectype: str, group: int=0, series: list=[], exclude_series: list=[], 
+                       exclude_sweeps: dict={}, scaling: float=1, unit: str=None, resample: bool=True) -> MiniTrace:
         ''' Loads data from a HEKA .dat file. Name of the PGF sequence needs to be specified.
 
         Parameters
@@ -195,7 +195,10 @@ class MiniTrace():
         rectype: string
             Name of the PGF sequence in the file to be loaded.
         group: int, default=1
-            HEKA group to load data from. HEKA groups are numbered starting from 1. Defaults to 1. 
+            HEKA group to load data from. Note that HEKA groups are numbered starting from 1, but Python idexes from zero. 
+            Hence, group 1 in HEKA is group 0 in Python. 
+        series: list, default=[]
+            List of HEKA series to load. Uses zero-indexing, i.e. HEKA series 1 is 0 in the list.
         exclude_series: list, default=[].
             List of HEKA series to exclude.
         exclude_sweeps: dict, default={}.
@@ -227,7 +230,6 @@ class MiniTrace():
         import FileImport.HekaReader as heka
         bundle = heka.Bundle(filename)
 
-        group = group - 1
         if group < 0 or group > len(bundle.pul.children) - 1:
             raise IndexError('Group index out of range')
 
@@ -235,9 +237,14 @@ class MiniTrace():
         for i, SeriesRecord in enumerate(bundle.pul[group].children):
             bundle_series.update({i: SeriesRecord.Label})
 
-        series_list = [series_number for series_number, record_type in bundle_series.items() \
-                  if record_type == rectype and series_number not in exclude_series]
-        
+        if series == []:
+            series_list = [series_number for series_number, record_type in bundle_series.items() \
+                    if record_type == rectype and series_number not in exclude_series]
+        else:
+            series = [x for x in series if x not in exclude_series]
+            series_list = [series_number for series_number, record_type in bundle_series.items() \
+                    if record_type == rectype and series_number in series]
+
         series_data = []
         series_resistances = []
         for series in series_list:
