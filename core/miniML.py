@@ -184,7 +184,7 @@ class MiniTrace():
 
 
     @classmethod
-    def from_heka_file(cls, filename: str, rectype: str, group: int=0, series: list=[], exclude_series: list=[], 
+    def from_heka_file(cls, filename: str, rectype: str, group: int=0, load_series: list=[], exclude_series: list=[], 
                        exclude_sweeps: dict={}, scaling: float=1, unit: str=None, resample: bool=True) -> MiniTrace:
         ''' Loads data from a HEKA .dat file. Name of the PGF sequence needs to be specified.
 
@@ -197,7 +197,7 @@ class MiniTrace():
         group: int, default=1
             HEKA group to load data from. Note that HEKA groups are numbered starting from 1, but Python idexes from zero. 
             Hence, group 1 in HEKA is group 0 in Python. 
-        series: list, default=[]
+        load_series: list, default=[]
             List of HEKA series to load. Uses zero-indexing, i.e. HEKA series 1 is 0 in the list.
         exclude_series: list, default=[].
             List of HEKA series to exclude.
@@ -237,13 +237,13 @@ class MiniTrace():
         for i, SeriesRecord in enumerate(bundle.pul[group].children):
             bundle_series.update({i: SeriesRecord.Label})
 
-        if series == []:
+        if load_series == []:
             series_list = [series_number for series_number, record_type in bundle_series.items() \
                     if record_type == rectype and series_number not in exclude_series]
         else:
-            series = [x for x in series if x not in exclude_series]
+            load_series = [x for x in load_series if x not in exclude_series]
             series_list = [series_number for series_number, record_type in bundle_series.items() \
-                    if record_type == rectype and series_number in series]
+                    if record_type == rectype and series_number in load_series]
 
         series_data = []
         series_resistances = []

@@ -681,7 +681,7 @@ class minimlGuiMain(QMainWindow):
             self.load_args = {'filename': self.filename,
                               'rectype': rectype,
                               'group': int(group_no) - 1,
-                              'series': load_series,
+                              'load_series': load_series,
                               'exclude_series': series_list,
                               'scaling': float(panel.e2.text()),
                               'unit': panel.e3.text() if (panel.e3.text() != '') else None}
