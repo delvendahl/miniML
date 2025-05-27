@@ -1433,11 +1433,12 @@ class AutoSettingsWindow(QDialog):
         self.window_size = QLineEdit(str(win_size))
         self.window_size.setMinimumWidth(80)
         self.window_size.setValidator(QIntValidator(1, 10000))
-        # self.window_size.editingFinished.connect(self.transfer_events)
+        self.window_size.editingFinished.connect(lambda: self.update_window_size(int(self.window_size.text())))
         self.window_size.setStyleSheet("font-weight: bold;")
         self.window_time = QLineEdit(str(win_size * parent.trace.sampling * 1000))
         self.window_time.setMinimumWidth(80)
         self.window_time.setValidator(QDoubleValidator(0.0001, 10000.0, 3))
+        self.window_time.editingFinished.connect(lambda: self.update_window_size(float(self.window_time.text())))
         self.window_time.setStyleSheet("font-weight: bold;")
         self.filter_factor = QLineEdit(str(parent.settings.filter_factor))
         self.filter_factor.setMinimumWidth(80)
@@ -1504,6 +1505,25 @@ class AutoSettingsWindow(QDialog):
         self.setWindowTitle('Auto settings')
 
 
+    def update_window_size(self, new_value):
+        """
+        Update the window size LneEdits using the provided value.
+        If the value is an integer, it updates the window size in samples.
+        If the value is a float, it updates the window size in milliseconds.
+        """
+        # check if the value is an integer or float
+        if isinstance(new_value, int):
+            new_value = int(new_value)
+        elif isinstance(new_value, float):
+            new_value = int(np.round(new_value / self.parent.trace.sampling / 1000))
+        else:
+            raise ValueError("new_value must be an integer or float")
+        # update the window size in the parent settings
+        self.window_size.setText(str(new_value))
+        self.window_time.setText(str(np.round(new_value * self.parent.trace.sampling * 1000, 5)))
+        self.draw_window_region(new_value)
+
+        
     def mouse_clicked(self, mouseClickEvent):
         if mouseClickEvent.double():
             pos = self.tracePlot.plotItem.vb.mapToView(mouseClickEvent.pos())
@@ -1568,12 +1588,20 @@ class AutoSettingsWindow(QDialog):
         win_start = (peak - win_size // 5) * self.parent.trace.sampling
         win_end = (peak + win_size // 1.25) * self.parent.trace.sampling
 
+        def update_positions():
+            x1, x2 = self.region.getRegion()
+            x1 = int(x1 / self.parent.trace.sampling)
+            x2 = int(x2 / self.parent.trace.sampling)
+            self.update_window_size(x2 - x1)
+
         if not hasattr(self, 'region') or self.region is None:
             x_max = self.eventPlot.viewRange()[0][1]
             self.region = pg.LinearRegionItem(brush=(138,201,38,50), hoverBrush=(138,201,38,90), pen=(138,201,38,255), hoverPen=(0,0,0,255),
                                             bounds=[0, x_max*2], swapMode='block')
             self.region.setZValue(-1)
             self.eventPlot.addItem(self.region)
+            self.region.sigRegionChangeFinished.connect(update_positions)
+            
         self.region.setRegion([win_start, win_end])
 
 
@@ -1646,9 +1674,7 @@ class AutoSettingsWindow(QDialog):
         # find the best score
         best_score = np.argmax(scores)
 
-        self.window_size.setText(str(window_sizes[best_score]))
-        self.window_time.setText(str(np.round(window_sizes[best_score] * self.parent.trace.sampling * 1000, 5)))
-        self.draw_window_region(window_sizes[best_score])
+        self.update_window_size(window_sizes[best_score])
 
 
     def auto_filter_settings(self):
