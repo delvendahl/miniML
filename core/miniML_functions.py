@@ -113,7 +113,7 @@ def get_event_onset(data: np.ndarray, peak_position: int, baseline: float, basel
 
 def get_event_risetime(data: np.ndarray, sampling_rate:int, baseline:float, min_percentage: float=10, max_percentage: float=90, amplitude:float=None) -> tuple[float, int, int]:
     """
-    Get the risetime of an event (default, 10-90%). Data will automatically be resapmled to 100 kHz (by linear interpolation) sampling rate for better accuracy.
+    Get the risetime of an event (default, 10-90%). Data will automatically be resampled to 100 kHz (by linear interpolation) sampling rate for better accuracy.
 
     Parameters:
     - data: A list or array-like object containing the rise data.
