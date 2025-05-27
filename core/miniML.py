@@ -770,8 +770,11 @@ class EventDetection():
         '''
         Generate a smoothed gradient trace of the data.
         '''
-        # filter raw data trace, calculate gradient and filter first derivative trace        
-        trace_convolved = self.lowpass_filter(data=self.trace.data, cutoff=self.trace.sampling_rate / self.filter_factor, order=4)
+        # filter raw data trace, calculate gradient and filter first derivative trace
+        if self.convolve_win > 0:
+            trace_convolved = self.hann_filter(data=self.trace.data, filter_size=self.convolve_win)
+        else:
+            trace_convolved = self.lowpass_filter(data=self.trace.data, cutoff=self.trace.sampling_rate / self.filter_factor, order=4)
         trace_convolved *= self.event_direction # (-1 = 'negative', 1 else)
         
         gradient = np.gradient(trace_convolved, self.trace.sampling)
@@ -889,9 +892,15 @@ class EventDetection():
 
         if np.any(positions - add_points < 0) or np.any(positions + after >= self.trace.data.shape[0]):
             raise ValueError('Cannot extract time windows exceeding input data size.')
-
-        mini_trace = self.lowpass_filter(data=self.trace.data, cutoff=self.trace.sampling_rate / self.filter_factor, order=4) if filter else self.trace.data
-        mini_trace *= self.event_direction   
+        # Filter data if required
+        if filter:
+            if self.convolve_win > 0:
+                mini_trace = self.hann_filter(data=self.trace.data, filter_size=self.convolve_win)
+            else:
+                mini_trace = self.lowpass_filter(data=self.trace.data, cutoff=self.trace.sampling_rate / self.filter_factor, order=4)
+        else:
+            mini_trace = self.trace.data.copy()
+        mini_trace *= self.event_direction
 
         self._init_arrays(['event_peak_locations', 'bsl_starts', 'bsl_ends', 'event_start'], positions.shape[0], dtype=np.int64)
         self._init_arrays(['event_peak_values', 'event_bsls', 'event_bsl_durations', 'decaytimes', 'charges', 'risetimes', 'half_decay'], positions.shape[0], dtype=np.float64)               
@@ -1078,8 +1087,8 @@ class EventDetection():
         return results
 
 
-    def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w: int=5, 
-                      rel_prom_cutoff: float=0.25, filter_factor: float=20.0, gradient_convolve_win: int=0) -> None:
+    def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w: int=5, rel_prom_cutoff: float=0.25, 
+                      filter_factor: float=20.0, convolve_win: int=0, gradient_convolve_win: int=0) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -1097,13 +1106,16 @@ class EventDetection():
             The relative prominence cutoff. Overlapping events are separated based on a peak-finding in the first derivative. To be considered
             an event, any detected peak must have at least 25% prominence of the largest detected prominence.
         filter_factor: float, default = 20
-            Fitler factor for the lowpass filter used to filter the data for event analysis. Fraction of sampling rate (20 = 1/20 of sampling rate)
+            Filter factor for the lowpass filter used to filter the data for event analysis. Fraction of sampling rate (20 = 1/20 of sampling rate). 
+        convolve_win: int, default = 0
+            Window size for the hanning window used to filter the data for event analysis. If 0, no filtering is applied. Used for legacy compatibility.
         gradient_convolve_win: int, default = 0
             Window size for the hanning window used to filter the derivative for event analysis
         '''   
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
         self.filter_factor = filter_factor
+        self.convolve_win = convolve_win
         self.add_points = int(self.window_size / 3)
         
         self.stride_length = stride if stride else round(self.window_size / 30)
@@ -1296,7 +1308,10 @@ class EventDetection():
             f.attrs['stride'] = self.stride_length
             f.attrs['window'] = self.window_size
             f.attrs['event_direction'] = self.event_direction
-            f.attrs['filter_factor'] = self.filter_factor
+            if self.convolve_win > 0:
+                f.attrs['convolve_win'] = self.convolve_win
+            else:
+                f.attrs['filter_factor'] = self.filter_factor
             f.attrs['gradient_convolve_win'] = self.gradient_convolve_win
             f.attrs['relative_prominence'] = self.rel_prom_cutoff
             f.attrs['deleted_events'] = self.deleted_events
@@ -1425,6 +1440,7 @@ class EventDetection():
                 'resampling_factor':self.resampling_factor,
 
                 ### event analysis params:
+                'convolve_win':self.convolve_win,
                 'filter_factor':self.filter_factor,
                 'gradient_convolve_win':self.gradient_convolve_win,
                 'min_peak_w':self.peak_w,
@@ -1462,6 +1478,8 @@ class EventAnalysis(EventDetection):
         The position(s) of detected events.
     filter_factor: int
         Fraction of the sampling rate used to lowpass filter the data for analysis.
+    convolve_win: int
+        Window size for the hanning window used to filter the data for event analysis.
     resampling_factor: float
         The factor by which to resample the data.
 
@@ -1470,11 +1488,12 @@ class EventAnalysis(EventDetection):
     eval_events(): 
         Perform event analysis.
     '''
-    def __init__(self, trace, window_size, event_direction, verbose, event_positions, filter_factor, gradient_convolve_win, resampling_factor):
+    def __init__(self, trace, window_size, event_direction, verbose, event_positions, filter_factor, convolve_win, gradient_convolve_win, resampling_factor):
         super().__init__(data=trace, window_size=window_size, event_direction=event_direction, verbose=verbose)
         self.add_points = int(self.window_size/3)
         self.event_direction = event_direction
         self.filter_factor = filter_factor
+        self.convolve_win = convolve_win
         self.resampling_factor = resampling_factor
 
         self.event_locations = event_positions[np.logical_and(
