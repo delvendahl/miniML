@@ -1487,6 +1487,18 @@ class AutoSettingsWindow(QDialog):
 
         layout.addLayout(bottom_layout)
 
+        def custom_accept():
+            parent.settings.filter_factor = float(self.filter_factor.text())
+            parent.settings.event_window = int(self.window_size.text())
+            parent.settings.gradient_convolve_win = int(self.convolve_window.text())
+            self.accept()
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(custom_accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        layout.addWidget(self.buttonBox)
+
         self.setLayout(layout)
         self.resize(900, 600)
         self.setWindowTitle('Auto settings')
