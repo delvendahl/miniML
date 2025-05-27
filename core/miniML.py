@@ -11,7 +11,7 @@ from scipy import signal
 from scipy.optimize import curve_fit
 from scipy.ndimage import maximum_filter1d
 from miniML_functions import (get_event_peak, get_event_baseline, get_event_onset, get_event_risetime, 
-                              get_event_halfdecay_time, get_event_charge)
+                              get_event_halfdecay_time, get_event_charge, get_event_halfwidth)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -184,8 +184,8 @@ class MiniTrace():
 
 
     @classmethod
-    def from_heka_file(cls, filename: str, rectype: str, group: int=1, exclude_series:list=[], exclude_sweeps:dict={},
-                        scaling: float=1, unit: str=None, resample: bool=True) -> MiniTrace:
+    def from_heka_file(cls, filename: str, rectype: str, group: int=0, load_series: list=[], exclude_series: list=[], 
+                       exclude_sweeps: dict={}, scaling: float=1, unit: str=None, resample: bool=True) -> MiniTrace:
         ''' Loads data from a HEKA .dat file. Name of the PGF sequence needs to be specified.
 
         Parameters
@@ -195,7 +195,10 @@ class MiniTrace():
         rectype: string
             Name of the PGF sequence in the file to be loaded.
         group: int, default=1
-            HEKA group to load data from. HEKA groups are numbered starting from 1. Defaults to 1. 
+            HEKA group to load data from. Note that HEKA groups are numbered starting from 1, but Python idexes from zero. 
+            Hence, group 1 in HEKA is group 0 in Python. 
+        load_series: list, default=[]
+            List of HEKA series to load. Uses zero-indexing, i.e. HEKA series 1 is 0 in the list.
         exclude_series: list, default=[].
             List of HEKA series to exclude.
         exclude_sweeps: dict, default={}.
@@ -227,7 +230,6 @@ class MiniTrace():
         import FileImport.HekaReader as heka
         bundle = heka.Bundle(filename)
 
-        group = group - 1
         if group < 0 or group > len(bundle.pul.children) - 1:
             raise IndexError('Group index out of range')
 
@@ -235,9 +237,14 @@ class MiniTrace():
         for i, SeriesRecord in enumerate(bundle.pul[group].children):
             bundle_series.update({i: SeriesRecord.Label})
 
-        series_list = [series_number for series_number, record_type in bundle_series.items() \
-                  if record_type == rectype and series_number not in exclude_series]
-        
+        if load_series == []:
+            series_list = [series_number for series_number, record_type in bundle_series.items() \
+                    if record_type == rectype and series_number not in exclude_series]
+        else:
+            load_series = [x for x in load_series if x not in exclude_series]
+            series_list = [series_number for series_number, record_type in bundle_series.items() \
+                    if record_type == rectype and series_number in load_series]
+
         series_data = []
         series_resistances = []
         for series in series_list:
@@ -475,6 +482,8 @@ class EventStats():
         10-90 percent rise times of individual events.
     halfdecays: np.ndarray
         Half decay times of individual events.
+    halfwidths: np.ndarray
+        Half-width of individual events (seconds).
     avg_tau_decay: float
         Average decay time constant (seconds).
     rec_time: float
@@ -486,13 +495,14 @@ class EventStats():
     ----------
     event_count: number of events
     '''
-    def __init__(self, amplitudes, scores, charges, risetimes, slopes, decaytimes, tau, time, unit: str) -> None:
+    def __init__(self, amplitudes, scores, charges, risetimes, decaytimes, halfwidths, tau, time, unit: str) -> None:
         self.amplitudes = amplitudes
         self.event_scores = scores
         self.charges = charges
         self.risetimes = risetimes
         self.slopes = slopes
         self.halfdecays = decaytimes
+        self.halfwidths = halfwidths
         self.avg_tau_decay = tau
         self.rec_time = time
         self.y_unit = unit
@@ -511,7 +521,10 @@ class EventStats():
 
     def median(self, values: np.ndarray) -> float:
         ''' Returns median of event parameter '''
-        return np.median(values)
+        if ~np.all(np.isnan(values)) and self.event_count:
+            return np.nanmedian(values)
+        else:
+            return np.nan
 
     def cv(self, values: np.ndarray) -> float:
         ''' Returns coefficient of variation of event parameter '''
@@ -535,6 +548,7 @@ class EventStats():
         print(f'    CV charge: {self.cv(self.charges):.3f}')
         print(f'    Mean 10-90 risetime: {self.mean(self.risetimes)*1000:.3f} ms')
         print(f'    Mean half decay time: {self.mean(self.halfdecays)*1000:.3f} ms')
+        print(f'    Mean half-width: {self.mean(self.halfwidths)*1000:.3f} ms')
         print(f'    Tau decay: {self.avg_tau_decay*1000:.3f} ms')
         print('-------------------------')
 
@@ -760,6 +774,9 @@ class EventDetection():
                                                prominence=self.model_threshold, width=peak_w*self.interpol_factor)
 
         start_pnts = np.array(peak_properties['left_ips'] + self.window_size/4, dtype=np.int64)
+        # check if start_pnts are larger than right_ips and limit to this value minus buffer of a quarter of peak width
+        boolean_indices = start_pnts > peak_properties['right_ips']
+        start_pnts[boolean_indices] = peak_properties['right_ips'][boolean_indices] - peak_properties['widths'][boolean_indices] / 4
         end_pnts =  np.array(peak_properties['right_ips'] + self.window_size/2, dtype=np.int64)
         scores = peak_properties['peak_heights']
 
@@ -903,7 +920,7 @@ class EventDetection():
         mini_trace *= self.event_direction
 
         self._init_arrays(['event_peak_locations', 'bsl_starts', 'bsl_ends', 'event_start'], positions.shape[0], dtype=np.int64)
-        self._init_arrays(['event_peak_values', 'event_bsls', 'event_bsl_durations', 'decaytimes', 'charges', 'risetimes', 'half_decay'], positions.shape[0], dtype=np.float64)               
+        self._init_arrays(['event_peak_values', 'event_bsls', 'event_bsl_durations', 'decaytimes', 'charges', 'risetimes', 'half_decay', 'halfwidths', 'rise_half_amp_times', 'decay_half_amp_times'], positions.shape[0], dtype=np.float64)               
         self._init_arrays(['min_positions_rise', 'max_positions_rise', 'min_values_rise', 'max_values_rise'], positions.shape[0], dtype=np.float64)               
 
         for ix, position in enumerate(positions):
@@ -927,8 +944,7 @@ class EventDetection():
             self.event_start[ix] = onset_position
 
             risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise = get_event_risetime(data=data[bsl_start:int(event_peak_pos)], 
-                                                                                                                sampling_rate=self.trace.sampling_rate, 
-                                                                                                                baseline=baseline, 
+                                                                                                                sampling_rate=self.trace.sampling_rate, baseline=baseline, 
                                                                                                                 amplitude=self.event_peak_values[ix] - baseline)
             self.risetimes[ix] = risetime
             self.min_positions_rise[ix] = min_position_rise
@@ -950,6 +966,22 @@ class EventDetection():
 
             self.half_decay[ix] = halfdecay_position
             self.decaytimes[ix] = halfdecay_time
+
+            # Calculate halfwidth and related times
+            current_amplitude = abs(self.event_peak_values[ix] - self.event_bsls[ix])
+            if self.event_direction == -1 : # event_peak_values and bsls are already inverted for negative events later, so use original direction for amplitude calc with data
+                 current_amplitude = abs(data[event_peak_pos] - baseline)
+
+            halfwidth, t_rise_half, t_decay_half = get_event_halfwidth(
+                event_data=data,
+                peak_index=event_peak_pos,
+                baseline=baseline,
+                amplitude=current_amplitude,
+                sampling_rate=self.trace.sampling_rate
+            )
+            self.halfwidths[ix] = halfwidth
+            self.rise_half_amp_times[ix] = t_rise_half
+            self.decay_half_amp_times[ix] = t_decay_half
             
             # calculate charges
             ### For charge; multiple event check done outside function.
@@ -1020,6 +1052,8 @@ class EventDetection():
             self.bsl_ends[ix] = int(self.bsl_ends[ix] + self.event_locations[ix] - self.add_points)
             
             self.event_start[ix] = int(self.event_start[ix] + self.event_locations[ix] - self.add_points)
+            self.rise_half_amp_times[ix] += (self.event_locations[ix] - self.add_points) * self.trace.sampling
+            self.decay_half_amp_times[ix] += (self.event_locations[ix] - self.add_points) * self.trace.sampling
             self.min_positions_rise[ix] += (self.bsl_starts[ix] * self.trace.sampling)
             self.max_positions_rise[ix] += (self.bsl_starts[ix] * self.trace.sampling)
             
@@ -1167,7 +1201,7 @@ class EventDetection():
         else:
             fit_start = np.argmax(event_avg) + int(0.01 * self.window_size)
         if fit_start > events_for_avg.shape[1] - int(0.2 * self.window_size): # not a valid starting point
-            return np.nan
+            return np.full(3, np.nan)
         try:
             self.avg_decay_fit_start = fit_start
             fit, _ = curve_fit(exp_fit, event_x[fit_start:], event_avg[fit_start:],
@@ -1175,7 +1209,7 @@ class EventDetection():
                                bounds=([0, 0, -np.inf], [np.inf, 1e3, np.inf]))
             return fit
         except RuntimeError:
-            return np.nan
+            return np.full(3, np.nan)
 
 
     def _eval_events(self) -> None:
@@ -1196,6 +1230,7 @@ class EventDetection():
                                       risetimes=self.risetimes,
                                       slopes=self.slopes,
                                       decaytimes=self.decaytimes,
+                                      halfwidths=self.halfwidths,
                                       time=self.trace.total_time,
                                       unit=self.trace.y_unit)
         
@@ -1283,6 +1318,7 @@ class EventDetection():
             f.create_dataset('event_params/event_charges', data=self.event_stats.charges)
             f.create_dataset('event_params/event_risetimes', data=self.event_stats.risetimes)
             f.create_dataset('event_params/event_halfdecays', data=self.event_stats.halfdecays)
+            f.create_dataset('event_params/event_halfwidths', data=self.event_stats.halfwidths)
             f.create_dataset('event_params/event_bsls', data=np.array(self.event_bsls))
             f.create_dataset('event_params/event_intervals', data=np.array(self.interevent_intervals))
             f.create_dataset('event_statistics/amplitude_average', data=self.event_stats.mean(self.event_stats.amplitudes))
@@ -1294,6 +1330,8 @@ class EventDetection():
             f.create_dataset('event_statistics/risetime_median', data=self.event_stats.median(self.event_stats.risetimes))
             f.create_dataset('event_statistics/decaytime_mean', data=self.event_stats.mean(self.event_stats.halfdecays))
             f.create_dataset('event_statistics/decaytime_median', data=self.event_stats.median(self.event_stats.halfdecays))
+            f.create_dataset('event_statistics/halfwidth_mean', data=self.event_stats.mean(self.event_stats.halfwidths))
+            f.create_dataset('event_statistics/halfwidth_median', data=self.event_stats.median(self.event_stats.halfwidths))
             f.create_dataset('event_statistics/decay_from_fit', data=self.event_stats.avg_tau_decay)
             f.create_dataset('event_statistics/frequency', data=self.event_stats.frequency())
             f.create_dataset('event_statistics/iei_mean', data=self.event_stats.mean(self.interevent_intervals))
@@ -1344,6 +1382,7 @@ class EventDetection():
             self.event_stats.charges,
             self.event_stats.risetimes,
             self.event_stats.halfdecays,
+            self.event_stats.halfwidths,
             self.interevent_intervals))
         
         avgs = np.array((
@@ -1353,14 +1392,15 @@ class EventDetection():
             self.event_stats.mean(self.event_stats.charges),
             self.event_stats.mean(self.event_stats.risetimes),
             self.event_stats.mean(self.event_stats.halfdecays),
+            self.event_stats.mean(self.event_stats.halfwidths),
             self.event_stats.avg_tau_decay,
             self.event_stats.frequency(),
             self.event_stats.mean(self.interevent_intervals)))
         
         column_names = [f'event_{i}' for i in range(len(self.event_locations))]
 
-        individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime', 'interval'], columns=column_names)
-        avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'tau_avg', 'frequency', 'iei mean'], columns=['value'])
+        individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime', 'halfwidth', 'interval'], columns=column_names)
+        avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'halfwidth mean', 'tau_avg', 'frequency', 'iei mean'], columns=['value'])
         
         individual.to_csv(f'{filename}_individual.csv')
         avgs.to_csv(f'{filename}_avgs.csv', header=False)
@@ -1406,7 +1446,8 @@ class EventDetection():
                 'charges':self.event_stats.charges,
                 'risetimes':self.event_stats.risetimes,
                 'half_decaytimes':self.event_stats.halfdecays,
-                'event_intervals':self.interevent_intervals},            
+                'event_intervals':self.interevent_intervals,            
+                'halfwidths':self.event_stats.halfwidths},
             
             'average_values':{
                 'amplitude mean':self.event_stats.mean(self.event_stats.amplitudes),
@@ -1415,6 +1456,7 @@ class EventDetection():
                 'charge mean':self.event_stats.mean(self.event_stats.charges),
                 'risetime mean':self.event_stats.mean(self.event_stats.risetimes),
                 'half_decaytime mean':self.event_stats.mean(self.event_stats.halfdecays),
+                'halfwidth mean':self.event_stats.mean(self.event_stats.halfwidths),
                 'decay_tau':self.event_stats.avg_tau_decay*1000,
                 'frequency':self.event_stats.frequency(),
                 'iei_mean':self.event_stats.mean(self.interevent_intervals),

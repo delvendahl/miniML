@@ -1,5 +1,5 @@
 # ------- Imports ------- #
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction,QTableWidget, QFrame,
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction, QTableWidget, QFrame,
                              QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout, QLineEdit, QPushButton,
                              QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar, QHBoxLayout, QVBoxLayout)
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
@@ -18,6 +18,7 @@ import sys
 from miniML import MiniTrace, EventDetection, is_keras_model
 from miniML_settings import MinimlSettings
 import FileImport.HekaReader as heka
+from scipy.interpolate import  interp1d
 
 
 
@@ -433,6 +434,9 @@ class minimlGuiMain(QMainWindow):
         """
         if not hasattr(self, 'trace'):
             return
+        if self.was_analyzed:
+            print('cutting data only possible before analysis')
+            return
         cut_panel = CutPanel(self)
         cut_panel.exec_()
         if cut_panel.result() == 0:
@@ -463,8 +467,11 @@ class minimlGuiMain(QMainWindow):
         """
         Updates the main plot with the data trace.
         """
+        self.data_display, self.time_ax_display = self.resample_for_display(data=self.trace.data, time_axis=self.trace.time_axis)
+
         pen = pg.mkPen(color=self.settings.colors[3], width=1)
-        self.plotData = self.tracePlot.plot(self.trace.time_axis, self.trace.data, pen=pen, clear=True)
+        self.plotData = self.tracePlot.plot(self.time_ax_display, self.data_display, pen=pen, clear=True)
+
         self.tracePlot.setLabel('bottom', 'Time', 's')
         label1 = 'Vmon' if self.recording_mode == 'current-clamp' else 'Imon'
         self.tracePlot.setLabel('left', label1, self.trace.y_unit)
@@ -538,9 +545,38 @@ class minimlGuiMain(QMainWindow):
         if answer == msgbox.Yes:
             self.trace = load_trace_from_file(self.filetype, self.load_args)
             self.was_analyzed = False
+            self.detection = EventDetection(self.trace)
             self.update_main_plot()
             self.reset_windows()
-            self.detection = EventDetection(self.trace)
+
+
+    def resample_for_display(self, data, time_axis):
+        """
+        Data > about 89000000 points crashes pyqtgraph on the hardware it was tested on.
+        Resample for display only to prevent crash with large number of datapoints.
+        
+        Arguments:
+            data: np.array
+                the original data
+            time_axis: np.array
+                the original time axis
+        
+        Returns:
+            data_display: np.array
+                the resampled data
+            time_ax_display: np.array
+                the resampled time axis
+        """
+        if data.shape[0] > 89_000_000:
+            point_ax = np.arange(0, data.shape[0])
+            point_ax_interpol = np.linspace(0, data.shape[0]-1, 80_000_000)
+            f = interp1d(point_ax, data)
+            data_display = f(point_ax_interpol)
+            time_ax_display = np.linspace(time_axis[0], time_axis[-1], data_display.shape[0])
+        else:
+            data_display = data
+            time_ax_display = time_axis
+        return data_display, time_ax_display
 
 
     def reset_windows(self) -> None:
@@ -618,13 +654,16 @@ class minimlGuiMain(QMainWindow):
             self.protocol = rectype
             group_no, _ = panel.group.currentText().split(' - ')
             try:
-                series_list = [int(s) for s in panel.e1.text().replace(',', ';').split(';')]
+                series_list = [int(s) - 1 for s in panel.e1.text().replace(',', ';').split(';')]
             except ValueError:
-                series_list = [] if panel.load_option.isChecked() else [int(series_no)]
+                series_list = [] 
             
+            load_series = [] if panel.load_option.isChecked() else [int(series_no) - 1]
+
             self.load_args = {'filename': self.filename,
                               'rectype': rectype,
-                              'group': int(group_no),
+                              'group': int(group_no) - 1,
+                              'load_series': load_series,
                               'exclude_series': series_list,
                               'scaling': float(panel.e2.text()),
                               'unit': panel.e3.text() if (panel.e3.text() != '') else None}
@@ -745,7 +784,10 @@ class minimlGuiMain(QMainWindow):
             self.was_analyzed = True
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
             prediction_x = np.arange(0, len(self.detection.prediction)) * self.trace.sampling
-            self.predictionPlot.plot(prediction_x, self.detection.prediction, pen=pen, clear=True)
+            
+            prediction_display, prediction_x_display = self.resample_for_display(data=self.detection.prediction, time_axis=prediction_x)            
+            self.predictionPlot.plot(prediction_x_display, prediction_display, pen=pen, clear=True)
+
             self.predictionPlot.plot([0, prediction_x[-1]], [self.settings.event_threshold, self.settings.event_threshold], 
                                      pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1))
 
@@ -1032,6 +1074,7 @@ class SummaryPanel(QDialog):
         self.layout.addRow(f'Average area ({parent.detection.trace.y_unit}*s):', self.average_area)
         self.layout.addRow('Average risetime (ms):', self.average_rise_time)
         self.layout.addRow(f'Average 50% decay time (ms):', self.average_decay_time)
+        self.layout.addRow('Average halfwidth (ms):', self.average_halfwidth)
         self.layout.addRow('Decay time constant (ms):', self.decay_tau)
 
         finalize_dialog_window(self, title='Summary', cancel=False)
@@ -1060,6 +1103,8 @@ class SummaryPanel(QDialog):
         self.average_rise_time.setReadOnly(True)
         self.average_decay_time = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1000:.5f}')
         self.average_decay_time.setReadOnly(True)
+        self.average_halfwidth = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfwidths)*1000:.5f}')
+        self.average_halfwidth.setReadOnly(True)
         self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1000:.5f}')
         self.decay_tau.setReadOnly(True)
         self.layout = QFormLayout(self)
@@ -1122,7 +1167,9 @@ class CutPanel(QDialog):
         vb = CustomViewBox()
 
         self.tracePlot = pg.PlotWidget(viewBox=vb)
-        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+        # self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+        self.plotData = self.tracePlot.plot(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='#1982C4', width=1), clear=True)
+
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
 
@@ -1229,12 +1276,12 @@ class FilterPanel(QDialog):
         layout = QVBoxLayout(self)
 
         self.tracePlot = pg.PlotWidget()
-        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1), clear=True)
+        self.plotData = self.tracePlot.plot(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1), clear=True)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
         self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
 
-        self.filtered_trace_plot = pg.PlotDataItem(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+        self.filtered_trace_plot = pg.PlotDataItem(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1))
         self.tracePlot.addItem(self.filtered_trace_plot)
 
         layout.addWidget(self.tracePlot)
@@ -1260,7 +1307,8 @@ class FilterPanel(QDialog):
 
         def filter_toggled():
             if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.line_noise.isChecked(), self.detrend.isChecked()]):
-                self.filtered_trace_plot.setData(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+                self.filtered_trace_plot.setData(parent.time_ax_display, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+
                 self.filtered_trace_plot.setPen(pg.mkPen(color='grey', width=1))
                 return
 
@@ -1278,8 +1326,9 @@ class FilterPanel(QDialog):
                     self.filtered_trace = self.filtered_trace.filter(savgol=float(self.window.text()), order=int(self.order.text()))
                 else:
                     self.filtered_trace = self.filtered_trace.filter(hann=int(self.hann_window.text()))
-            
-            self.filtered_trace_plot.setData(self.filtered_trace.time_axis, self.filtered_trace.data)
+
+            self.data_display, self.time_ax_display = parent.resample_for_display(data=self.filtered_trace.data, time_axis=self.filtered_trace.time_axis)
+            self.filtered_trace_plot.setData(self.time_ax_display, self.data_display)
             self.filtered_trace_plot.setPen(pg.mkPen(color='#ffca3a', width=1))
 
 
@@ -1800,9 +1849,8 @@ class EventViewer(QDialog):
 
         self.filtered_data = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
 
-        # create a downsampled trace for the event plot
-        self.trace_x = np.arange(0, self.detection.trace.data.shape[0], 10) * self.detection.trace.sampling
-        self.trace_y = self.detection.trace.data[::10]
+        self.trace_x = parent.time_ax_display[::10]
+        self.trace_y = parent.data_display[::10]
 
         self.init_trace_plot()
         self.init_avg_plot()
@@ -1811,13 +1859,12 @@ class EventViewer(QDialog):
 
         self.table = QTableWidget()
         self.table.verticalHeader().setDefaultSectionSize(10)
-        self.table.horizontalHeader().setDefaultSectionSize(90)
-        self.table.setRowCount(11) 
+        self.table.setRowCount(12)
         self.table.setColumnCount(2)
-        self.table.setColumnWidth(0, 90)
-        self.table.setColumnWidth(1, 60)
+        self.table.setColumnWidth(0, 85)
+        self.table.setColumnWidth(1, 55)
         self.table.setHorizontalHeaderLabels(['Value', 'Unit'])
-        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Slope', 'Decay', 'SNR', 'Interval'])
+        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Slope', 'Decay', 'Halfwidth  ', 'SNR', 'Interval'])
         self.table.viewport().installEventFilter(self)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.update_table()
@@ -1849,9 +1896,10 @@ class EventViewer(QDialog):
         self.table.setItem(6, 0, QTableWidgetItem(f'{self.detection.event_stats.risetimes[self.ind] * 1e3:.5f}'))
         self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.slopes[self.ind]* 1e-3:.5f}'))
         self.table.setItem(8, 0, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}'))
+        self.table.setItem(9, 0, QTableWidgetItem(f'{self.detection.event_stats.halfwidths[self.ind] * 1e3:.5f}'))
         bsl_sd = np.std(self.detection.trace.data[self.detection.bsl_starts[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer : self.detection.bsl_ends[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer])
-        self.table.setItem(9, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
-        self.table.setItem(10, 0, QTableWidgetItem(f'{self.detection.interevent_intervals[self.ind]:.5f}'))
+        self.table.setItem(10, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
+        self.table.setItem(11, 0, QTableWidgetItem(f'{self.detection.interevent_intervals[self.ind]:.5f}'))
 
         self.table.setItem(0, 1, QTableWidgetItem(''))
         self.table.setItem(1, 1, QTableWidgetItem('s'))
@@ -1862,8 +1910,9 @@ class EventViewer(QDialog):
         self.table.setItem(6, 1, QTableWidgetItem('ms'))
         self.table.setItem(7, 1, QTableWidgetItem(self.detection.trace.y_unit + '/ms'))
         self.table.setItem(8, 1, QTableWidgetItem('ms'))
-        self.table.setItem(9, 1, QTableWidgetItem(''))
-        self.table.setItem(10, 1, QTableWidgetItem('s'))
+        self.table.setItem(9, 1, QTableWidgetItem('ms'))
+        self.table.setItem(10, 1, QTableWidgetItem(''))
+        self.table.setItem(11, 1, QTableWidgetItem('s'))
 
 
     def cancel_event_viewer(self):
@@ -1908,7 +1957,7 @@ class EventViewer(QDialog):
         self.ampHistPlot.setLabel('bottom', 'Amplitude', self.detection.trace.y_unit)
         self.ampHistPlot.setLabel('left', 'Count', '')
 
-        y, x = np.histogram(self.detection.event_stats.halfdecays * 1e3, bins='auto')
+        y, x = np.histogram(self.detection.event_stats.halfdecays[~np.isnan(self.detection.event_stats.halfdecays)]  * 1e3, bins='auto')
         self.decay_curve = pg.PlotCurveItem(x, y, stepMode='center', fillLevel=0, brush=self.settings.colors[3])
         self.decayHistPlot.addItem(self.decay_curve)
         self.decayHistPlot.setLabel('bottom', 'Decay time (ms)', '')
@@ -1930,7 +1979,10 @@ class EventViewer(QDialog):
             y, x = np.histogram(self.detection.event_stats.amplitudes[self.exclude_events == 0], bins='auto')
             self.amp_curve.setData(x, y)
 
-            y, x = np.histogram(self.detection.event_stats.halfdecays[self.exclude_events == 0] * 1e3, bins='auto')
+            
+            values_for_plot = self.detection.event_stats.halfdecays[self.exclude_events == 0]
+            values_for_plot = values_for_plot[~np.isnan(values_for_plot)]
+            y, x = np.histogram(values_for_plot * 1e3, bins='auto')
             self.decay_curve.setData(x, y)
 
 
