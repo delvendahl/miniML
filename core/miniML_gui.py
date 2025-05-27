@@ -1,7 +1,8 @@
 # ------- Imports ------- #
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction,QTableWidget, 
                              QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout, QLineEdit, 
-                             QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar, QHBoxLayout, QVBoxLayout)
+                             QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar, QHBoxLayout, 
+                             QVBoxLayout, QHeaderView)
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
 from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
 import pyqtgraph as pg
@@ -1080,6 +1081,7 @@ class SummaryPanel(QDialog):
         self.layout.addRow(f'Average area ({parent.detection.trace.y_unit}*s):', self.average_area)
         self.layout.addRow('Average risetime (ms):', self.average_rise_time)
         self.layout.addRow(f'Average 50% decay time (ms):', self.average_decay_time)
+        self.layout.addRow('Average halfwidth (ms):', self.average_halfwidth)
         self.layout.addRow('Decay time constant (ms):', self.decay_tau)
 
         finalize_dialog_window(self, title='Summary', cancel=False)
@@ -1106,6 +1108,8 @@ class SummaryPanel(QDialog):
         self.average_rise_time.setReadOnly(True)
         self.average_decay_time = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1000:.5f}')
         self.average_decay_time.setReadOnly(True)
+        self.average_halfwidth = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfwidths)*1000:.5f}')
+        self.average_halfwidth.setReadOnly(True)
         self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1000:.5f}')
         self.decay_tau.setReadOnly(True)
         self.layout = QFormLayout(self)
@@ -1489,13 +1493,12 @@ class EventViewer(QDialog):
 
         self.table = QTableWidget()
         self.table.verticalHeader().setDefaultSectionSize(10)
-        self.table.horizontalHeader().setDefaultSectionSize(90)
-        self.table.setRowCount(9) 
+        self.table.setRowCount(10)
         self.table.setColumnCount(2)
-        self.table.setColumnWidth(0, 90)
-        self.table.setColumnWidth(1, 60)
+        self.table.setColumnWidth(0, 85)
+        self.table.setColumnWidth(1, 55)
         self.table.setHorizontalHeaderLabels(['Value', 'Unit'])
-        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Decay', 'SNR'])
+        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Decay', 'Halfwidth  ', 'SNR'])
         self.table.viewport().installEventFilter(self)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.update_table()
@@ -1526,8 +1529,9 @@ class EventViewer(QDialog):
         self.table.setItem(5, 0, QTableWidgetItem(f'{self.detection.event_stats.charges[self.ind]:.5f}'))
         self.table.setItem(6, 0, QTableWidgetItem(f'{self.detection.event_stats.risetimes[self.ind] * 1e3:.5f}'))
         self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}'))
+        self.table.setItem(8, 0, QTableWidgetItem(f'{self.detection.event_stats.halfwidths[self.ind] * 1e3:.5f}'))
         bsl_sd = np.std(self.detection.trace.data[self.detection.bsl_starts[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer : self.detection.bsl_ends[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer])
-        self.table.setItem(8, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
+        self.table.setItem(9, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
 
         self.table.setItem(0, 1, QTableWidgetItem(''))
         self.table.setItem(1, 1, QTableWidgetItem('s'))
@@ -1537,7 +1541,8 @@ class EventViewer(QDialog):
         self.table.setItem(5, 1, QTableWidgetItem(f'{self.detection.trace.y_unit}*s'))
         self.table.setItem(6, 1, QTableWidgetItem('ms'))
         self.table.setItem(7, 1, QTableWidgetItem('ms'))
-        self.table.setItem(8, 1, QTableWidgetItem(''))
+        self.table.setItem(8, 1, QTableWidgetItem('ms'))
+        self.table.setItem(9, 1, QTableWidgetItem(''))
 
 
     def cancel_event_viewer(self):
