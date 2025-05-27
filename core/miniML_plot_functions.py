@@ -30,7 +30,7 @@ class miniML_plots():
         fig, axs = plt.subplots(3, sharex=True, num='gradient search')
 
         mini_trace = self.detection.trace.data
-        filtered_trace = self.detection.hann_filter(self.detection.trace.data, filter_size=self.detection.convolve_win)
+        filtered_trace = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
 
         filtered_prediction = maximum_filter1d(self.detection.prediction, size=int(5*self.detection.interpol_factor), origin=-2)
 
@@ -142,7 +142,7 @@ class miniML_plots():
             plt.tick_params('x', labelbottom=False)
             _ = plt.subplot(212, sharex=ax1)
             if plot_filtered_trace:
-                main_trace = self.detection.hann_filter(self.detection.trace.data, filter_size=self.detection.convolve_win)
+                main_trace = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
                 plt.plot(self.detection.trace.time_axis, self.detection.trace.data, c='k', alpha=0.4)
 
             else:

@@ -1,8 +1,7 @@
 # ------- Imports ------- #
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction,QTableWidget, 
-                             QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout, QLineEdit, 
-                             QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar, QHBoxLayout, 
-                             QVBoxLayout, QHeaderView)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QDialog, QDialogButtonBox, QSplitter, QAction, QTableWidget, QFrame,
+                             QTableView, QMenu, QStyleFactory, QMessageBox, QFileDialog, QGridLayout, QLineEdit, QPushButton,
+                             QFormLayout, QCheckBox, QTableWidgetItem, QComboBox, QLabel, QToolBar, QHBoxLayout, QVBoxLayout)
 from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
 from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
 import pyqtgraph as pg
@@ -12,6 +11,9 @@ from pathlib import Path
 import h5py
 import pyabf
 from qt_material import build_stylesheet
+from scipy.signal import find_peaks, convolve, resample
+from scipy.signal.windows import hann
+from sklearn.preprocessing import scale, minmax_scale
 import sys
 from miniML import MiniTrace, EventDetection, is_keras_model
 from miniML_settings import MinimlSettings
@@ -94,6 +96,13 @@ def finalize_dialog_window(window: QDialog, title: str='new window', cancel: boo
     window.layout.addRow(window.buttonBox)
     window.setWindowTitle(title)
     window.setWindowModality(pg.QtCore.Qt.ApplicationModal)
+
+
+def hex_to_rgb(hexa):
+    """
+    Convert a hex color code to a tuple of RGB values.
+    """
+    return tuple(int(hexa[i:i+2], 16)  for i in (1, 3, 5))
 
 
 
@@ -222,6 +231,9 @@ class minimlGuiMain(QMainWindow):
         self.saveAction = QAction(QIcon('icons/save_24px_blue.svg'), 'Save results', self)
         self.saveAction.setShortcut('Ctrl+S')
         self.tb.addAction(self.saveAction)
+        self.helperAction = QAction(QIcon('icons/settings_suggest_24px_blue.svg'), 'Settings helper', self)
+        self.helperAction.setShortcut('Ctrl+H')
+        self.tb.addAction(self.helperAction)
         self.settingsAction = QAction(QIcon('icons/settings_24px_blue.svg'), 'Settings', self)
         self.settingsAction.setShortcut('Ctrl+P')
         self.tb.addAction(self.settingsAction)
@@ -245,6 +257,7 @@ class minimlGuiMain(QMainWindow):
         self.plotAction.triggered.connect(self.toggle_plot_win)
         self.tableAction.triggered.connect(self.toggle_table_win)
         self.settingsAction.triggered.connect(self.settings_window)
+        self.helperAction.triggered.connect(self.auto_settings_window)
         self.saveAction.triggered.connect(self.save_results)
         self.closeAction.triggered.connect(self.close_gui)
         self.aboutAction.triggered.connect(self.about_win)
@@ -347,22 +360,7 @@ class minimlGuiMain(QMainWindow):
         answer = QMessageBox.question(self,'', "Do you really want to delete this event?", QMessageBox.Yes | QMessageBox.No)
 
         if answer == QMessageBox.Yes:
-            self.detection.event_locations = np.delete(self.detection.event_locations, row, axis=0)
-            self.detection.event_peak_locations = np.delete(self.detection.event_peak_locations, row, axis=0)
-            self.detection.event_peak_times = np.delete(self.detection.event_peak_times, row, axis=0)
-            self.detection.event_peak_values = np.delete(self.detection.event_peak_values, row, axis=0)
-            self.detection.event_start = np.delete(self.detection.event_start, row, axis=0)
-            self.detection.decaytimes = np.delete(self.detection.decaytimes, row, axis=0)
-            self.detection.risetimes = np.delete(self.detection.risetimes, row, axis=0)
-            self.detection.charges = np.delete(self.detection.charges, row, axis=0)
-            self.detection.event_bsls = np.delete(self.detection.event_bsls, row, axis=0)
-            self.detection.bsl_starts = np.delete(self.detection.bsl_starts, row, axis=0)
-            self.detection.bsl_ends = np.delete(self.detection.bsl_ends, row, axis=0)
-            self.detection.min_positions_rise = np.delete(self.detection.min_positions_rise, row, axis=0)
-            self.detection.max_positions_rise = np.delete(self.detection.max_positions_rise, row, axis=0)
-            self.detection.half_decay = np.delete(self.detection.half_decay, row, axis=0)
-            self.detection.events = np.delete(self.detection.events, row, axis=0)
-            self.detection.event_scores = np.delete(self.detection.event_scores, row, axis=0)
+            self.detection.delete_events(event_indices=[row], eval=False)
 
             self.exclude_events = np.delete(self.exclude_events, row, axis=0)
             self.use_for_avg = np.delete(self.use_for_avg, row, axis=0)
@@ -393,24 +391,7 @@ class minimlGuiMain(QMainWindow):
                                           QMessageBox.Yes | QMessageBox.No)
 
             if answer == QMessageBox.Yes:
-                self.detection.event_locations = np.delete(self.detection.event_locations, rows, axis=0)
-                self.detection.event_peak_locations = np.delete(self.detection.event_peak_locations, rows, axis=0)
-                self.detection.event_peak_times = np.delete(self.detection.event_peak_times, rows, axis=0)
-                self.detection.event_peak_values = np.delete(self.detection.event_peak_values, rows, axis=0)
-                self.detection.event_start = np.delete(self.detection.event_start, rows, axis=0)
-                self.detection.decaytimes = np.delete(self.detection.decaytimes, rows, axis=0)
-                self.detection.risetimes = np.delete(self.detection.risetimes, rows, axis=0)
-                self.detection.charges = np.delete(self.detection.charges, rows, axis=0)
-                self.detection.event_bsls = np.delete(self.detection.event_bsls, rows, axis=0)
-                self.detection.bsl_starts = np.delete(self.detection.bsl_starts, rows, axis=0)
-                self.detection.bsl_ends = np.delete(self.detection.bsl_ends, rows, axis=0)
-                self.detection.min_positions_rise = np.delete(self.detection.min_positions_rise, rows, axis=0)
-                self.detection.max_positions_rise = np.delete(self.detection.max_positions_rise, rows, axis=0)
-                self.detection.min_values_rise = np.delete(self.detection.min_values_rise, rows, axis=0)
-                self.detection.max_values_rise = np.delete(self.detection.max_values_rise, rows, axis=0)                
-                self.detection.half_decay = np.delete(self.detection.half_decay, rows, axis=0)
-                self.detection.events = np.delete(self.detection.events, rows, axis=0)
-                self.detection.event_scores = np.delete(self.detection.event_scores, rows, axis=0)
+                self.detection.delete_events(event_indices=rows, eval=False)
 
                 self.exclude_events = np.delete(self.exclude_events, rows, axis=0)
                 self.use_for_avg = np.delete(self.use_for_avg, rows, axis=0)
@@ -735,9 +716,21 @@ class minimlGuiMain(QMainWindow):
         self.settings.minimum_peak_width = int(settings_win.peak_w.text()) if settings_win.peak_w.hasAcceptableInput() else 5
         self.settings.direction = str(settings_win.direction.currentText())
         self.settings.batch_size = int(settings_win.batchsize.text())
-        self.settings.convolve_win = int(settings_win.convolve_window.text())
+        self.settings.filter_factor = int(settings_win.filter_factor.text())
         self.settings.gradient_convolve_win = int(settings_win.gradient_convolve_window.text())
-        self.settings.relative_prominence = float(settings_win.relative_prominence.text())
+
+
+    def auto_settings_window(self) -> None:
+        """
+        Display the settings helper window.
+        """
+        if not hasattr(self, 'trace'):
+            return
+
+        settings_helper = AutoSettingsWindow(self)
+        settings_helper.exec_()
+        if settings_helper.result() == 0:
+            return
 
 
     def run_analysis(self) -> None:
@@ -786,8 +779,7 @@ class minimlGuiMain(QMainWindow):
                                             callbacks=CustomCallback())
 
             self.detection.detect_events(stride=self.settings.stride, eval=True, peak_w=self.settings.minimum_peak_width, 
-                                         convolve_win=self.settings.convolve_win, gradient_convolve_win=self.settings.gradient_convolve_win,
-                                         rel_prom_cutoff=self.settings.relative_prominence)
+                                         filter_factor=self.settings.filter_factor, gradient_convolve_win=self.settings.gradient_convolve_win)
 
             self.was_analyzed = True
             pen = pg.mkPen(color=self.settings.colors[3], width=1)
@@ -1059,7 +1051,7 @@ class AboutPanel(QDialog):
         self.website.setOpenExternalLinks(True)
         self.layout.addRow(self.website)
 
-        self.paper = QLabel('Publication: <a href=\"https://doi.org/10.7554/eLife.98485.3\">miniML eLife paper 2024</a>')
+        self.paper = QLabel('Publication: <a href=\"https://doi.org/10.7554/eLife.98485.3\">miniML eLife paper 2025</a>')
         self.paper.setOpenExternalLinks(True)
         self.layout.addRow(self.paper)
 
@@ -1073,6 +1065,7 @@ class SummaryPanel(QDialog):
         self.populate_fields(parent)
         self.layout.addRow('Filename:', self.filename)
         self.layout.addRow('Events found:', self.event_count)
+        self.layout.addRow('Events deleted:', self.deleted_event_count)
         self.layout.addRow('Event frequency (Hz):', self.event_frequency)
         self.layout.addRow('Average score:', self.average_score)
         self.layout.addRow(f'Average amplitude ({parent.detection.trace.y_unit}):', self.average_amplitude)
@@ -1092,6 +1085,8 @@ class SummaryPanel(QDialog):
         self.filename.setReadOnly(True)
         self.event_count = QLineEdit(str(parent.detection.event_stats.event_count))
         self.event_count.setReadOnly(True)
+        self.deleted_event_count = QLineEdit(str(parent.detection.deleted_events))
+        self.deleted_event_count.setReadOnly(True)
         self.event_frequency = QLineEdit(f'{parent.detection.event_stats.frequency():.5f}')
         self.event_frequency.setReadOnly(True)
         self.average_score = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.event_scores):.5f}')
@@ -1144,14 +1139,11 @@ class SettingsPanel(QDialog):
         self.direction.setFixedWidth(200)
         self.batchsize = QLineEdit(str(parent.settings.batch_size))
 
-        self.convolve_window = QLineEdit(str(parent.settings.convolve_win))
-        self.convolve_window.setValidator(QIntValidator(1, 10000))
+        self.filter_factor = QLineEdit(str(parent.settings.filter_factor))
+        self.filter_factor.setValidator(QDoubleValidator(1.0, 1000.0, 1))
 
         self.gradient_convolve_window = QLineEdit(str(parent.settings.gradient_convolve_win))
         self.gradient_convolve_window.setValidator(QIntValidator(1, 10000))
-
-        self.relative_prominence = QLineEdit(str(parent.settings.relative_prominence))
-        self.relative_prominence.setValidator(validator)
 
         self.layout = QFormLayout(self)
         self.layout.addRow('Stride length (samples)', self.stride)
@@ -1161,9 +1153,8 @@ class SettingsPanel(QDialog):
         self.layout.addRow('Model', self.model)
         self.layout.addRow('Event direction', self.direction)
         self.layout.addRow('Batch size', self.batchsize)
-        self.layout.addRow('Filter window', self.convolve_window)
+        self.layout.addRow('Filter factor', self.filter_factor)
         self.layout.addRow('Gradient filter window', self.gradient_convolve_window)
-        self.layout.addRow('Relative prominence', self.relative_prominence)
 
         finalize_dialog_window(self, title='miniML settings')
 
@@ -1315,8 +1306,9 @@ class FilterPanel(QDialog):
             filter_toggled()
 
         def filter_toggled():
-            if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.notch.isChecked(), self.detrend.isChecked()]):
-                self.filtered_trace_plot.setData(parent.time_ax_display, parent.data_display, pen=pg.mkPen(color='grey', width=1))
+            if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.line_noise.isChecked(), self.detrend.isChecked()]):
+                self.filtered_trace_plot.setData(parent.time_ax_display, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
+
                 self.filtered_trace_plot.setPen(pg.mkPen(color='grey', width=1))
                 return
 
@@ -1325,10 +1317,10 @@ class FilterPanel(QDialog):
                 self.filtered_trace = self.filtered_trace.detrend(num_segments = int(self.num_segments.text()))
             if self.highpass.isChecked():
                 self.filtered_trace = self.filtered_trace.filter(highpass=float(self.high.text()), order=int(self.order.text()))
-            if self.notch.isChecked():
-                self.filtered_trace = self.filtered_trace.filter(notch=float(self.notch_freq.text()))
+            if self.line_noise.isChecked():
+                self.filtered_trace = self.filtered_trace.filter(line_freq=float(self.line_freq.text()), width=float(self.notch_width.text()))
             if self.lowpass.isChecked():
-                if self.filter_type.currentText() == 'Chebyshev':
+                if self.filter_type.currentText() == 'Butterworth':
                     self.filtered_trace = self.filtered_trace.filter(lowpass=float(self.low.text()), order=int(self.order.text()))
                 elif self.filter_type.currentText() == 'Savitzky-Golay':
                     self.filtered_trace = self.filtered_trace.filter(savgol=float(self.window.text()), order=int(self.order.text()))
@@ -1348,17 +1340,19 @@ class FilterPanel(QDialog):
         self.highpass.stateChanged.connect(filter_toggled)
         self.high = QLineEdit('0.5')
         self.high.setValidator(QDoubleValidator(0.01,99.99,2))
-        self.notch = QCheckBox('')
-        self.notch.stateChanged.connect(filter_toggled)
-        self.notch_freq = QLineEdit('50')
-        self.notch_freq.setValidator(QDoubleValidator(0.9,9999.9,1))
+        self.line_noise = QCheckBox('')
+        self.line_noise.stateChanged.connect(filter_toggled)
+        self.line_freq = QLineEdit('50')
+        self.line_freq.setValidator(QDoubleValidator(0.9,9999.9,1))
+        self.notch_width = QLineEdit('3.0')
+        self.notch_width.setValidator(QDoubleValidator(0.01,9999.9,2))
         self.lowpass = QCheckBox('')
         self.lowpass.stateChanged.connect(filter_toggled)
         self.low = QLineEdit('750')
         self.low.setValidator(QDoubleValidator(0.9,99999.9,1))
         self.low.editingFinished.connect(filter_toggled)
         self.filter_type = QComboBox()
-        self.filter_type.addItems(['Chebyshev', 'Savitzky-Golay', 'Hann window'])
+        self.filter_type.addItems(['Butterworth', 'Savitzky-Golay', 'Hann window'])
         self.filter_type.currentIndexChanged.connect(comboBoxIndexChanged)
         self.filter_type.setFixedWidth(200)
         self.window = QLineEdit('5.0')
@@ -1378,8 +1372,9 @@ class FilterPanel(QDialog):
         controls1.addRow('Number of segments', self.num_segments)
         controls1.addRow('High-pass filter', self.highpass)
         controls1.addRow('High-pass (Hz)', self.high)
-        controls1.addRow('Notch filter', self.notch)
-        controls1.addRow('Notch frequency (Hz)', self.notch_freq)        
+        controls1.addRow('Line noise filter', self.line_noise)
+        controls1.addRow('Line noise frequency (Hz)', self.line_freq) 
+        controls1.addRow('Line noise width (Hz)', self.notch_width)       
         controls2 = QFormLayout()
         controls2.addRow('Lowpass filter', self.lowpass)
         controls2.addRow('Filter type', self.filter_type)
@@ -1407,6 +1402,376 @@ class FilterPanel(QDialog):
         self.setLayout(layout)
         self.resize(600, 500)
         self.setWindowTitle('Filter data')
+
+
+class AutoSettingsWindow(QDialog):
+    def __init__(self, parent=None):
+        super(AutoSettingsWindow, self).__init__(parent)
+        self.parent = parent
+
+        self.peak_window = 200 # window in samples to search for peak after steepest rise point # TO DO: replace hard-coded value
+
+        layout = QVBoxLayout(self)
+
+        top_layout = QHBoxLayout()
+        self.tracePlot = pg.PlotWidget()
+        self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color=parent.settings.colors[3], width=1), clear=True)
+        self.tracePlot.setLabel('bottom', 'Time', 's')
+        self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
+        self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
+
+        self.tracePlot.setTitle('Double click to mark events', size='16pt', bold=True)
+        self.tracePlot.scene().sigMouseClicked.connect(self.mouse_clicked)
+
+        top_layout.addWidget(self.tracePlot)
+        
+        button_layout = QVBoxLayout()
+        self.select_button = QPushButton('Select events')
+        self.select_button.clicked.connect(self.transfer_events)
+        self.select_button.setMinimumWidth(150)
+        self.select_button.setMaximumWidth(150)
+        self.auto_button = QPushButton('Auto')
+        self.auto_button.clicked.connect(self.auto_detect)
+        self.auto_button.setMinimumWidth(150)
+        self.auto_button.setMaximumWidth(150)
+        self.reset_button = QPushButton('Delete cursors')
+        self.reset_button.clicked.connect(self.clear_cursors)
+        self.reset_button.setMinimumWidth(150)
+        self.reset_button.setMaximumWidth(150)
+        button_layout.addWidget(self.auto_button)
+        button_layout.addStretch()
+
+        self.time = QLineEdit('24.0')
+        self.time.setMaximumWidth(150)
+        self.time.setValidator(QDoubleValidator(0.0, 10000.0, 5))
+        self.time.setStyleSheet("font-weight: bold;")
+        time_label = QLabel('Time (ms)')
+        time_label.setStyleSheet("font-weight: bold;")
+        button_layout.addWidget(time_label)
+        button_layout.addWidget(self.time)
+
+        button_layout.addWidget(self.select_button)
+        button_layout.addStretch()
+        button_layout.addStretch()
+        button_layout.addWidget(self.reset_button)
+
+        top_layout.addLayout(button_layout)
+        layout.addLayout(top_layout)
+        layout.addStretch()
+        # add a horizontal line
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken)
+        line.setLineWidth(1)
+        line.setStyleSheet("background-color: #000000;")
+        layout.addWidget(line)
+        layout.addStretch()
+
+        bottom_layout = QHBoxLayout()
+
+        self.eventPlot = pg.PlotWidget()
+        self.eventPlot.setLabel('bottom', 'Time', 's')
+        self.eventPlot.setLabel('left', 'Imon', parent.trace.y_unit)
+        self.eventPlot.showGrid(x=True, y=True, alpha=0.1)
+        self.eventPlot.setTitle('Selected events', size='16pt', bold=True)
+
+        bottom_layout.addWidget(self.eventPlot)
+
+        controls = QFormLayout()
+        win_size = parent.settings.event_window
+        self.window_size = QLineEdit(str(win_size))
+        self.window_size.setMinimumWidth(80)
+        self.window_size.setValidator(QIntValidator(1, 10000))
+        self.window_size.editingFinished.connect(lambda: self.update_window_size(int(self.window_size.text())))
+        self.window_size.setStyleSheet("font-weight: bold;")
+        self.window_time = QLineEdit(str(win_size * parent.trace.sampling * 1000))
+        self.window_time.setMinimumWidth(80)
+        self.window_time.setValidator(QDoubleValidator(0.0001, 10000.0, 3))
+        self.window_time.editingFinished.connect(lambda: self.update_window_size(float(self.window_time.text())))
+        self.window_time.setStyleSheet("font-weight: bold;")
+        self.filter_factor = QLineEdit(str(parent.settings.filter_factor))
+        self.filter_factor.setMinimumWidth(80)
+        self.filter_factor.setValidator(QDoubleValidator(1.0, 1000.0, 1))
+        self.filter_factor.setStyleSheet("font-weight: bold;")
+        self.convolve_window = QLineEdit(str(parent.settings.gradient_convolve_win))
+        self.convolve_window.setMinimumWidth(80)
+        self.convolve_window.setValidator(QIntValidator(1, 1000))
+        self.convolve_window.setStyleSheet("font-weight: bold;")
+
+        label_1 = QLabel('Window size (samples)')
+        label_1.setStyleSheet("font-weight: bold;")
+        controls.addRow(label_1, self.window_size)
+        label_2 = QLabel('Window size (ms)')
+        label_2.setStyleSheet("font-weight: bold;")
+        controls.addRow(label_2, self.window_time)
+
+        auto_win_size = QPushButton('Auto window size')
+        auto_win_size.setMinimumWidth(150)
+        auto_win_size.setMaximumWidth(150)
+        auto_win_size.clicked.connect(self.auto_window_size)
+        controls.addRow(auto_win_size)
+
+        controls.addRow(QLabel(''))
+        label_3 = QLabel('Filter factor')
+        label_3.setStyleSheet("font-weight: bold;")
+        controls.addRow(label_3, self.filter_factor)
+        label_4 = QLabel('Gradient filter window')
+        label_4.setStyleSheet("font-weight: bold;")
+        controls.addRow(label_4, self.convolve_window)
+
+        auto_filter = QPushButton('Auto filter factor')
+        auto_filter.setMinimumWidth(150)
+        auto_filter.setMaximumWidth(150)
+        auto_filter.clicked.connect(self.auto_filter_settings)
+        controls.addRow(auto_filter)
+
+        bottom_layout.addLayout(controls)
+
+        self.gradientPlot = pg.PlotWidget()
+        self.gradientPlot.setLabel('bottom', 'Time', 's')
+        self.gradientPlot.setLabel('left', 'Gradient', f'{parent.trace.y_unit}/s')
+        self.gradientPlot.showGrid(x=True, y=True, alpha=0.1)
+        self.gradientPlot.setTitle('Gradient', size='16pt', bold=True)
+
+        bottom_layout.addWidget(self.gradientPlot)
+
+        layout.addLayout(bottom_layout)
+
+        def custom_accept():
+            parent.settings.filter_factor = float(self.filter_factor.text())
+            parent.settings.event_window = int(self.window_size.text())
+            parent.settings.gradient_convolve_win = int(self.convolve_window.text())
+            self.accept()
+
+        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox.accepted.connect(custom_accept)
+        self.buttonBox.rejected.connect(self.reject)
+
+        layout.addWidget(self.buttonBox)
+
+        self.setLayout(layout)
+        self.resize(900, 600)
+        self.setWindowTitle('Auto settings')
+
+
+    def update_window_size(self, new_value):
+        """
+        Update the window size LneEdits using the provided value.
+        If the value is an integer, it updates the window size in samples.
+        If the value is a float, it updates the window size in milliseconds.
+        """
+        # check if the value is an integer or float
+        if isinstance(new_value, int):
+            new_value = int(new_value)
+        elif isinstance(new_value, float):
+            new_value = int(np.round(new_value / self.parent.trace.sampling / 1000))
+        else:
+            raise ValueError("new_value must be an integer or float")
+        # update the window size in the parent settings
+        self.window_size.setText(str(new_value))
+        self.window_time.setText(str(np.round(new_value * self.parent.trace.sampling * 1000, 5)))
+        self.draw_window_region(new_value)
+
+        
+    def mouse_clicked(self, mouseClickEvent):
+        if mouseClickEvent.double():
+            pos = self.tracePlot.plotItem.vb.mapToView(mouseClickEvent.pos())
+            x = pos.x()
+            y = pos.y()
+            cursor = pg.TargetItem(pos=(x, y), label=f'x={x:.2f}', size=12,
+                                   pen=pg.mkPen(color=(255, 202, 58, 255), width=2),
+                                   hoverPen=pg.mkPen(color=(255, 89, 94, 255), width=2),
+                                   brush=pg.mkBrush(color=(255, 202, 58, 100)),
+                                   hoverBrush=pg.mkBrush(color=(255, 89, 94, 100)))
+            self.tracePlot.addItem(cursor)
+
+
+    def transfer_events(self):
+        self.eventPlot.clear()
+        self.region = None
+        self.ev_positions = []
+
+        extract_window = int(float(self.time.text()) * 1e-3 / self.parent.trace.sampling)
+        before = extract_window // 5
+        after = extract_window - before
+    
+        for item in self.tracePlot.items():
+            if isinstance(item, pg.TargetItem):
+                # get the x position of the cursor, and the index of the closest point in the trace
+                x = item.pos()[0]
+                index = np.argmin(np.abs(self.parent.trace.time_axis - x))
+                event_location = np.argmax(np.abs(self.gradient[index - self.peak_window : index])) + index - self.peak_window
+                self.eventPlot.plot(self.parent.trace.time_axis[: before + after],
+                                    self.parent.trace.data[event_location - before : event_location + after],
+                                    pen=pg.mkPen(color=(0,0,0,90), width=2))
+                self.ev_positions.append(event_location)
+
+        # average events
+        if len(self.eventPlot.listDataItems()) > 0:
+            event_data = np.zeros((len(self.eventPlot.listDataItems()), before + after))
+            for i, item in enumerate(self.eventPlot.listDataItems()):
+                event_data[i] = item.getData()[1]
+            self.avg_event = np.mean(event_data, axis=0)
+            self.eventPlot.plot(self.parent.trace.time_axis[:before + after], self.avg_event,
+                                pen=pg.mkPen(color=self.parent.settings.colors[3], width=4))
+        else:
+            return
+
+        self.draw_window_region(self.parent.settings.event_window)
+
+        # calculate the gradient
+        self.gradientPlot.clear()
+        win = hann(self.parent.settings.gradient_convolve_win)
+        for i, item in enumerate(self.eventPlot.listDataItems()):
+            if item.opts['pen'].width() == 4:
+                continue
+            filtered_ev = self.parent.detection.lowpass_filter(data=item.getData()[1], 
+                                                               cutoff=self.parent.detection.trace.sampling_rate / self.parent.settings.filter_factor, order=4)
+            gradient = convolve(np.gradient(filtered_ev, self.parent.trace.sampling), win, mode='same') / sum(win)
+            self.gradientPlot.plot(self.parent.trace.time_axis[: before + after], gradient,
+                                   pen=pg.mkPen(color=(*hex_to_rgb(self.parent.settings.colors[3]),100), width=2))
+
+
+    def draw_window_region(self, win_size):
+        peak = np.argmax(np.abs(scale(self.avg_event)))
+        win_start = (peak - win_size // 5) * self.parent.trace.sampling
+        win_end = (peak + win_size // 1.25) * self.parent.trace.sampling
+
+        def update_positions():
+            x1, x2 = self.region.getRegion()
+            x1 = int(x1 / self.parent.trace.sampling)
+            x2 = int(x2 / self.parent.trace.sampling)
+            self.update_window_size(x2 - x1)
+
+        if not hasattr(self, 'region') or self.region is None:
+            x_max = self.eventPlot.viewRange()[0][1]
+            self.region = pg.LinearRegionItem(brush=(138,201,38,50), hoverBrush=(138,201,38,90), pen=(138,201,38,255), hoverPen=(0,0,0,255),
+                                            bounds=[0, x_max*2], swapMode='block')
+            self.region.setZValue(-1)
+            self.eventPlot.addItem(self.region)
+            self.region.sigRegionChangeFinished.connect(update_positions)
+            
+        self.region.setRegion([win_start, win_end])
+
+
+    def clear_cursors(self):
+        for item in self.tracePlot.items():
+            if isinstance(item, pg.TargetItem):
+                self.tracePlot.removeItem(item)
+
+    
+    def auto_detect(self):
+        """
+        Automatically detect events based on the first derivative.
+        """
+        normalized_trace = scale(self.parent.detection.trace.data)
+        self.filtered_trace = self.parent.detection.lowpass_filter(data=normalized_trace, cutoff=self.parent.detection.trace.sampling_rate / 50, order=4)
+        self.gradient = np.gradient(self.filtered_trace)
+        threshold = np.std(np.abs(self.gradient)) * 20
+        peaks, properties = find_peaks(np.abs(self.gradient), height=threshold, width=10, distance=500)
+
+        if len(peaks) == 0:
+            self.parent._warning_box(message='No events detected.')
+            return
+        elif len(peaks) > 10:
+            peaks = peaks[np.argsort(properties['peak_heights'])[-10:]]
+          
+        for peak in peaks:
+            peak = np.argmax(np.abs(self.filtered_trace[peak: peak + self.peak_window])) + peak
+
+            cursor = pg.TargetItem(pos=(self.parent.trace.time_axis[peak], self.parent.trace.data[peak]), label=f'x={self.parent.trace.time_axis[peak]:.2f}', 
+                                   size=12, pen=pg.mkPen(color=(255, 202, 58, 255), width=2), hoverPen=pg.mkPen(color=(255, 89, 94, 255), width=2),
+                                   brush=pg.mkBrush(color=(255, 202, 58, 100)), hoverBrush=pg.mkBrush(color=(255, 89, 94, 100)))
+            self.tracePlot.addItem(cursor)
+
+
+    def auto_window_size(self):
+        """
+        Automatically detect the window size based on return to baseline.
+        """
+        t1 = np.argmax(np.abs(scale(self.avg_event))) # peak_index
+        event_avg_copy = np.copy(self.avg_event)
+
+        if event_avg_copy[t1] < np.mean(event_avg_copy[0 : int(t1 // 1.5)]):
+            event_avg_copy *= -1
+        
+        bsl = np.mean(event_avg_copy[0 : int(t1 // 1.5)])
+        t2 = np.argmax(event_avg_copy[t1:] < bsl) + t1
+        if t2 == t1:
+            t2 = len(event_avg_copy) * 0.75
+        
+        # round to next larger multiple of 100
+        suggested_window = ((t2 - t1) // 100 + 1) * 100
+        
+        model = tf.keras.models.load_model(self.parent.settings.model_path)
+        scores, window_sizes = [], []
+        for factor in [0.6, 0.8, 1, 1.2, 1.4, 1.6]:
+            window_size = (int(suggested_window * factor) // 100) * 100
+            window_sizes.append(window_size)
+
+            win_start = (t1 - window_size // 5)
+            if win_start < 0:
+                win_start = 0
+            win_end = (t1 + window_size // 1.25)
+            if win_end > len(event_avg_copy):
+                win_end = len(event_avg_copy)
+            data = event_avg_copy[int(win_start): int(win_end)]
+
+            # resample to 600 points and normalize, then predict using the model
+            scores.append(np.squeeze(model(np.expand_dims(minmax_scale(resample(data, 600) * -1), axis=(0, -1)))))
+
+        # find the best score
+        best_score = np.argmax(scores)
+
+        self.update_window_size(window_sizes[best_score])
+
+
+    def auto_filter_settings(self):
+        """
+        Auto suggest filter settings based on the SNR of the first derivative.
+        """
+        test_values = np.arange(5, 50, 5)
+        before = int(int(self.window_size.text()) // 5)
+        after = int(self.window_size.text()) - before
+
+        SNR_data = []
+        for pos in self.ev_positions:
+            ev_data = self.parent.trace.data[pos - before : pos + after]
+            SNR_data.append(np.max(np.abs(scale(ev_data))) / np.std(np.abs(scale(ev_data)[0:before//2])))
+        raw_SNR = np.mean(np.abs(SNR_data))
+
+        result = []
+        from itertools import product
+        for window, filter_factor in product(test_values, test_values):
+            win = hann(window)
+            SNR_filtered = []
+            for pos in self.ev_positions:
+                ev_data = self.parent.trace.data[pos - before : pos + after]
+                filtered_ev = self.parent.detection.lowpass_filter(data=ev_data, cutoff=self.parent.trace.sampling_rate / filter_factor, order=4)
+                gradient = convolve(np.gradient(filtered_ev, self.parent.trace.sampling), win, mode='same') / sum(win)
+                SNR_filtered.append(np.max(np.abs(gradient)) / np.std(np.abs(gradient[0:before//2])))
+
+            result.append(np.mean(np.abs(SNR_filtered)) / raw_SNR)
+
+        result = np.array(result).reshape((len(test_values), len(test_values)))
+
+        target_value = 1.5
+        closest_value = np.unravel_index(np.abs(result - target_value).argmin(), result.shape)
+
+        self.filter_factor.setText(str(test_values[closest_value[1]]))
+        self.convolve_window.setText(str(test_values[closest_value[0]]))
+
+        self.gradientPlot.clear()
+        win = hann(test_values[closest_value[0]])
+        for i, item in enumerate(self.eventPlot.listDataItems()):
+            if item.opts['pen'].width() == 4:
+                continue
+            filtered_ev = self.parent.detection.lowpass_filter(data=item.getData()[1], 
+                                                               cutoff=self.parent.trace.sampling_rate / test_values[closest_value[1]], order=4)
+            gradient = convolve(np.gradient(filtered_ev, self.parent.trace.sampling), win, mode='same') / sum(win)
+            self.gradientPlot.plot(self.parent.trace.time_axis[: filtered_ev.shape[0]], gradient,
+                                   pen=pg.mkPen(color=(*hex_to_rgb(self.parent.settings.colors[3]),100), width=2))
+
 
 
 class EventViewer(QDialog):
@@ -1481,7 +1846,8 @@ class EventViewer(QDialog):
         self.ind = 0
         self.left_buffer = int(self.detection.window_size / 2)
         self.right_buffer = int(self.detection.window_size * 1.5)
-        self.filtered_data = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
+
+        self.filtered_data = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
 
         self.trace_x = parent.time_ax_display[::10]
         self.trace_y = parent.data_display[::10]
@@ -1493,12 +1859,12 @@ class EventViewer(QDialog):
 
         self.table = QTableWidget()
         self.table.verticalHeader().setDefaultSectionSize(10)
-        self.table.setRowCount(10)
+        self.table.setRowCount(12)
         self.table.setColumnCount(2)
         self.table.setColumnWidth(0, 85)
         self.table.setColumnWidth(1, 55)
         self.table.setHorizontalHeaderLabels(['Value', 'Unit'])
-        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Decay', 'Halfwidth  ', 'SNR'])
+        self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Slope', 'Decay', 'Halfwidth  ', 'SNR', 'Interval'])
         self.table.viewport().installEventFilter(self)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.update_table()
@@ -1528,10 +1894,12 @@ class EventViewer(QDialog):
         self.table.setItem(4, 0, QTableWidgetItem(f'{self.detection.event_stats.amplitudes[self.ind]:.5f}'))
         self.table.setItem(5, 0, QTableWidgetItem(f'{self.detection.event_stats.charges[self.ind]:.5f}'))
         self.table.setItem(6, 0, QTableWidgetItem(f'{self.detection.event_stats.risetimes[self.ind] * 1e3:.5f}'))
-        self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}'))
-        self.table.setItem(8, 0, QTableWidgetItem(f'{self.detection.event_stats.halfwidths[self.ind] * 1e3:.5f}'))
+        self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.slopes[self.ind]* 1e-3:.5f}'))
+        self.table.setItem(8, 0, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}'))
+        self.table.setItem(9, 0, QTableWidgetItem(f'{self.detection.event_stats.halfwidths[self.ind] * 1e3:.5f}'))
         bsl_sd = np.std(self.detection.trace.data[self.detection.bsl_starts[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer : self.detection.bsl_ends[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer])
-        self.table.setItem(9, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
+        self.table.setItem(10, 0, QTableWidgetItem(f'{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}'))
+        self.table.setItem(11, 0, QTableWidgetItem(f'{self.detection.interevent_intervals[self.ind]:.5f}'))
 
         self.table.setItem(0, 1, QTableWidgetItem(''))
         self.table.setItem(1, 1, QTableWidgetItem('s'))
@@ -1540,9 +1908,11 @@ class EventViewer(QDialog):
         self.table.setItem(4, 1, QTableWidgetItem(self.detection.trace.y_unit))
         self.table.setItem(5, 1, QTableWidgetItem(f'{self.detection.trace.y_unit}*s'))
         self.table.setItem(6, 1, QTableWidgetItem('ms'))
-        self.table.setItem(7, 1, QTableWidgetItem('ms'))
+        self.table.setItem(7, 1, QTableWidgetItem(self.detection.trace.y_unit + '/ms'))
         self.table.setItem(8, 1, QTableWidgetItem('ms'))
-        self.table.setItem(9, 1, QTableWidgetItem(''))
+        self.table.setItem(9, 1, QTableWidgetItem('ms'))
+        self.table.setItem(10, 1, QTableWidgetItem(''))
+        self.table.setItem(11, 1, QTableWidgetItem('s'))
 
 
     def cancel_event_viewer(self):
