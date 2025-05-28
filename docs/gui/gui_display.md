@@ -63,6 +63,10 @@ Display the event viewer window after an analysis. This allows inspection of ind
 
 Save results to file (as .csv, .h5, .pickle).
 
+### Auto settings
+
+Open the auto settings tool to determine optimal settings for event detection.
+
 ### Settings
 
 Opens the settings menu.

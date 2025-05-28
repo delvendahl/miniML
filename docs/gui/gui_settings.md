@@ -42,9 +42,9 @@ Sets the batch size for model inference. The default value is 512. This paramete
 Large values of the batch size can sometimes lead to errors when running miniML on a GPU. Check the prediction trace for errors if you encounter problems.
 ```
 
-## Filter window
+## Filter factor
 
-Defines the Hann window size for the convolution filter. The default value is 20. The raw data is filtered for determining event location and event analysis. This parameter can be adjusted to optimize the event location and peak location.
+Defines the filter factor for the lowpass Butterworth filter. The data are fitlered using a forward-backward Butterworth filter with the specified filter factor (cutoff frequency = sampling rate / filter factor). The default value is 25. The raw data is filtered for determining event location and event analysis. This parameter can be adjusted to optimize the event location and peak location determination.
 
 ## Gradient filter window
 
