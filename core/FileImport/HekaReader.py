@@ -121,8 +121,8 @@ def convertDataFormatToNP(dataFormat):
 
     d = {"int16": np.int16,
          "int32": np.int32,
-         "real32": np.float16,
-         "real64": np.float32}
+         "real32": np.float32,
+         "real64": np.float64}
 
     return d[dataFormat]
 
