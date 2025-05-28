@@ -480,6 +480,8 @@ class EventStats():
         Charge transfer of individual events.
     risetimes: np.ndarray
         10-90 percent rise times of individual events.
+    slopes: np.ndarray
+        Rise slopes of individual events.
     halfdecays: np.ndarray
         Half decay times of individual events.
     halfwidths: np.ndarray
@@ -495,7 +497,7 @@ class EventStats():
     ----------
     event_count: number of events
     '''
-    def __init__(self, amplitudes, scores, charges, risetimes, decaytimes, halfwidths, tau, time, unit: str) -> None:
+    def __init__(self, amplitudes, scores, charges, risetimes, slopes, decaytimes, halfwidths, tau, time, unit: str) -> None:
         self.amplitudes = amplitudes
         self.event_scores = scores
         self.charges = charges

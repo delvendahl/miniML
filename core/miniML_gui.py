@@ -1073,6 +1073,7 @@ class SummaryPanel(QDialog):
         self.layout.addRow('Coefficient of variation:', self.amplitude_cv)
         self.layout.addRow(f'Average area ({parent.detection.trace.y_unit}*s):', self.average_area)
         self.layout.addRow('Average risetime (ms):', self.average_rise_time)
+        self.layout.addRow('Average rise slope (pA/ms):', self.average_slope)
         self.layout.addRow(f'Average 50% decay time (ms):', self.average_decay_time)
         self.layout.addRow('Average halfwidth (ms):', self.average_halfwidth)
         self.layout.addRow('Decay time constant (ms):', self.decay_tau)
@@ -1099,13 +1100,15 @@ class SummaryPanel(QDialog):
         self.amplitude_cv.setReadOnly(True)
         self.average_area = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.charges):.5f}')
         self.average_area.setReadOnly(True)
-        self.average_rise_time = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.risetimes)*1000:.5f}')
+        self.average_rise_time = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.risetimes)*1e3:.5f}')
         self.average_rise_time.setReadOnly(True)
-        self.average_decay_time = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1000:.5f}')
+        self.average_slope = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.slopes)*1e-3:.5f}')
+        self.average_slope.setReadOnly(True)
+        self.average_decay_time = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfdecays)*1e3:.5f}')
         self.average_decay_time.setReadOnly(True)
-        self.average_halfwidth = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfwidths)*1000:.5f}')
+        self.average_halfwidth = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.halfwidths)*1e3:.5f}')
         self.average_halfwidth.setReadOnly(True)
-        self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1000:.5f}')
+        self.decay_tau = QLineEdit(f'{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay)*1e3:.5f}')
         self.decay_tau.setReadOnly(True)
         self.layout = QFormLayout(self)
 
@@ -1689,6 +1692,9 @@ class AutoSettingsWindow(QDialog):
         """
         Automatically detect the window size based on return to baseline.
         """
+        if not hasattr(self, 'avg_event'):
+            self.parent._warning_box(message='Please select events first.')
+            return
         t1 = np.argmax(np.abs(scale(self.avg_event))) # peak_index
         event_avg_copy = np.copy(self.avg_event)
 
@@ -1730,6 +1736,9 @@ class AutoSettingsWindow(QDialog):
         """
         Auto suggest filter settings based on the SNR of the first derivative.
         """
+        if not hasattr(self, 'ev_positions'):
+            self.parent._warning_box(message='Please select events first.')
+            return
         test_values = np.arange(5, 50, 5)
         before = int(int(self.window_size.text()) // 5)
         after = int(self.window_size.text()) - before
@@ -1778,7 +1787,7 @@ class EventViewer(QDialog):
     def __init__(self, parent=None):
         super(EventViewer, self).__init__(parent)
 
-        self.resize(750, 600)
+        self.resize(750, 610)
 
         self.detection = parent.detection
         self.settings = parent.settings
@@ -1792,7 +1801,7 @@ class EventViewer(QDialog):
         self.layout.setColumnMinimumWidth(2, 225)
         self.layout.setRowMinimumHeight(1, 120)
         self.layout.setRowMinimumHeight(2, 160)
-        self.layout.setRowMinimumHeight(3, 160)
+        self.layout.setRowMinimumHeight(3, 180)
         self.layout.setRowMinimumHeight(4, 140)
 
         self.layout.setColumnStretch(0, 1)
@@ -1862,7 +1871,7 @@ class EventViewer(QDialog):
         self.table.setRowCount(12)
         self.table.setColumnCount(2)
         self.table.setColumnWidth(0, 85)
-        self.table.setColumnWidth(1, 55)
+        self.table.setColumnWidth(1, 60)
         self.table.setHorizontalHeaderLabels(['Value', 'Unit'])
         self.table.setVerticalHeaderLabels(['Event', 'Position', 'Score', 'Baseline', 'Amplitude', 'Area', 'Risetime', 'Slope', 'Decay', 'Halfwidth  ', 'SNR', 'Interval'])
         self.table.viewport().installEventFilter(self)
@@ -1894,7 +1903,7 @@ class EventViewer(QDialog):
         self.table.setItem(4, 0, QTableWidgetItem(f'{self.detection.event_stats.amplitudes[self.ind]:.5f}'))
         self.table.setItem(5, 0, QTableWidgetItem(f'{self.detection.event_stats.charges[self.ind]:.5f}'))
         self.table.setItem(6, 0, QTableWidgetItem(f'{self.detection.event_stats.risetimes[self.ind] * 1e3:.5f}'))
-        self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.slopes[self.ind]* 1e-3:.5f}'))
+        self.table.setItem(7, 0, QTableWidgetItem(f'{self.detection.event_stats.slopes[self.ind] * 1e-3:.5f}'))
         self.table.setItem(8, 0, QTableWidgetItem(f'{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}'))
         self.table.setItem(9, 0, QTableWidgetItem(f'{self.detection.event_stats.halfwidths[self.ind] * 1e3:.5f}'))
         bsl_sd = np.std(self.detection.trace.data[self.detection.bsl_starts[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer : self.detection.bsl_ends[self.ind] - self.detection.event_locations[self.ind] - self.left_buffer])
