@@ -965,7 +965,7 @@ class Pulsed(TreeNode):
     ]
     
     def __init__(self, bundle, offset=0, size=None):
-        fh = open(bundle.file_name, 'rb')
+        fh = bundle.fh  # Use bundle.fh
         fh.seek(offset)
         
         # read .pul header
@@ -986,7 +986,7 @@ class Pulsed(TreeNode):
             self.level_sizes.append(size)
             
         TreeNode.__init__(self, fh, self)
-        fh.close()
+        # Do not close fh here
 
 
 class Data(object):
@@ -999,13 +999,13 @@ class Data(object):
         assert len(index) == 4
         pul = self.bundle.pul
         trace = pul[index[0]][index[1]][index[2]][index[3]]
-        fh = open(self.bundle.file_name, 'rb')
+        fh = self.bundle.fh  # Use self.bundle.fh
         fh.seek(trace.Data)
         dtype = np.dtype(convertDataFormatToNP(trace.DataFormat))
         if not trace.DataKind['IsLittleEndian']: #  for big endian data, we need to swap
             dtype = dtype.newbyteorder('>')
         data = np.fromfile(fh, count=trace.DataPoints, dtype=dtype)
-        fh.close()
+        # Do not close fh here
 
         return (data * trace.DataScaler).astype(np.float64)
 
@@ -1031,7 +1031,7 @@ class Amplifier(TreeNode):
     ]
     
     def __init__(self, bundle, offset=0, size=None):
-        fh = open(bundle.file_name, 'rb')
+        fh = bundle.fh  # Use bundle.fh
         fh.seek(offset)
         
         # read .pul header
@@ -1052,7 +1052,7 @@ class Amplifier(TreeNode):
             self.level_sizes.append(size)
             
         TreeNode.__init__(self, fh, self)
-        fh.close()
+        # Do not close fh here
 
 
 class Stimulus(TreeNode):
@@ -1079,7 +1079,7 @@ class Stimulus(TreeNode):
     ]
     
     def __init__(self, bundle, offset=0, size=None):
-        fh = open(bundle.file_name, 'rb')
+        fh = bundle.fh  # Use bundle.fh
         fh.seek(offset)
         
         # read .pul header
@@ -1100,7 +1100,7 @@ class Stimulus(TreeNode):
             self.level_sizes.append(size)
             
         TreeNode.__init__(self, fh, self)
-        fh.close()
+        # Do not close fh here
 
 
 class Bundle(object):
@@ -1117,37 +1117,32 @@ class Bundle(object):
     
     def __init__(self, file_name):
         self.file_name = file_name
-
-        with self:
-            if self.fh.read(4) != b'DAT2':
-                raise ValueError(f"No support for other files than 'DAT2' format")
-
-            self.fh.seek(0)
-
-            # Read header assuming little endian
-            endian = '<'
-            self.header = BundleHeader(self.fh, endian)
-            # If the header is bad, re-read using big endian
-            if not self.header.IsLittleEndian:
-                endian = '>'
-                self.fh.seek(0)
-                self.header = BundleHeader(self.fh, endian)
-
-            # catalog extensions of bundled items
-            self.catalog = {}
-            for item in self.header.BundleItems:
-                item.instance = None
-                ext = item.Extension
-                self.catalog[ext] = item
-
-        return
-
-    def __enter__(self):
         self.fh = open(self.file_name, 'rb')
-        return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.fh.close()
+        if self.fh.read(4) != b'DAT2':
+            raise ValueError(f"No support for other files than 'DAT2' format")
+
+        self.fh.seek(0)
+
+        # Read header assuming little endian
+        endian = '<'
+        self.header = BundleHeader(self.fh, endian)
+        # If the header is bad, re-read using big endian
+        if not self.header.IsLittleEndian:
+            endian = '>'
+            self.fh.seek(0)
+            self.header = BundleHeader(self.fh, endian)
+
+        # catalog extensions of bundled items
+        self.catalog = {}
+        for item in self.header.BundleItems:
+            item.instance = None
+            ext = item.Extension
+            self.catalog[ext] = item
+
+    def close(self):
+        if hasattr(self, 'fh') and self.fh:
+            self.fh.close()
 
     @property
     def pul(self):
@@ -1179,6 +1174,7 @@ class Bundle(object):
         item = self.catalog[ext]
         if item.instance is None:
             cls = self.item_classes[ext]
+            # Pass self (the bundle instance) instead of file_name
             item.instance = cls(self, item.Start, item.Length)
         return item.instance
         
