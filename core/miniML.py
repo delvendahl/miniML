@@ -282,6 +282,8 @@ class MiniTrace():
         MiniTrace.exlucded_series = exclude_series
         MiniTrace.Rseries = series_resistances
 
+        bundle.close()
+        
         return cls(data=data * scaling, sampling_interval=max_sampling_interval, 
                    y_unit=data_unit, filename=Path(filename).name)
 

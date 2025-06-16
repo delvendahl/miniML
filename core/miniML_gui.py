@@ -984,7 +984,7 @@ class LoadDatPanel(QDialog):
         self.layout.addRow('Data unit:', self.e3)
 
         finalize_dialog_window(self, title='Load HEKA .dat file')
-
+        self.finished.connect(self.on_dialog_finished)
 
     @pyqtSlot(str)
     def on_comboBoxParent_currentIndexChanged(self, index):
@@ -996,6 +996,10 @@ class LoadDatPanel(QDialog):
 
         self.series.clear()
         self.series.addItems(bundle_series)
+
+    @pyqtSlot()
+    def on_dialog_finished(self):
+        self.bundle.close()
 
 
 class FileInfoPanel(QDialog):
