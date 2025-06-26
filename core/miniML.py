@@ -647,7 +647,7 @@ class EventDetection():
     def _init_arrays(self, attr_names: list, shape: int, dtype: type) -> None:
         ''' initialize multiple 1d ndarrays with given shape containing NaNs '''
         for label in attr_names:
-            value = -1 if 'int' in str(dtype) else np.NaN
+            value = -1 if 'int' in str(dtype) else np.nan
             setattr(self, str(label), np.full(int(shape), value, dtype=dtype))
 
 
@@ -1241,7 +1241,7 @@ class EventDetection():
         self.event_peak_times = self.event_peak_locations * self.trace.sampling
         self.half_decay_times = self.half_decay * self.trace.sampling
         self.event_start_times = self.event_start * self.trace.sampling
-        self.interevent_intervals = np.diff(self.event_peak_times, prepend=np.NaN)
+        self.interevent_intervals = np.diff(self.event_peak_times, prepend=np.nan)
 
         if self.verbose:
             self.event_stats.print()
