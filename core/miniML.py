@@ -902,8 +902,8 @@ class EventDetection():
         '''
         ### Prepare data
         diffs = np.diff(self.event_locations, append=self.trace.data.shape[0]) # Difference in points between the event locations
-        add_points = int(self.window_size/3)
-        after = self.window_size + add_points
+        baseline_duration = int(self.window_size * 0.1) # duration of baseline period before event peak
+        after = self.window_size + self.add_points
         positions = self.event_locations
 
         ### Set parameters for charge calculation
@@ -911,7 +911,7 @@ class EventDetection():
         combined_charge_events = 1
         calculate_charge = False # will be set to True in the loop if double event criteria are fulfilled; not a flag for charge 
 
-        if np.any(positions - add_points < 0) or np.any(positions + after >= self.trace.data.shape[0]):
+        if np.any(positions - self.add_points < 0) or np.any(positions + after >= self.trace.data.shape[0]):
             raise ValueError('Cannot extract time windows exceeding input data size.')
         # Filter data if required
         if filter:
@@ -928,19 +928,19 @@ class EventDetection():
         self._init_arrays(['min_positions_rise', 'max_positions_rise', 'min_values_rise', 'max_values_rise'], positions.shape[0], dtype=np.float64)               
 
         for ix, position in enumerate(positions):
-            indices = position + np.arange(-add_points, after)
+            indices = position + np.arange(-self.add_points, after)
             data = mini_trace[indices]
-            
-            event_peak_pos = get_event_peak(data=data, event_num=ix, add_points=add_points, window_size=self.window_size, diffs=diffs)
+
+            event_peak_pos = get_event_peak(data=data, event_num=ix, add_points=self.add_points, window_size=self.window_size, diffs=diffs)
 
             self.event_peak_locations[ix] = int(event_peak_pos)
             self.event_peak_values[ix] = np.mean(data[event_peak_pos - self.peak_spacer:event_peak_pos + self.peak_spacer])
             
-            baseline, baseline_var, bsl_start, bsl_end, bsl_duration = get_event_baseline(data=data, event_num=ix, diffs=diffs, add_points=add_points,
+            baseline, baseline_var, bsl_start, bsl_end, bsl_duration = get_event_baseline(data=data, duration=baseline_duration, event_num=ix, 
+                                                                                          diffs=diffs, add_points=self.add_points,
                                                                                           peak_positions=self.event_peak_locations, positions=positions)
             self.bsl_starts[ix] = bsl_start
             self.bsl_ends[ix] = bsl_end
-
             self.event_bsls[ix] = baseline
             self.event_bsl_durations[ix] = bsl_duration
             
@@ -958,8 +958,8 @@ class EventDetection():
             self.max_values_rise[ix] = max_value_rise
 
             half_amplitude_level = baseline + (data[event_peak_pos] - baseline) / 2
-            if diffs[ix] < add_points: # next event close; check if we can get halfdecay
-                right_lim = diffs[ix] + add_points # Right limit is the onset of the next event
+            if diffs[ix] < self.add_points: # next event close; check if we can get halfdecay
+                right_lim = diffs[ix] + self.add_points # Right limit is the onset of the next event
                 test_arr =  data[event_peak_pos:right_lim]
                 if test_arr[test_arr < half_amplitude_level].shape[0]: # means that event goes below 50% ampliude before max rise of the next event; 1/2 decay can be calculated
                     halfdecay_position, halfdecay_time = get_event_halfdecay_time(data=data[0:right_lim], peak_position=event_peak_pos, baseline=baseline)
@@ -991,7 +991,7 @@ class EventDetection():
             ### For charge; multiple event check done outside function.
             if ix < positions.shape[0] - 1:
                 if combined_charge_events == 1: # define onset position for charge calculation
-                    onset_in_trace = positions[ix] - (add_points - self.event_start[ix])
+                    onset_in_trace = positions[ix] - (self.add_points - self.event_start[ix])
                     baseline_for_charge = self.event_bsls[ix]
 
                 if np.isnan(self.half_decay[ix]):
@@ -999,7 +999,7 @@ class EventDetection():
                 
                 else:
                     ### Get distance from peak to next event location.
-                    peak_in_trace = positions[ix] + (self.event_peak_locations[ix] - add_points)
+                    peak_in_trace = positions[ix] + (self.event_peak_locations[ix] - self.add_points)
                     next_event_location = positions[ix + 1]
                     delta_peak_location = next_event_location - peak_in_trace
                     
@@ -1013,19 +1013,19 @@ class EventDetection():
                         combined_charge_events += 1
 
                 if calculate_charge:
-                    endpoint_in_trace = positions[ix] + (self.event_peak_locations[ix] - add_points) + delta_peak_endpoint
+                    endpoint_in_trace = positions[ix] + (self.event_peak_locations[ix] - self.add_points) + delta_peak_endpoint
                     charge = get_event_charge(data=mini_trace, start_point=onset_in_trace, end_point=endpoint_in_trace, baseline=baseline_for_charge, sampling=self.trace.sampling)
                     
             else: # Handle the last event
                 if combined_charge_events == 1: # define onset position for charge calculation
-                    onset_in_trace = positions[ix] - (add_points - self.event_start[ix])
+                    onset_in_trace = positions[ix] - (self.add_points - self.event_start[ix])
                     baseline_for_charge = self.event_bsls[ix]
-                
-                peak_in_trace = positions[ix] + (self.event_peak_locations[ix] - add_points)
+
+                peak_in_trace = positions[ix] + (self.event_peak_locations[ix] - self.add_points)
                 endpoint = int(self.event_peak_locations[ix] + charge_factor * (int(self.half_decay[ix]) - self.event_peak_locations[ix]))
                 delta_peak_endpoint = endpoint - self.event_peak_locations[ix]
-                endpoint_in_trace = positions[ix] + (self.event_peak_locations[ix] - add_points) + delta_peak_endpoint
-                
+                endpoint_in_trace = positions[ix] + (self.event_peak_locations[ix] - self.add_points) + delta_peak_endpoint
+
                 if endpoint_in_trace > mini_trace.shape[0]:
                     endpoint_in_trace = mini_trace.shape[0]
 
@@ -1088,16 +1088,15 @@ class EventDetection():
         '''
         Extract properties of the event average the same way the individual events are analysed.
         '''
-        add_points = int(self.window_size / 3)
-        diffs = [add_points * 10] # Set right limit larger than window size
+        diffs = [self.add_points * 10] # Set right limit larger than window size
         charge_factor = 4 # Charge window is 4 * decay time
         data = np.mean(self.events[self.singular_event_indices], axis=0) * self.event_direction
 
-        event_peak = get_event_peak(data=data, event_num=0, add_points=add_points, window_size=self.window_size, diffs=diffs)
+        event_peak = get_event_peak(data=data, event_num=0, add_points=self.add_points, window_size=self.window_size, diffs=diffs)
         event_peak_value = data[event_peak]
 
-        baseline, baseline_var, bsl_start, _, _ = get_event_baseline(data=data, event_num=0, diffs=diffs, 
-                                                                     add_points=add_points, peak_positions=[event_peak], positions=[add_points])
+        baseline, baseline_var, bsl_start, _, _ = get_event_baseline(data=data, duration=int(self.window_size * 0.1), event_num=0, diffs=diffs, 
+                                                                     add_points=self.add_points, peak_positions=[event_peak], positions=[self.add_points])
         onset_position = get_event_onset(data=data, peak_position=event_peak, baseline=baseline, baseline_var=baseline_var)
                 
         risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise = get_event_risetime(
@@ -1126,7 +1125,7 @@ class EventDetection():
 
 
     def detect_events(self, stride: int=None, eval: bool=False, resample_to_600: bool=True, peak_w: int=5, rel_prom_cutoff: float=0.25, 
-                      filter_factor: float=20.0, convolve_win: int=0, gradient_convolve_win: int=0) -> None:
+                      filter_factor: float=20.0, convolve_win: int=0, gradient_convolve_win: int=0, bsl_win: float=0.33) -> None:
         '''
         Wrapper function to perform event detection, extraction and analysis
         
@@ -1154,7 +1153,7 @@ class EventDetection():
         self.rel_prom_cutoff = rel_prom_cutoff
         self.filter_factor = filter_factor
         self.convolve_win = convolve_win
-        self.add_points = int(self.window_size / 3)
+        self.add_points = int(self.window_size / np.round(1 / bsl_win, 1)) # number of additional points to extract before and after the event window for analysis
         
         self.stride_length = stride if stride else round(self.window_size / 30)
         self.gradient_convolve_win = gradient_convolve_win

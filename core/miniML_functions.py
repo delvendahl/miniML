@@ -1,5 +1,7 @@
 from __future__ import annotations
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 # - - - - - - - - - - - - - - - - - - - - - - -
 # functions for evaluation of individual events
@@ -29,12 +31,14 @@ def get_event_peak(data: np.ndarray, event_num: int, add_points: int, window_siz
     return peak_position
 
 
-def get_event_baseline(data: np.ndarray, event_num: int, add_points, diffs: np.ndarray, peak_positions: np.ndarray, positions: np.ndarray) -> tuple[float, float]:
+def get_event_baseline(data: np.ndarray, duration: int, event_num: int, add_points, diffs: np.ndarray, 
+                       peak_positions: np.ndarray, positions: np.ndarray) -> tuple[float, float]:
     """
     Calculate the baseline and baseline variance for an event in the given data.
 
     Parameters:
     - data (np.ndarray): The input data.
+    - duration (int): The duration (in points) to consider for baseline calculation.
     - event_num (int): The index of the event.
     - add_points (int): The number of additional points to consider.
     - diffs (np.ndarray): The differences between consecutive peak positions.
@@ -48,19 +52,20 @@ def get_event_baseline(data: np.ndarray, event_num: int, add_points, diffs: np.n
 
     previous_peak_in_trace = int(peak_positions[event_num-1] + positions[event_num-1] - add_points)
     steepest_rise_in_trace = int(positions[event_num])
-    if (steepest_rise_in_trace - previous_peak_in_trace) <= (add_points*1.2) and event_num != 0:
-        dd = diffs[event_num-1] - (peak_positions[event_num-1] - add_points) # get distance between previous peak and steepest rise (== search window for onset)
-        if add_points-dd < 0:
+
+    if (steepest_rise_in_trace - previous_peak_in_trace) <= (add_points * 1.2) and event_num != 0:
+        dd = diffs[event_num-1] - (peak_positions[event_num-1] - add_points) # get distance between previous peak and steepest rise (= search window for onset)
+        if (add_points - dd) < 0:
             min_position = np.argmin(data[0:add_points])
         else:
-            min_position = np.argmin(data[add_points-dd:add_points]) + (add_points-dd)
+            min_position = np.argmin(data[add_points-dd:add_points]) + (add_points - dd)
 
-        bsl_duration=int(data.shape[0] * 0.005)
+        bsl_duration = int(duration * 0.5) # make baseline duration shorter if previous event is close
         bsl_start = (min_position - bsl_duration) if (min_position - bsl_duration) > 0 else 0
         bsl_end = (min_position + bsl_duration)
     else:
-        bsl_duration = int(data.shape[0] * 0.1)
-        bsl_end = (add_points - (peak_positions[event_num] - add_points)*2)
+        bsl_duration = duration
+        bsl_end = (add_points - (peak_positions[event_num] - add_points) * 3)
         if bsl_end < bsl_duration:
             bsl_end = bsl_duration
         bsl_start = (bsl_end - bsl_duration) if (bsl_end - bsl_duration) > 0 else 0
@@ -70,14 +75,14 @@ def get_event_baseline(data: np.ndarray, event_num: int, add_points, diffs: np.n
     if baseline >= data[peak_positions[event_num]]:
         min_position = np.argmin(data[int(add_points/2):add_points]) + int(add_points/2)
 
-        bsl_duration=int(data.shape[0] * 0.005)
+        bsl_duration = int(duration * 0.5)
         bsl_start = (min_position - bsl_duration) if (min_position - bsl_duration) > 0 else 0
         bsl_end = (min_position + bsl_duration)
 
     baseline, bsl_var = np.mean(data[bsl_start:bsl_end]), np.std(data[bsl_start:bsl_end])
     if np.isnan(baseline):
         raise ValueError('Baseline could not be determined. Will lead to downstream issues.')
-    
+
     return baseline, bsl_var, bsl_start, bsl_end, bsl_duration
 
 
