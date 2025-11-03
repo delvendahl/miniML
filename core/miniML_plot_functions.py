@@ -142,7 +142,10 @@ class miniML_plots():
             plt.tick_params('x', labelbottom=False)
             _ = plt.subplot(212, sharex=ax1)
             if plot_filtered_trace:
-                main_trace = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
+                if self.detection.convolve_win > 0:
+                    main_trace = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
+                else:
+                    main_trace = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
                 plt.plot(self.detection.trace.time_axis, self.detection.trace.data, c='k', alpha=0.4)
 
             else:

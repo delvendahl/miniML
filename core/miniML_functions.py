@@ -1,6 +1,6 @@
 from __future__ import annotations
+from collections import namedtuple
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 # - - - - - - - - - - - - - - - - - - - - - - -
@@ -32,7 +32,7 @@ def get_event_peak(data: np.ndarray, event_num: int, add_points: int, window_siz
 
 
 def get_event_baseline(data: np.ndarray, duration: int, event_num: int, add_points, diffs: np.ndarray, 
-                       peak_positions: np.ndarray, positions: np.ndarray) -> tuple[float, float]:
+                       peak_positions: np.ndarray, positions: np.ndarray):
     """
     Calculate the baseline and baseline variance for an event in the given data.
 
@@ -42,14 +42,15 @@ def get_event_baseline(data: np.ndarray, duration: int, event_num: int, add_poin
     - event_num (int): The index of the event.
     - add_points (int): The number of additional points to consider.
     - diffs (np.ndarray): The differences between consecutive peak positions.
-    - peak_positions (np.ndarray): The positions of the peaks.
-    - positions (np.ndarray): The positions of the events.
+    - peak_positions (np.ndarray): The positions of the peaks relative to start of the event snippets.
+    - positions (np.ndarray): The absolute positions of the events in the main trace.
 
     Returns:
     - baseline (float): The calculated baseline.
     - bsl_var (float): The calculated baseline variance.
+    - bsl_start (int): The starting index for baseline calculation.
+    - bsl_end (int): The ending index for baseline calculation.
     """
-
     previous_peak_in_trace = int(peak_positions[event_num-1] + positions[event_num-1] - add_points)
     steepest_rise_in_trace = int(positions[event_num])
 
@@ -60,9 +61,9 @@ def get_event_baseline(data: np.ndarray, duration: int, event_num: int, add_poin
         else:
             min_position = np.argmin(data[add_points-dd:add_points]) + (add_points - dd)
 
-        bsl_duration = int(duration * 0.5) # make baseline duration shorter if previous event is close
-        bsl_start = (min_position - bsl_duration) if (min_position - bsl_duration) > 0 else 0
-        bsl_end = (min_position + bsl_duration)
+        bsl_duration = int(duration / 10) # make baseline duration shorter if previous event is close
+        bsl_start = (min_position - bsl_duration // 2) if (min_position - bsl_duration // 2) > 0 else 0
+        bsl_end = (min_position + bsl_duration // 2)
     else:
         bsl_duration = duration
         bsl_end = (add_points - (peak_positions[event_num] - add_points) * 3)
@@ -70,20 +71,24 @@ def get_event_baseline(data: np.ndarray, duration: int, event_num: int, add_poin
             bsl_end = bsl_duration
         bsl_start = (bsl_end - bsl_duration) if (bsl_end - bsl_duration) > 0 else 0
 
-    baseline, bsl_var = np.mean(data[bsl_start:bsl_end]), np.std(data[bsl_start:bsl_end])
-
-    if baseline >= data[peak_positions[event_num]]:
+    if np.mean(data[bsl_start:bsl_end]) >= data[peak_positions[event_num]]:
         min_position = np.argmin(data[int(add_points/2):add_points]) + int(add_points/2)
 
-        bsl_duration = int(duration * 0.5)
-        bsl_start = (min_position - bsl_duration) if (min_position - bsl_duration) > 0 else 0
-        bsl_end = (min_position + bsl_duration)
+        bsl_duration = int(duration / 4)
+        bsl_start = (min_position - bsl_duration // 2) if (min_position - bsl_duration // 2) > 0 else 0
+        bsl_end = (min_position + bsl_duration // 2)
 
     baseline, bsl_var = np.mean(data[bsl_start:bsl_end]), np.std(data[bsl_start:bsl_end])
     if np.isnan(baseline):
         raise ValueError('Baseline could not be determined. Will lead to downstream issues.')
 
-    return baseline, bsl_var, bsl_start, bsl_end, bsl_duration
+    bsl_result = namedtuple('BaselineResult', ['value', 'var', 'start', 'end', 'duration'])
+
+    return bsl_result(value=baseline,
+                      var=bsl_var,
+                      start=bsl_start,
+                      end=bsl_end,
+                      duration=bsl_duration)
 
 
 def get_event_onset(data: np.ndarray, peak_position: int, baseline: float, baseline_var: float) -> int:
@@ -118,8 +123,8 @@ def get_event_onset(data: np.ndarray, peak_position: int, baseline: float, basel
     return onset_position
 
 
-def get_event_risetime(data: np.ndarray, sampling_rate:int, baseline:float, min_percentage: float=10, max_percentage: float=90, 
-                       amplitude:float=None) -> tuple[float, float, float, float, float]:
+def get_event_risetime(data: np.ndarray, sampling_rate: int, baseline: float, min_percentage: float = 10, max_percentage: float = 90,
+                       amplitude: float = None) -> tuple[float, float, float, float, float]:
     """
     Get the risetime of an event (default, 10-90%). Data will automatically be resampled to 200 kHz (by linear interpolation) sampling rate for better accuracy.
 
@@ -139,21 +144,19 @@ def get_event_risetime(data: np.ndarray, sampling_rate:int, baseline:float, min_
     - max_value_rise: A float representing the value of the resampled data at max_position_rise
     """
 
-    if not (0 <= min_percentage < max_percentage) and (min_percentage < max_percentage <= 100):
+    if min_percentage > max_percentage or min_percentage <= 0 or max_percentage >= 100:
         raise ValueError('Invalid risetime parameters.')
 
     amplitude = data[-1] - baseline if not amplitude else amplitude
 
     target_sampling_rate = 200_000 # Hz
     target_sampling = 1/target_sampling_rate
-
-    current_sampling_rate = sampling_rate
-    current_sampling = 1/current_sampling_rate
+    current_sampling = 1/sampling_rate
 
     time_ax_original = np.arange(0, data.shape[0]) * current_sampling
     resampled_time_ax = np.arange(0, time_ax_original[-1] + target_sampling, target_sampling)
 
-    rise_data = np.interp(resampled_time_ax, time_ax_original, data, left=None, right=None, period=None)
+    rise_data = np.interp(resampled_time_ax, time_ax_original, data)
 
     min_level = baseline + (amplitude * min_percentage / 100)
     max_level = baseline + (amplitude * max_percentage / 100)
@@ -170,8 +173,8 @@ def get_event_risetime(data: np.ndarray, sampling_rate:int, baseline:float, min_
     #     max_position_rise = rise_data.shape[0] - 1 # peak_position
     rise_min_level_crossing = np.argmax(rise_min_threshold)
     rise_max_level_crossing = np.argmax(rise_max_threshold)
-    min_position_rise = (rise_data.shape[0]) - rise_min_level_crossing
-    max_position_rise = (rise_data.shape[0]) - rise_max_level_crossing
+    min_position_rise = rise_data.shape[0] - rise_min_level_crossing
+    max_position_rise = rise_data.shape[0] - rise_max_level_crossing
     if max_position_rise <= min_position_rise or min_position_rise==0 or max_position_rise >= rise_data.shape[0] - 1:
         min_position_rise = 0
         max_position_rise = rise_data.shape[0] - 1
@@ -179,13 +182,13 @@ def get_event_risetime(data: np.ndarray, sampling_rate:int, baseline:float, min_
     else:
         risetime = max_position_rise - min_position_rise
 
-    risetime = risetime * (1/target_sampling_rate)
+    risetime *= 1/target_sampling_rate
     
     min_value_rise = rise_data[min_position_rise]
-    min_position_rise = min_position_rise * (1/target_sampling_rate)
-    
+    min_position_rise *= 1/target_sampling_rate
+
     max_value_rise = rise_data[max_position_rise]
-    max_position_rise = max_position_rise * (1/target_sampling_rate)
+    max_position_rise *= 1/target_sampling_rate
 
     return risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise
 
@@ -208,14 +211,12 @@ def get_event_halfdecay_time(data: np.ndarray, peak_position: int, baseline: flo
     halfdecay_position: int
         The position of the halfdecay in the data.
     halfdecay_time: int
-        The halfdecay time in points.
+        The interval between peak and halfdecay position.
     """
 
     level = baseline + (data[peak_position] - baseline) / 2
-    halfdecay_level = np.argmax(data[peak_position:] < level)
-    
-    halfdecay_position = int(peak_position + halfdecay_level)
-    halfdecay_time = halfdecay_level
+    halfdecay_time = np.argmax(data[peak_position:] < level)
+    halfdecay_position = int(peak_position + halfdecay_time)
     
     return halfdecay_position, halfdecay_time
 
@@ -249,7 +250,8 @@ def get_event_charge(data: np.ndarray, start_point: int, end_point: int, baselin
     return charge
 
 
-def get_event_halfwidth(event_data: np.ndarray, peak_index: int, baseline: float, amplitude: float, sampling_rate: float) -> tuple[float, float, float]:
+def get_event_halfwidth(event_data: np.ndarray, peak_index: int, baseline: float, amplitude: float, 
+                        sampling_rate: float) -> tuple[float, float, float]:
     """
     Calculates the half-width, rise time to half-amplitude, and decay time to half-amplitude of an event.
 
@@ -264,6 +266,7 @@ def get_event_halfwidth(event_data: np.ndarray, peak_index: int, baseline: float
     - A tuple (half_width, t_rise_half, t_decay_half) in seconds.
     - Returns (np.nan, np.nan, np.nan) if calculation is not possible.
     """
+    
     if peak_index < 0 or peak_index >= len(event_data) or amplitude <= 0 or sampling_rate <= 0:
         return np.nan, np.nan, np.nan
 
@@ -318,7 +321,6 @@ def get_event_halfwidth(event_data: np.ndarray, peak_index: int, baseline: float
                         else:
                             t_rise_half = time1_rise + (time2_rise - time1_rise) * (half_amp_level - val1_rise) / (val2_rise - val1_rise)
 
-
     # Find decaying phase 50% crossing
     # Search from peak_index to end
     decaying_phase_data = event_data[peak_index:]
@@ -360,7 +362,6 @@ def get_event_halfwidth(event_data: np.ndarray, peak_index: int, baseline: float
             else: # No adjacent points found for interpolation
                  # This case implies the data drops below half_amp_level not adjacently after being above it
                  pass
-
 
     if np.isnan(t_rise_half) or np.isnan(t_decay_half):
         return np.nan, np.nan, np.nan
