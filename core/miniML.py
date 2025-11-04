@@ -13,11 +13,9 @@ from scipy.optimize import curve_fit
 from scipy.ndimage import maximum_filter1d
 from miniML_functions import (get_event_peak, get_event_baseline, get_event_onset, get_event_risetime, 
                               get_event_halfdecay_time, get_event_charge, get_event_halfwidth)
-from miniML_updated_functions import get_event_baseline_new, get_event_baseline_v2
+from miniML_updated_functions import get_event_baseline_v2
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-keras.mixed_precision.set_global_policy("mixed_float16")
 
 #  --------------------------------------------------  #
 #  general functions                                   #
@@ -741,7 +739,7 @@ class EventDetection():
         if stride <= 0 or stride > win_size:
             raise ValueError('Invalid stride')
         
-        ds = tf.keras.utils.timeseries_dataset_from_array(data=np.expand_dims(data, axis=1).astype(np.float16), 
+        ds = tf.keras.utils.timeseries_dataset_from_array(data=np.expand_dims(data, axis=1).astype(np.float32), 
                                                           targets=None, 
                                                           sequence_length=win_size, 
                                                           sequence_stride=stride,

@@ -1422,6 +1422,7 @@ class AutoSettingsWindow(QDialog):
 
         top_layout = QHBoxLayout()
         self.tracePlot = pg.PlotWidget()
+        self.gradient = np.gradient(parent.trace.data)
         self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color=parent.settings.colors[3], width=1), clear=True)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)
