@@ -760,13 +760,14 @@ class minimlGuiMain(QMainWindow):
         n_batches = np.floor(n_batches/5)
         tf.get_logger().setLevel('ERROR')
 
-        with pg.ProgressDialog('Detecting events', minimum=0, maximum=n_batches, busyCursor=True, cancelText=None) as self.dlg:
+        with pg.ProgressDialog(labelText='Detecting events', minimum=0, maximum=int(n_batches), 
+                               busyCursor=True, cancelText=None, wait=0) as self.dlg:
             def update_progress():
                 self.dlg += 1
         
             class CustomCallback(tf.keras.callbacks.Callback):
                 def on_predict_batch_end(self, batch, logs=None):
-                    if batch % 5 == 0: 
+                    if batch % 5 == 0 and batch > 0:
                         update_progress()
 
             self.detection = EventDetection(data=self.trace,
