@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from miniML import EventDetection, exp_fit
 from scipy.ndimage import maximum_filter1d
-
+import matplotlib.style as mplstyle
+mplstyle.use('fast')
 
 
 class miniML_plots():
