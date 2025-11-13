@@ -7,6 +7,7 @@ import matplotlib.style as mplstyle
 mplstyle.use('fast')
 
 
+
 class miniML_plots():
     '''
     miniML plotting class. Allows calling multiple standard plots based on miniML EventDetection objection
@@ -31,7 +32,10 @@ class miniML_plots():
         fig, axs = plt.subplots(3, sharex=True, num='gradient search')
 
         mini_trace = self.detection.trace.data
-        filtered_trace = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
+        if self.detection.convolve_win > 0:
+            filtered_trace = self.detection.hann_filter(data=self.detection.trace.data, filter_size=self.detection.convolve_win)
+        else:
+            filtered_trace = self.detection.lowpass_filter(data=self.detection.trace.data, cutoff=self.detection.trace.sampling_rate / self.detection.filter_factor, order=4)
 
         filtered_prediction = maximum_filter1d(self.detection.prediction, size=int(5*self.detection.interpol_factor), origin=-2)
 
@@ -93,6 +97,7 @@ class miniML_plots():
         ''' Plot event amplitude or frequency histogram '''
         if not self.detection.events_present():
             return
+        
         if plot == 'frequency':
             data = np.diff(self.detection.event_locations * self.detection.trace.sampling, prepend=0)
             xlab_str = 'inter-event interval (s)'
@@ -101,8 +106,10 @@ class miniML_plots():
             xlab_str = f'amplitude ({self.detection.trace.y_unit})'
         else:
             return
+        
         histtype = 'step' if cumulative else 'bar'
         ylab_str = 'cumulative frequency' if cumulative else 'count'
+
         fig = plt.figure(f'{plot}_histogram')
         plt.hist(data, bins='auto', cumulative=cumulative, density=cumulative, histtype=histtype, color=self.main_trace_color)
         plt.ylabel(ylab_str)
@@ -163,9 +170,7 @@ class miniML_plots():
 
                     plt.scatter(bsl_starts, self.detection.event_bsls, c=self.red_color, zorder=2, s=20, label='baseline')
                     plt.scatter(bsl_ends, self.detection.event_bsls, c=self.red_color, zorder=2, s=20)
-                    plt.hlines(self.detection.event_bsls,
-                            bsl_starts,
-                            bsl_ends, color=self.red_color, zorder=2, ls='--', lw=2)
+                    plt.hlines(self.detection.event_bsls, bsl_starts, bsl_ends, color=self.red_color, zorder=2, ls='--', lw=2)
 
                     ### remove np.nans from halfdecay
                     half_decay_for_plot = self.detection.half_decay[np.argwhere(~np.isnan(self.detection.half_decay)).flatten()].astype(np.int64)
@@ -177,8 +182,8 @@ class miniML_plots():
 
                 data_range = np.abs(np.max(main_trace) - np.min(main_trace))
                 dat_min = np.min(main_trace)
-                plt.eventplot(self.detection.event_peak_times, lineoffsets=dat_min - data_range/15, 
-                                linelengths=data_range/20, color='k', lw=1.5)
+                plt.eventplot(self.detection.event_peak_times, lineoffsets=dat_min - data_range/15,
+                              linelengths=data_range/20, color='k', lw=1.5)
 
             plt.tick_params('x')
             plt.ylabel(f'{self.detection.trace.y_unit}')
