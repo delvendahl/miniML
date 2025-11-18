@@ -19,10 +19,11 @@ class miniML_plots():
     '''
     def __init__(self, data: EventDetection) -> None:
         self.detection = data
-        self.main_trace_color = '#014182' # Blue variant to be used in plots.
-        self.orange_color = '#f0833a' # orange variant to be used in plots.
-        self.red_color = '#a90308'
+        self.main_trace_color = '#014182'
+        self.orange_color = '#f0833a'
         self.green_color = '#287c37'
+        self.red_color = '#a90308'
+        self.cyan_color = '#17becf'
 
         
     def plot_gradient_search(self):
@@ -68,7 +69,7 @@ class miniML_plots():
             return
         
         events = self.detection.events[self.detection.singular_event_indices]
-        event_x = np.arange(0, events.shape[1]) * self.detection.trace.sampling
+        event_x = np.arange(0, events.shape[1] * self.detection.trace.sampling, self.detection.trace.sampling)
         event_average = np.mean(events, axis=0)
         event_fit = exp_fit(event_x[self.detection.avg_decay_fit_start:], *self.detection.avg_decay_fit) * self.detection.event_direction
 
@@ -177,8 +178,8 @@ class miniML_plots():
                     half_decay_times_for_plot = self.detection.half_decay_times[np.argwhere(~np.isnan(self.detection.half_decay_times)).flatten()]
                     plt.scatter(half_decay_times_for_plot, main_trace[half_decay_for_plot], c=self.green_color, s=20, zorder=2, label='half decay')
 
-                    plt.scatter(self.detection.min_positions_rise, self.detection.min_values_rise, c='magenta', s=20, zorder=2, label='10-90 rise')
-                    plt.scatter(self.detection.max_positions_rise, self.detection.max_values_rise, c='magenta', s=20, zorder=2)
+                    plt.scatter(self.detection.min_positions_rise, self.detection.min_values_rise, c=self.cyan_color, s=20, zorder=2, label='10-90 rise')
+                    plt.scatter(self.detection.max_positions_rise, self.detection.max_values_rise, c=self.cyan_color, s=20, zorder=2)
 
                 data_range = np.abs(np.max(main_trace) - np.min(main_trace))
                 dat_min = np.min(main_trace)

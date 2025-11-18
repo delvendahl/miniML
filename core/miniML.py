@@ -139,7 +139,7 @@ class MiniTrace():
     @property
     def time_axis(self) -> np.ndarray:
         ''' Returns time axis as numpy array '''
-        return np.arange(0, len(self.data)) * self.sampling
+        return np.arange(0, len(self.data) * self.sampling, self.sampling)
 
     @property
     def total_time(self) -> float:
