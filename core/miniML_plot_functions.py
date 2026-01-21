@@ -60,7 +60,7 @@ class miniML_plots():
         plt.show()
 
         
-    def plot_event_overlay(self) -> None:
+    def plot_event_overlay(self, save_fig: str='') -> None:
         '''
         plot the average event waveform overlayed on top of the individual events
         plus the fitted event.
@@ -82,19 +82,35 @@ class miniML_plots():
         plt.ylabel(f'{self.detection.trace.y_unit}')
         plt.xlabel('time (s)')
         plt.legend(loc='upper right')
-        plt.show()
+        if save_fig:
+            if not save_fig.endswith(('.png', '.jpg', '.jpeg', '.svg', '.pdf')):
+                save_fig = save_fig + '.pdf'
+            plt.savefig(save_fig, format=save_fig.split('.')[-1])
+            plt.clf()
+            plt.close()
+            return
+        else:
+            plt.show()
 
 
-    def plot_singular_event_average(self):
+    def plot_singular_event_average(self, save_fig: str='') -> None:
         '''Plot event overlay + avg for events that have no overlapping events'''
         events = self.detection.events[self.detection.singular_event_indices]
         fig = plt.figure(f'singular_events')
         plt.plot(events.T, c=self.main_trace_color, alpha=0.3)
         plt.plot(np.mean(events.T, axis=1), c=self.red_color, linewidth='3', label='average event')
-        plt.show()
+        if save_fig:
+            if not save_fig.endswith(('.png', '.jpg', '.jpeg', '.svg', '.pdf')):
+                save_fig = save_fig + '.pdf'
+            plt.savefig(save_fig, format=save_fig.split('.')[-1])
+            plt.clf()
+            plt.close()
+            return
+        else:
+            plt.show()
 
 
-    def plot_event_histogram(self, plot: str='amplitude', cumulative: bool=False) -> None:
+    def plot_event_histogram(self, plot: str='amplitude', cumulative: bool=False, save_fig: str='') -> None:
         ''' Plot event amplitude or frequency histogram '''
         if not self.detection.events_present():
             return
@@ -115,7 +131,15 @@ class miniML_plots():
         plt.hist(data, bins='auto', cumulative=cumulative, density=cumulative, histtype=histtype, color=self.main_trace_color)
         plt.ylabel(ylab_str)
         plt.xlabel(xlab_str)
-        plt.show()
+        if save_fig:
+            if not save_fig.endswith(('.png', '.jpg', '.jpeg', '.svg', '.pdf')):
+                save_fig = save_fig + '.pdf'
+            plt.savefig(save_fig, format=save_fig.split('.')[-1])
+            plt.clf()
+            plt.close()
+            return
+        else:
+            plt.show()
 
 
     def plot_prediction(self, include_data: bool=False, plot_event_params: bool=False, plot_filtered_prediction: bool=False, 
@@ -192,9 +216,9 @@ class miniML_plots():
         plt.xlabel('time (s)')
         plt.legend(loc='upper right')
         if save_fig:
-            if not save_fig.endswith('.svg'):
-                save_fig = save_fig + '.svg'
-            plt.savefig(save_fig, format='svg')
+            if not save_fig.endswith(('.png', '.jpg', '.jpeg', '.svg', '.pdf')):
+                save_fig = save_fig + '.pdf'
+            plt.savefig(save_fig, format=save_fig.split('.')[-1])
             plt.clf()
             plt.close()
             return
@@ -238,9 +262,10 @@ class miniML_plots():
         plt.ylabel(f'{self.detection.trace.y_unit}')
         plt.xlabel('time in points')
         if save_fig:
-            if not save_fig.endswith('.svg'):
-                save_fig = save_fig + '.svg'
-            plt.savefig(save_fig, format='svg')
+            if not save_fig.endswith(('.png', '.jpg', '.jpeg', '.svg', '.pdf')):
+                save_fig = save_fig + '.pdf'
+            plt.savefig(save_fig, format=save_fig.split('.')[-1])
+            plt.clf()
             plt.close()
         else:
             plt.show()
@@ -265,9 +290,10 @@ class miniML_plots():
         plt.ylabel(f'{self.detection.trace.y_unit}')
         
         if save_fig:
-            if not save_fig.endswith('.svg'):
-                save_fig = save_fig + '.svg'
-            plt.savefig(save_fig, format='svg')
+            if not save_fig.endswith(('.png', '.jpg', '.jpeg', '.svg', '.pdf')):
+                save_fig = save_fig + '.pdf'
+            plt.savefig(save_fig, format=save_fig.split('.')[-1])
+            plt.clf()
             plt.close()
             return
         plt.show()
