@@ -1560,7 +1560,7 @@ class EventAnalysis(EventDetection):
         self.event_locations = self.event_locations.astype(np.int64)
         self.events = self.trace._extract_event_data(self.event_locations, before=self.add_points, 
                                                      after=self.window_size + self.add_points)
-        self.gradeint_convolve_win = gradient_convolve_win
+        self.gradient_convolve_win = gradient_convolve_win
         
     def eval_events(self, filter: bool=True) -> None:
         if self.event_locations.shape[0] > 0:
