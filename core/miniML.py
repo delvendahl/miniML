@@ -1225,6 +1225,7 @@ class EventDetection():
                                bounds=([0, 0, -np.inf], [np.inf, 1e3, np.inf]))
             return fit
         except RuntimeError:
+            self.avg_decay_fit_start = np.nan
             return np.full(3, np.nan)
 
 

@@ -71,13 +71,14 @@ class miniML_plots():
         events = self.detection.events[self.detection.singular_event_indices]
         event_x = np.arange(0, events.shape[1] * self.detection.trace.sampling, self.detection.trace.sampling)
         event_average = np.mean(events, axis=0)
-        event_fit = exp_fit(event_x[self.detection.avg_decay_fit_start:], *self.detection.avg_decay_fit) * self.detection.event_direction
-
+        
         fig = plt.figure('Event average and fit')
         plt.plot(event_x, events.T, c=self.main_trace_color, alpha=0.3)
         plt.plot(event_x, event_average, c=self.red_color, linewidth='3', label='average event')
         
-        plt.plot(event_x[self.detection.avg_decay_fit_start:], event_fit, c=self.orange_color, ls='--', label='fit')
+        if not np.isnan(self.detection.avg_decay_fit_start):
+            event_fit = exp_fit(event_x[self.detection.avg_decay_fit_start:], *self.detection.avg_decay_fit) * self.detection.event_direction
+            plt.plot(event_x[self.detection.avg_decay_fit_start:], event_fit, c=self.orange_color, ls='--', label='fit')
         
         plt.ylabel(f'{self.detection.trace.y_unit}')
         plt.xlabel('time (s)')
