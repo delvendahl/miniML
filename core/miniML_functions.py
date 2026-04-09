@@ -245,7 +245,10 @@ def get_event_charge(data: np.ndarray, start_point: int, end_point: int, baselin
     """
 
     integrate_array = (data[start_point:end_point]) - baseline
-    charge = np.trapz(integrate_array, dx=sampling)
+    try:
+        charge = np.trapezoid(integrate_array, dx=sampling)
+    except AttributeError:
+        charge = np.trapz(integrate_array, dx=sampling)
 
     return charge
 

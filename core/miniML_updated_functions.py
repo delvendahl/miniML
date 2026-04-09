@@ -15,7 +15,14 @@ def get_segment_stats(breakpoints: list, data: np.ndarray):
         p2 -= 1
         values.append(np.median(data[p1:p2]))
         variances.append(np.std(data[p1:p2]))
-        slopes.append(np.polynomial.polynomial.Polynomial.fit(np.arange(p1,p2), data[p1:p2], 1).convert().coef[1])
+        if p2 - p1 > 1:
+            coef = np.polynomial.polynomial.Polynomial.fit(np.arange(p1,p2), data[p1:p2], 1).convert().coef
+            if len(coef) > 1:
+                slopes.append(coef[1])
+            else:
+                slopes.append(0.0)
+        else:
+            slopes.append(0.0)
 
     return np.array(values), np.array(variances), np.array(slopes)
 
@@ -113,7 +120,7 @@ def get_event_baseline_v2(data: np.ndarray, bsl_duration: int, event_num: int, r
     if np.median(data[bsl_start : bsl_end]) >= data[relative_event_position]:
         # print('Baseline above event position. Using minimum for baseline calculation.')
         min_search_start = peak1_position if previous_peak_present else 0
-        min_position = np.argmin(np.trace[min_search_start:relative_event_position]) + min_search_start
+        min_position = np.argmin(data[min_search_start:relative_event_position]) + min_search_start
 
         bsl_start = min_position - 3
         bsl_end = min_position + 3
@@ -216,20 +223,23 @@ def get_event_baseline_new(data: np.ndarray, bsl_duration: int, event_num: int, 
     if bsl_end > bsl_duration:
         bsl_snippet = data[bsl_end - bsl_duration: bsl_end]
         fit = np.polynomial.polynomial.Polynomial.fit(np.arange(bsl_snippet.shape[0]), bsl_snippet, 1)
+        coef = fit.convert().coef
         if debug:
-            print(fit.convert().coef)
-        if fit.convert().coef[1] < -0.12 and bsl_duration > 20:
+            print(coef)
+        if len(coef) > 1 and coef[1] < -0.12 and bsl_duration > 20:
             bsl_duration = bsl_duration // 2
             bsl_snippet = data[bsl_end - bsl_duration: bsl_end]
             fit = np.polynomial.polynomial.Polynomial.fit(np.arange(bsl_snippet.shape[0]), bsl_snippet, 1)
+            coef = fit.convert().coef
             if debug:
-                print(fit.convert().coef)
-            if fit.convert().coef[1] < -0.12 and bsl_duration > 20:
+                print(coef)
+            if len(coef) > 1 and coef[1] < -0.12 and bsl_duration > 20:
                 bsl_duration = bsl_duration // 2
                 bsl_snippet = data[bsl_end - bsl_duration: bsl_end]
                 fit = np.polynomial.polynomial.Polynomial.fit(np.arange(bsl_snippet.shape[0]), bsl_snippet, 1)
+                coef = fit.convert().coef
                 if debug:
-                    print(fit.convert().coef)
+                    print(coef)
         if debug: 
             plt.plot(np.arange(bsl_end - bsl_duration, bsl_end), data[bsl_end - bsl_duration: bsl_end], c='darkorange')
             plt.axhline(np.median(data[bsl_end - bsl_duration: bsl_end]), linestyle='--', c='gray')
