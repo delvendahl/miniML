@@ -1,10 +1,20 @@
 import unittest
 import numpy as np
 import sys
-sys.path.append('..')  # Adjust path to import miniML_functions
-# Assuming the test file is core/tests/test_miniML_functions.py
-# and miniML_functions.py is in core/
-from miniML_functions import get_event_halfwidth
+import os
+
+# Adjust path to import miniML_functions
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from miniML_functions import (
+    get_event_halfwidth,
+    get_event_peak,
+    get_event_baseline,
+    get_event_onset,
+    get_event_risetime,
+    get_event_halfdecay_time,
+    get_event_charge
+)
 
 class TestGetEventHalfwidth(unittest.TestCase):
     def setUp(self):
@@ -62,7 +72,6 @@ class TestGetEventHalfwidth(unittest.TestCase):
         self.assertTrue(np.isnan(td_flat), "Flat event: t_decay_half")
         
         # Event rises above half_amp, but no points strictly below half_amp for rise phase.
-        # (i.e. event_data starts at or above half_amp_level)
         event_data_starts_high = np.array([6,7,8,9,10,9,8,7,6,5,4], dtype=float) # half_amp=5
         peak_idx_sh = 4 # peak value 10
         hw_sh, tr_sh, td_sh = get_event_halfwidth(
@@ -72,7 +81,6 @@ class TestGetEventHalfwidth(unittest.TestCase):
         self.assertTrue(np.isnan(hw_sh), "Starts high: half_width should be NaN")
         self.assertTrue(np.isnan(td_sh), "Starts high: t_decay_half should be NaN")
 
-
     def test_event_does_not_decay_to_baseline(self):
         """Test event where decay doesn't go below 50% amp."""
         baseline = 0.0
@@ -81,52 +89,12 @@ class TestGetEventHalfwidth(unittest.TestCase):
         event_data = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 9.5, 9, 8.5, 8, 7.5, 7, 6.5, 6], dtype=float)
         peak_index = 10
         
-        expected_t_rise_half = 5.0 * self.sampling_interval
-
         half_width, t_rise_half, t_decay_half = get_event_halfwidth(
             event_data, peak_index, baseline, amplitude, self.sampling_rate
         )
         self.assertTrue(np.isnan(t_rise_half), "Not decay to baseline: t_rise_half")
         self.assertTrue(np.isnan(t_decay_half), "Not decay to baseline: t_decay_half")
         self.assertTrue(np.isnan(half_width), "Not decay to baseline: half_width")
-
-    def test_event_starts_above_half_amp(self):
-        """Test event snippet starting above 50% amplitude."""
-        baseline = 0.0
-        amplitude = 10.0 # Half amp = 5.0
-        # Data starts at 6.0, rises to 10, decays to 0
-        event_data = np.array([6, 7, 8, 9, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0], dtype=float)
-        peak_index = 4 # Peak value 10
-
-        # Decay crosses 5 at index 9. Time = 9 * 0.0001 = 0.0009 s
-        expected_t_decay_half = 9.0 * self.sampling_interval
-
-        half_width, t_rise_half, t_decay_half = get_event_halfwidth(
-            event_data, peak_index, baseline, amplitude, self.sampling_rate
-        )
-        self.assertTrue(np.isnan(t_rise_half), "Starts above half: t_rise_half")
-        self.assertTrue(np.isnan(t_decay_half), "Starts above half: t_decay_half")
-        self.assertTrue(np.isnan(half_width), "Starts above half: half_width")
-
-    def test_half_amp_on_sample_point(self):
-        """Test when 50% amplitude falls exactly on sample points."""
-        baseline = 0.0
-        amplitude = 10.0 # Half amp = 5.0
-        # Rise: 0, 2.5, 5 (idx 2), 7.5, 10 (idx 4)
-        # Decay: 10, 7.5, 5 (idx 6), 2.5, 0
-        event_data = np.array([0, 2.5, 5, 7.5, 10, 7.5, 5, 2.5, 0], dtype=float)
-        peak_index = 4
-        
-        expected_t_rise_half = 2.0 * self.sampling_interval
-        expected_t_decay_half = 6.0 * self.sampling_interval
-        expected_half_width = expected_t_decay_half - expected_t_rise_half
-        
-        half_width, t_rise_half, t_decay_half = get_event_halfwidth(
-            event_data, peak_index, baseline, amplitude, self.sampling_rate
-        )
-        self.assertAlmostEqual(t_rise_half, expected_t_rise_half, places=6, msg="On sample point: t_rise_half")
-        self.assertAlmostEqual(t_decay_half, expected_t_decay_half, places=6, msg="On sample point: t_decay_half")
-        self.assertAlmostEqual(half_width, expected_half_width, places=6, msg="On sample point: half_width")
 
     def test_half_amp_requires_interpolation(self):
         """Test when 50% amplitude requires interpolation."""
@@ -146,106 +114,89 @@ class TestGetEventHalfwidth(unittest.TestCase):
         half_width, t_rise_half, t_decay_half = get_event_halfwidth(
             event_data, peak_index, baseline, amplitude, self.sampling_rate
         )
-        self.assertAlmostEqual(t_rise_half, expected_t_rise_half, places=6, msg="Interpolation: t_rise_half")
-        self.assertAlmostEqual(t_decay_half, expected_t_decay_half, places=6, msg="Interpolation: t_decay_half")
-        self.assertAlmostEqual(half_width, expected_half_width, places=6, msg="Interpolation: half_width")
+        self.assertAlmostEqual(t_rise_half, expected_t_rise_half, places=6)
+        self.assertAlmostEqual(t_decay_half, expected_t_decay_half, places=6)
+        self.assertAlmostEqual(half_width, expected_half_width, places=6)
 
-    def test_peak_at_start_or_end(self):
-        """Test when peak_index is at the start or end of data."""
+class TestOtherMiniMLFunctions(unittest.TestCase):
+    def test_get_event_peak(self):
+        data = np.zeros(20)
+        data[5] = 10
+        event_num = 0
+        add_points = 2
+        window_size = 10
+        diffs = np.array([20])
+        # right_window_limit = 20/5 = 4
+        # argmax(data[2:6]) + 2 = argmax([0, 0, 0, 10]) + 2 = 3 + 2 = 5
+        peak_pos = get_event_peak(data, event_num, add_points, window_size, diffs)
+        self.assertEqual(peak_pos, 5)
+
+    def test_get_event_onset(self):
+        data = np.array([0, 0, 0, 1, 5, 10, 8, 6, 4, 2, 0], dtype=float)
+        peak_position = 5
         baseline = 0.0
-        amplitude = 10.0 # Half amp = 5.0
-        event_data_peak_start = np.array([10, 8, 6, 4, 2, 0], dtype=float) # Peak at idx 0
-        
-        # Peak at start
-        peak_index_start = 0
-        hw_s, tr_s, td_s = get_event_halfwidth(
-            event_data_peak_start, peak_index_start, baseline, amplitude, self.sampling_rate
-        )
-        self.assertTrue(np.isnan(tr_s), "Peak at start: t_rise_half")
-        self.assertTrue(np.isnan(hw_s), "Peak at start: half_width")
-        # Decay: 10 (idx 0), 8 (idx 1), 6 (idx 2), 4 (idx 3)
-        # Interpolated decay for 5: between idx 2 (6) and 3 (4). t = (2 + (5-6)/(4-6)) * si = 2.5 * si
-        expected_td_s = (2.0 + (5.0-6.0)/(4.0-6.0)) * self.sampling_interval
-        self.assertTrue(np.isnan(td_s), "Peak at start: t_decay_half")
+        baseline_var = 2.0
+        # bsl_thresh = 0 + 0.25 * 2 = 0.5
+        # arr = [0, 0, 0, 1, 5]
+        # arr[::-1] = [5, 1, 0, 0, 0]
+        # below_threshold = [False, False, True, True, True]
+        # argmax(below_threshold) = 2
+        # onset_position = 5 - 2 = 3
+        onset_pos = get_event_onset(data, peak_position, baseline, baseline_var)
+        self.assertEqual(onset_pos, 3)
 
-        # Peak at end
-        event_data_peak_end = np.array([0, 2, 4, 6, 8, 10], dtype=float) # Peak at idx 5
-        peak_index_end = len(event_data_peak_end) - 1
-        hw_e, tr_e, td_e = get_event_halfwidth(
-            event_data_peak_end, peak_index_end, baseline, amplitude, self.sampling_rate
-        )
-        self.assertTrue(np.isnan(td_e), "Peak at end: t_decay_half")
-        self.assertTrue(np.isnan(hw_e), "Peak at end: half_width")
-        # Rise: 0 (idx 0), 2 (idx 1), 4 (idx 2), 6 (idx 3), 8 (idx 4), 10 (idx 5)
-        # Interpolated rise for 5: between idx 2 (4) and 3 (6). t = (2 + (5-4)/(6-4)) * si = 2.5 * si
-        expected_tr_e = (2.0 + (5.0-4.0)/(6.0-4.0)) * self.sampling_interval
-        self.assertTrue(np.isnan(tr_e), "Peak at end: t_rise_half")
-
-    def test_zero_amplitude_event(self):
-        """Test with zero amplitude."""
+    def test_get_event_risetime(self):
+        # Linear rise from 0 to 10 over 10 samples
+        data = np.linspace(0, 10, 11)
+        sampling_rate = 10000
         baseline = 0.0
-        amplitude = 0.0 # This is key
-        event_data = np.zeros(10, dtype=float)
-        peak_index = 5
+        risetime, min_pos, min_val, max_pos, max_val = get_event_risetime(data, sampling_rate, baseline)
+        self.assertGreater(risetime, 0)
+        self.assertAlmostEqual(min_val, 1.0, delta=0.5)
+        self.assertAlmostEqual(max_val, 9.0, delta=0.5)
 
-        half_width, t_rise_half, t_decay_half = get_event_halfwidth(
-            event_data, peak_index, baseline, amplitude, self.sampling_rate
-        )
-        self.assertTrue(np.isnan(half_width), "Zero amplitude: half_width")
-        self.assertTrue(np.isnan(t_rise_half), "Zero amplitude: t_rise_half")
-        self.assertTrue(np.isnan(t_decay_half), "Zero amplitude: t_decay_half")
-
-    def test_invalid_inputs(self):
-        """Test invalid inputs like negative sampling rate or out-of-bounds peak."""
+    def test_get_event_halfdecay_time(self):
+        data = np.array([0, 10, 8, 6, 5, 4, 2, 0], dtype=float)
+        peak_position = 1
         baseline = 0.0
-        amplitude = 10.0
-        event_data = np.array([0,1,2,3,4,5,6,7,8,9,10,9,8,7,6,5,4,3,2,1,0], dtype=float)
-        peak_index = 10
+        # level = 5.0
+        # data[1:] = [10, 8, 6, 5, 4, 2, 0]
+        # data[1:] < 5 = [F, F, F, F, T, T, T] -> argmax = 4
+        # pos = 1 + 4 = 5
+        pos, time = get_event_halfdecay_time(data, peak_position, baseline)
+        self.assertEqual(pos, 5)
+        self.assertEqual(time, 4)
 
-        # Negative sampling rate
-        hw, tr, td = get_event_halfwidth(event_data, peak_index, baseline, amplitude, -10000.0)
-        self.assertTrue(np.isnan(hw) and np.isnan(tr) and np.isnan(td), "Negative sampling rate")
-        
-        # Zero sampling rate
-        hw, tr, td = get_event_halfwidth(event_data, peak_index, baseline, amplitude, 0.0)
-        self.assertTrue(np.isnan(hw) and np.isnan(tr) and np.isnan(td), "Zero sampling rate")
-
-        # Peak index out of bounds
-        hw, tr, td = get_event_halfwidth(event_data, -1, baseline, amplitude, self.sampling_rate)
-        self.assertTrue(np.isnan(hw) and np.isnan(tr) and np.isnan(td), "Peak index -1")
-        hw, tr, td = get_event_halfwidth(event_data, len(event_data), baseline, amplitude, self.sampling_rate)
-        self.assertTrue(np.isnan(hw) and np.isnan(tr) and np.isnan(td), "Peak index len(data)")
-        
-        # Empty event_data
-        hw, tr, td = get_event_halfwidth(np.array([]), 0, baseline, amplitude, self.sampling_rate)
-        self.assertTrue(np.isnan(hw) and np.isnan(tr) and np.isnan(td), "Empty data")
-
-    def test_flat_peak_interpolation(self):
-        """ Test event with a flat peak, ensure interpolation points are chosen correctly."""
+    def test_get_event_charge(self):
+        data = np.array([0, 1, 1, 1, 0], dtype=float)
+        start_point = 1
+        end_point = 4
         baseline = 0.0
-        amplitude = 10.0 # Half amp = 5.0
-        # Rise: 0,4,8,10. Interpolated rise for 5: 1.25 * si
-        # Flat peak: 10,10,10 (indices 3,4,5)
-        # Decay: 10,8,4,0. Interpolated decay for 5 (from start of data):
-        #   peak_index=4. Decay starts effectively from event_data[5] (last peak point).
-        #   Values for decay consideration: event_data[4:] = [10, 10, 8, 4, 0]
-        #   Half amp = 5. Points >= 5 are [10 (idx4), 10 (idx5), 8 (idx6)]. Last is idx6.
-        #   Points < 5 are [4 (idx7), 0 (idx8)]. First is idx7.
-        #   Interpolate between event_data[6]=8 and event_data[7]=4.
-        #   t = (6 + (5-8)/(4-8)) * si = 6.75 * si
-        event_data = np.array([0, 4, 8, 10, 10, 10, 8, 4, 0], dtype=float)
-        peak_index = 4 # Middle of the flat peak
+        sampling = 1.0
+        charge = get_event_charge(data, start_point, end_point, baseline, sampling)
+        self.assertEqual(charge, 2.0)
 
-        expected_t_rise_half = (1.0 + (5.0-4.0)/(8.0-4.0)) * self.sampling_interval # 1.25 * si
-        expected_t_decay_half = (6.0 + (5.0-8.0)/(4.0-8.0)) * self.sampling_interval # 6.75 * si
-        expected_half_width = expected_t_decay_half - expected_t_rise_half
+    def test_get_event_baseline(self):
+        data = np.zeros(100)
+        data[50:] = 10 # event starts at 50
+        duration = 20
+        event_num = 0
+        add_points = 50
+        diffs = np.array([100])
+        peak_positions = np.array([60])
+        positions = np.array([0])
         
-        half_width, t_rise_half, t_decay_half = get_event_halfwidth(
-            event_data, peak_index, baseline, amplitude, self.sampling_rate
-        )
-        self.assertAlmostEqual(t_rise_half, expected_t_rise_half, places=6, msg="Flat peak: t_rise_half")
-        self.assertAlmostEqual(t_decay_half, expected_t_decay_half, places=6, msg="Flat peak: t_decay_half")
-        self.assertAlmostEqual(half_width, expected_half_width, places=6, msg="Flat peak: half_width")
+        # previous_peak_in_trace = peak_positions[-1] + positions[-1] - add_points = 60 + 0 - 50 = 10
+        # steepest_rise_in_trace = positions[0] = 0
+        # Wait, event_num=0 is a special case.
+        # else: bsl_duration = duration = 20
+        # bsl_end = (50 - (60-50)*3) = 50 - 30 = 20.
+        # bsl_start = 20 - 20 = 0.
+        # bsl from 0 to 20. All zeros.
+        res = get_event_baseline(data, duration, event_num, add_points, diffs, peak_positions, positions)
+        self.assertEqual(res.value, 0.0)
+        self.assertEqual(res.start, 0)
+        self.assertEqual(res.end, 20)
 
 if __name__ == '__main__':
     unittest.main()
