@@ -834,7 +834,7 @@ class minimlGuiMain(QMainWindow):
         """
         if not hasattr(self, 'detection'):
             return
-        default_filename = Path(self.filename).with_suffix('')
+        default_filename = Path(self.filename).with_suffix('') if self.filename else Path('')
         file_types = 'CSV (*.csv);;Pickle (*.pickle);;HDF (*.h5 *.hdf *.hdf5)'
         save_filename, selected_filter = QFileDialog.getSaveFileName(self, 'Save file', str(default_filename), file_types)
         

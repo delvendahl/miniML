@@ -1300,6 +1300,7 @@ class EventDetection():
         self.min_positions_rise = np.delete(self.min_positions_rise, event_indices, axis=0)
         self.max_positions_rise = np.delete(self.max_positions_rise, event_indices, axis=0)
         self.half_decay = np.delete(self.half_decay, event_indices, axis=0)
+        self.halfwidths = np.delete(self.halfwidths, event_indices, axis=0)
         self.events = np.delete(self.events, event_indices, axis=0)
         self.event_scores = np.delete(self.event_scores, event_indices, axis=0)
         
