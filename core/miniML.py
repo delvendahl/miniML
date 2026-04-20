@@ -1,5 +1,4 @@
 from __future__ import annotations
-import keras
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
@@ -16,6 +15,7 @@ from miniML_functions import (get_event_peak, get_event_baseline, get_event_onse
 from miniML_updated_functions import get_event_baseline_v2
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 
 #  --------------------------------------------------  #
 #  general functions                                   #
