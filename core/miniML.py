@@ -250,7 +250,7 @@ class MiniTrace():
         series_resistances = []
         for series in series_list:
             sweep_data = []
-            for sweep in range(len(bundle.pul[group][series].children)):
+            for sweep in range(len(bundle.pul[group][series])):
                 if series not in exclude_sweeps:
                     sweep_data.append(bundle.data[group, series, sweep, 0])
                 else:
