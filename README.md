@@ -21,6 +21,18 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 📢 UPDATES
 
+#### 06 May 2026
+
+Updates:
+- saving plots to different formats (e.g., .png, .pdf) is now possible
+
+Bug fixes:
+- fixed a bug in the GUI causing saving to fail after deleting events in the EventViewer
+- the progress bar in the GUI now correctly reflects the progress of event detection
+
+>[!IMPORTANT]
+> This update added an additional dependency (ruptures) that needs to be installed. To install this dependency, run the following command in your Python environment: `pip install ruptures==1.1.10`
+
 #### 13 November 2025
 
 We have added several small updates to miniML that improve performance or fix small bugs. These include:
