@@ -760,13 +760,14 @@ class minimlGuiMain(QMainWindow):
         n_batches = np.floor(n_batches/5)
         tf.get_logger().setLevel('ERROR')
 
-        with pg.ProgressDialog('Detecting events', minimum=0, maximum=n_batches, busyCursor=True, cancelText=None) as self.dlg:
+        with pg.ProgressDialog(labelText='Detecting events', minimum=0, maximum=int(n_batches), 
+                               busyCursor=True, cancelText=None, wait=0) as self.dlg:
             def update_progress():
                 self.dlg += 1
         
             class CustomCallback(tf.keras.callbacks.Callback):
                 def on_predict_batch_end(self, batch, logs=None):
-                    if batch % 5 == 0: 
+                    if batch % 5 == 0 and batch > 0:
                         update_progress()
 
             self.detection = EventDetection(data=self.trace,
@@ -833,7 +834,7 @@ class minimlGuiMain(QMainWindow):
         """
         if not hasattr(self, 'detection'):
             return
-        default_filename = Path(self.filename).with_suffix('')
+        default_filename = Path(self.filename).with_suffix('') if self.filename else Path('')
         file_types = 'CSV (*.csv);;Pickle (*.pickle);;HDF (*.h5 *.hdf *.hdf5)'
         save_filename, selected_filter = QFileDialog.getSaveFileName(self, 'Save file', str(default_filename), file_types)
         
@@ -1422,6 +1423,7 @@ class AutoSettingsWindow(QDialog):
 
         top_layout = QHBoxLayout()
         self.tracePlot = pg.PlotWidget()
+        self.gradient = np.gradient(parent.trace.data)
         self.plotData = self.tracePlot.plot(parent.trace.time_axis, parent.trace.data, pen=pg.mkPen(color=parent.settings.colors[3], width=1), clear=True)
         self.tracePlot.setLabel('bottom', 'Time', 's')
         self.tracePlot.setLabel('left', 'Imon', parent.trace.y_unit)

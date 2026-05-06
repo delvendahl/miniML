@@ -21,6 +21,14 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 📢 UPDATES
 
+#### 13 November 2025
+
+We have added several small updates to miniML that improve performance or fix small bugs. These include:
+- fixed an issue causing risetime positions in the plots not being displayed correctly on the trace
+- improved performance in the GUI
+- added a new method to detect the baseline of events (available in detect_events() method of EventDetection class via use_legacy_baseline_method=False)
+- providing a base model trained using Keras 3 / TensorFlow 2.19
+
 #### 20 March 2025
 
 The latest update introduces updated GUI functionality. The GUI now includes a new version of the EventViewer that allows for more detailed inspection of detected events. The EventViewer now includes infomration on each event, the location in the datatrace, as well as the ability to delete individual events. We also updated the filter and cutout functionality, with enhanced user control.
