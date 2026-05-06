@@ -139,7 +139,7 @@ class MiniTrace():
     @property
     def time_axis(self) -> np.ndarray:
         ''' Returns time axis as numpy array '''
-        return np.arange(0, len(self.data) * self.sampling, self.sampling)
+        return np.arange(len(self.data)) * self.sampling
 
     @property
     def total_time(self) -> float:
@@ -939,7 +939,7 @@ class EventDetection():
                                               add_points=self.add_points, peak_positions=self.event_peak_locations, positions=positions)
             else:
                 baseline = get_event_baseline_v2(data=data, bsl_duration=baseline_duration, event_num=ix, 
-                                                 relative_event_position=self.add_points, peak_position=int(event_peak_pos), positions=positions)
+                                                 relative_event_position=self.add_points, positions=positions)
 
             self.bsl_starts[ix] = baseline.start
             self.bsl_ends[ix] = baseline.end
@@ -1099,7 +1099,7 @@ class EventDetection():
                                           add_points=self.add_points, peak_positions=[event_peak], positions=[self.add_points])
         else:
             baseline = get_event_baseline_v2(data=data, bsl_duration=int(self.window_size * 0.1), event_num=0, relative_event_position=self.add_points, 
-                                              peak_position=event_peak, positions=[self.add_points])
+                                             positions=[self.add_points])
         onset_position = get_event_onset(data=data, peak_position=event_peak, baseline=baseline.value, baseline_var=baseline.var)
                 
         risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise = get_event_risetime(
@@ -1160,6 +1160,8 @@ class EventDetection():
         self.rel_prom_cutoff = rel_prom_cutoff
         self.filter_factor = filter_factor
         self.convolve_win = convolve_win
+        if bsl_win <= 0:
+            raise ValueError('Baseline window size must be greater than 0')
         self.add_points = int(self.window_size / np.round(1 / bsl_win, 1)) # number of additional points to extract before and after the event window for analysis
         
         self.stride_length = stride if stride else round(self.window_size / 30)

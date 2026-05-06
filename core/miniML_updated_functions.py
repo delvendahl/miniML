@@ -55,6 +55,8 @@ def baseline_score(positions: np.ndarray, median_values: np.ndarray, slope_value
         print("position", positions, rank_position)
         
     arr = np.stack([rank_position, rank_median, rank_slope, rank_var])
+    weights = np.asarray(weights, dtype=float)
+
     return weights @ arr
 
 
@@ -69,7 +71,7 @@ def get_event_baseline_v2(data: np.ndarray, bsl_duration: int, event_num: int, r
         previous_peak_present = True
 
     if previous_peak_present:
-        min_size = np.min([bsl_duration // 5, 3]) # ensure min_size >=3
+        min_size = np.max([bsl_duration // 5, 3]) # ensure min_size >=3
         penalty = 0.5
         search_start = previous_peak_position
     else:
@@ -134,7 +136,7 @@ def get_event_baseline_v2(data: np.ndarray, bsl_duration: int, event_num: int, r
     bsl_result = namedtuple('BaselineResult', ['value', 'var', 'start', 'end', 'duration'])
 
     return bsl_result(value=np.median(data[bsl_start : bsl_end]),
-                      var=np.var(data[bsl_start: bsl_end]),
+                      var=np.std(data[bsl_start: bsl_end]),
                       start=bsl_start,
                       end=bsl_end,
                       duration=bsl_end - bsl_start)
