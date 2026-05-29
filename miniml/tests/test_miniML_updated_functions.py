@@ -3,10 +3,7 @@ import numpy as np
 import sys
 import os
 
-# Adjust path to import miniML_updated_functions
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from miniML_updated_functions import (
+from miniml.miniML_updated_functions import (
     get_segment_stats,
     get_steepest_rise_position,
     baseline_score,
