@@ -15,9 +15,9 @@ from scipy.signal import find_peaks, convolve, resample
 from scipy.signal.windows import hann
 from sklearn.preprocessing import scale, minmax_scale
 import sys
-from miniML import MiniTrace, EventDetection, is_keras_model
-from miniML_settings import MinimlSettings
-import FileImport.HekaReader as heka
+from .miniML import MiniTrace, EventDetection, is_keras_model
+from .miniML_settings import MinimlSettings
+from .FileImport import HekaReader as heka
 from scipy.interpolate import  interp1d
 
 
@@ -34,7 +34,10 @@ def get_available_models() -> list:
     Returns a list of available model paths in the /models folder.
     The list only contains relative paths.
     """
-    models_dir = Path(__file__).parent.parent / 'models'
+    # Look for models inside the package directory
+    models_dir = Path(__file__).parent / 'models'
+    if not models_dir.exists():
+        return []
     models = [str(p.relative_to(models_dir)) for p in models_dir.glob('**/*.h5') if is_keras_model(str(p))]
 
     return models
@@ -195,53 +198,57 @@ class minimlGuiMain(QMainWindow):
         viewMenu.addAction(self.eventViewerAction)
 
 
+    def _get_icon(self, icon_name):
+        icon_path = Path(__file__).parent / 'icons' / icon_name
+        return QIcon(str(icon_path))
+
     def _create_toolbar(self):
         self.tb = self.addToolBar('Menu')
         self.tb.setMovable(False)
 
-        self.openAction = QAction(QIcon('icons/load_file_24px_blue.svg'), 'Open...', self)
+        self.openAction = QAction(self._get_icon('load_file_24px_blue.svg'), 'Open...', self)
         self.openAction.setShortcut('Ctrl+O')
         self.tb.addAction(self.openAction)
-        self.filterAction = QAction(QIcon('icons/filter_24px_blue.svg'), 'Filter', self)
+        self.filterAction = QAction(self._get_icon('filter_24px_blue.svg'), 'Filter', self)
         self.filterAction.setShortcut('Ctrl+F')
         self.tb.addAction(self.filterAction)
-        self.infoAction = QAction(QIcon('icons/info_24px_blue.svg'), 'Info', self)
+        self.infoAction = QAction(self._get_icon('info_24px_blue.svg'), 'Info', self)
         self.infoAction.setShortcut('Ctrl+I')
         self.tb.addAction(self.infoAction)
-        self.cutAction = QAction(QIcon('icons/content_cut_24px_blue.svg'), 'Cut trace', self)
+        self.cutAction = QAction(self._get_icon('content_cut_24px_blue.svg'), 'Cut trace', self)
         self.cutAction.setShortcut('Ctrl+X')
         self.tb.addAction(self.cutAction)
-        self.resetAction = QAction(QIcon('icons/restore_page_24px_blue.svg'), 'Reload', self)
+        self.resetAction = QAction(self._get_icon('restore_page_24px_blue.svg'), 'Reload', self)
         self.resetAction.setShortcut('Ctrl+R')
         self.tb.addAction(self.resetAction)
-        self.analyseAction = QAction(QIcon('icons/rocket_launch_24px_blue.svg'), 'Analyse', self)
+        self.analyseAction = QAction(self._get_icon('rocket_launch_24px_blue.svg'), 'Analyse', self)
         self.analyseAction.setShortcut('Ctrl+A')
         self.tb.addAction(self.analyseAction)
-        self.predictionAction = QAction(QIcon('icons/ssid_chart_24px_blue.svg'), 'Prediction', self)
+        self.predictionAction = QAction(self._get_icon('ssid_chart_24px_blue.svg'), 'Prediction', self)
         self.tb.addAction(self.predictionAction)
-        self.summaryAction = QAction(QIcon('icons/functions_24px_blue.svg'), 'Summary', self)
+        self.summaryAction = QAction(self._get_icon('functions_24px_blue.svg'), 'Summary', self)
         self.tb.addAction(self.summaryAction)
-        self.plotAction = QAction(QIcon('icons/insert_chart_24px_blue.svg'), 'Plot', self)
+        self.plotAction = QAction(self._get_icon('insert_chart_24px_blue.svg'), 'Plot', self)
         self.tb.addAction(self.plotAction)
-        self.tableAction = QAction(QIcon('icons/table_24px_blue.svg'), 'Table', self)
+        self.tableAction = QAction(self._get_icon('table_24px_blue.svg'), 'Table', self)
         self.tb.addAction(self.tableAction)
-        self.eventViewerAction = QAction(QIcon('icons/event_mode_24px_blue.svg'), 'Event Viewer', self)
+        self.eventViewerAction = QAction(self._get_icon('event_mode_24px_blue.svg'), 'Event Viewer', self)
         self.eventViewerAction.setShortcut('Ctrl+E')
         self.tb.addAction(self.eventViewerAction)
-        self.saveAction = QAction(QIcon('icons/save_24px_blue.svg'), 'Save results', self)
+        self.saveAction = QAction(self._get_icon('save_24px_blue.svg'), 'Save results', self)
         self.saveAction.setShortcut('Ctrl+S')
         self.tb.addAction(self.saveAction)
-        self.helperAction = QAction(QIcon('icons/settings_suggest_24px_blue.svg'), 'Settings helper', self)
+        self.helperAction = QAction(self._get_icon('settings_suggest_24px_blue.svg'), 'Settings helper', self)
         self.helperAction.setShortcut('Ctrl+H')
         self.tb.addAction(self.helperAction)
-        self.settingsAction = QAction(QIcon('icons/settings_24px_blue.svg'), 'Settings', self)
+        self.settingsAction = QAction(self._get_icon('settings_24px_blue.svg'), 'Settings', self)
         self.settingsAction.setShortcut('Ctrl+P')
         self.tb.addAction(self.settingsAction)
 
         # qActions for MenuBar
-        self.closeAction = QAction(QIcon('icons/cancel_24px_blue.svg'), 'Close Window', self)
+        self.closeAction = QAction(self._get_icon('cancel_24px_blue.svg'), 'Close Window', self)
         self.closeAction.setShortcut('Ctrl+W')
-        self.aboutAction = QAction(QIcon('icons/info_24px_blue.svg'), 'About', self)
+        self.aboutAction = QAction(self._get_icon('info_24px_blue.svg'), 'About', self)
         self.aboutAction.setShortcut('Ctrl+H')
         
 
@@ -1043,7 +1050,7 @@ class AboutPanel(QDialog):
         self.layout = QFormLayout(self)
 
         logo = QLabel()
-        logo.setPixmap(QPixmap(str(Path(__file__).parent.parent / 'minML_icon.png')).scaled(QSize(100, 100)))
+        logo.setPixmap(QPixmap(str(Path(__file__).parent / 'minML_icon.png')).scaled(QSize(100, 100)))
         self.layout.addRow(logo)
 
         self.version = QLabel('miniML version 1.0.0')
@@ -1228,27 +1235,31 @@ class CutPanel(QDialog):
         self.toggle_label1.setStyleSheet("font-weight: bold;")
         self.switch = QCheckBox()
         self.switch.setChecked(False)
-        self.switch.setStyleSheet('''
-            QCheckBox::indicator:unchecked {
-                image: url(icons/toggle_off_24px.svg);
+        icons_dir = Path(__file__).parent / 'icons'
+        toggle_off = str(icons_dir / 'toggle_off_24px.svg').replace('\\', '/')
+        toggle_on = str(icons_dir / 'toggle_on_24px.svg').replace('\\', '/')
+        self.switch.setStyleSheet(f'''
+            QCheckBox::indicator:unchecked {{
+                image: url({toggle_off});
                 width: 48;
                 height: 48;
-            }
-            QCheckBox::indicator:checked {
-                image: url(icons/toggle_on_24px.svg);
+            }}
+            QCheckBox::indicator:checked {{
+                image: url({toggle_on});
                 width: 48;
                 height: 48;
-            }
+            }}
         ''')
         self.switch.stateChanged.connect(toggle_region_brush)
 
         lower_layout = QHBoxLayout()
 
+        icons_dir = Path(__file__).parent / 'icons'
         cursor1_icon = QLabel()
-        cursor1_icon.setPixmap(QPixmap('icons/first_page_24dp.svg'))
+        cursor1_icon.setPixmap(QPixmap(str(icons_dir / 'first_page_24dp.svg')))
         cursor1_icon.setFixedSize(36, 36)
         cursor2_icon = QLabel()
-        cursor2_icon.setPixmap(QPixmap('icons/last_page_24dp.svg'))
+        cursor2_icon.setPixmap(QPixmap(str(icons_dir / 'last_page_24dp.svg')))
         cursor2_icon.setFixedSize(36, 36)
         lower_layout.addWidget(cursor1_icon)
         lower_layout.addWidget(start_label)
@@ -1820,20 +1831,21 @@ class EventViewer(QDialog):
 
         self.layout.addWidget(self.toolbar, 0, 0, 1, 3)
 
-        self.firstAction = QAction(QIcon('icons/first_page_24px_blue.svg'), 'First event', self.toolbar)
+        icons_dir = Path(__file__).parent / 'icons'
+        self.firstAction = QAction(QIcon(str(icons_dir / 'first_page_24px_blue.svg')), 'First event', self.toolbar)
         self.toolbar.addAction(self.firstAction)
         self.firstAction.triggered.connect(self.first_event)
-        self.beforeAction = QAction(QIcon('icons/navigate_before_24px_blue.svg'), 'Previous', self.toolbar)
+        self.beforeAction = QAction(QIcon(str(icons_dir / 'navigate_before_24px_blue.svg')), 'Previous', self.toolbar)
         self.toolbar.addAction(self.beforeAction)
         self.beforeAction.triggered.connect(self.previous)
-        self.nextAction = QAction(QIcon('icons/navigate_next_24px_blue.svg'), 'Next', self.toolbar)
+        self.nextAction = QAction(QIcon(str(icons_dir / 'navigate_next_24px_blue.svg')), 'Next', self.toolbar)
         self.toolbar.addAction(self.nextAction)
         self.nextAction.triggered.connect(self.next)
         self.toolbar.addSeparator()
-        self.deleteAction = QAction(QIcon('icons/clear_24px_blue.svg'), 'Delete event', self.toolbar)
+        self.deleteAction = QAction(QIcon(str(icons_dir / 'clear_24px_blue.svg')), 'Delete event', self.toolbar)
         self.toolbar.addAction(self.deleteAction)
         self.deleteAction.triggered.connect(self.delete_event)
-        self.excludeAction = QAction(QIcon('icons/hide_image_24px_blue.svg'), 'Exclude from average', self.toolbar)
+        self.excludeAction = QAction(QIcon(str(icons_dir / 'hide_image_24px_blue.svg')), 'Exclude from average', self.toolbar)
         self.toolbar.addAction(self.excludeAction)
         self.excludeAction.triggered.connect(self.exclude_event)
 
@@ -2173,13 +2185,17 @@ class CustomViewBox(pg.ViewBox):
 
 
 
-if __name__ == '__main__':
-
+def main():
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon(str(Path(__file__).parent.parent / 'minML_icon.png')))
-    main = minimlGuiMain()
+    package_dir = Path(__file__).parent
+    app.setWindowIcon(QIcon(str(package_dir / 'minML_icon.png')))
+    window = minimlGuiMain()
     extra = {'density_scale': '-1',}
+    template_path = str(package_dir / 'miniml.css.template')
     app.setStyleSheet(build_stylesheet(theme='light_blue.xml', invert_secondary=False, 
-                                       extra=extra, template='miniml.css.template'))
-    main.show()
+                                       extra=extra, template=template_path))
+    window.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
