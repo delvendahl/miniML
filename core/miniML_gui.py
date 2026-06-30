@@ -1314,6 +1314,7 @@ class FilterPanel(QDialog):
             filter_toggled()
 
         def filter_toggled():
+            
             if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.line_noise.isChecked(), self.detrend.isChecked()]):
                 self.filtered_trace_plot.setData(parent.time_ax_display, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
 
@@ -1343,7 +1344,7 @@ class FilterPanel(QDialog):
         self.detrend = QCheckBox('')
         self.detrend.stateChanged.connect(filter_toggled)
         self.num_segments = QLineEdit('1')
-        self.num_segments.setValidator(QIntValidator(1,99))
+        self.num_segments.setValidator(QIntValidator(1,9999))
         self.highpass = QCheckBox('')
         self.highpass.stateChanged.connect(filter_toggled)
         self.high = QLineEdit('0.5')
