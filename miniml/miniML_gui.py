@@ -15,9 +15,9 @@ from scipy.signal import find_peaks, convolve, resample
 from scipy.signal.windows import hann
 from sklearn.preprocessing import scale, minmax_scale
 import sys
-from .miniML import MiniTrace, EventDetection, is_keras_model
-from .miniML_settings import MinimlSettings
-from .FileImport import HekaReader as heka
+from miniml.miniML import MiniTrace, EventDetection, is_keras_model
+from miniml.miniML_settings import MinimlSettings
+from FileImport import HekaReader as heka
 from scipy.interpolate import  interp1d
 
 
@@ -2105,7 +2105,7 @@ class EventViewer(QDialog):
         pen = pg.mkPen(color='k', width=1.5)
 
         color = 'green' if self.use_for_avg[self.ind] else 'red'
-        text_str = f'event #{self.ind+1}/{self.num_events}: {"used for" if self.use_for_avg[self.ind] else "excluded from"} average'
+        text_str = f'event #{self.ind+1}/{self.num_events}: {"used for" if self.use_for_avg[self.ind] else "excluded from"} average waveform'
         self.text = pg.TextItem(text_str, color=color, border=pen)
         self.eventPlot.addItem(self.text)
         self.text.setPos(0, np.max(data) + (np.max(data) - np.min(data))/10)

@@ -12,7 +12,7 @@ The toolbar allows switching between events (alternativelay, use the left and ri
 
 The event plot shows the selected event in detail (gray: raw data; blue: filtered data using the filter settings in the main window). The baseline is marked in red, the event peak in orange, the rise time in magenta, and the 50% decay in green. The event statistics are displayed in the table next to the event plot.
 
-At the bottom, the event average, amplitude histogram and decay time histogram are displayed. These plots are updated when events are either deleted (via the toolbar or by pressing the `M` key), or excluded from average calculation (via the toolbar or by pressing the `N` key).
+At the bottom, the event average, amplitude histogram and decay time histogram are displayed. These plots are updated when events are either deleted (via the toolbar or by pressing the `M` key), or excluded from calculation of the average waveform (via the toolbar or by pressing the `N` key). Note that excluded evenets are not deleted and still appear in the summary statistics. The exclusion only affects the average waveofrm and the parameters calculated from the average waveform (e.g., decay time constant).
 
 Upon pressing OK, any event exlusions are saved and applied to the main window.
 
