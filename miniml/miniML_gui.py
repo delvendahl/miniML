@@ -1325,7 +1325,6 @@ class FilterPanel(QDialog):
             filter_toggled()
 
         def filter_toggled():
-            
             if not np.any([self.highpass.isChecked(), self.lowpass.isChecked(), self.line_noise.isChecked(), self.detrend.isChecked()]):
                 self.filtered_trace_plot.setData(parent.time_ax_display, parent.trace.data, pen=pg.mkPen(color='grey', width=1))
 
