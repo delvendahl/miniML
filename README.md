@@ -26,19 +26,18 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 Updates:
 - converted the repository into an installable Python package
 - increased the maximum number of breakpoints for detrending in the GUI from 99 to 9999
+- added a model trained using keras 3
 
 
 #### 06 May 2026
 
 Updates:
-- saving plots to different formats (e.g., .png, .pdf) is now possible
+- saving plots to different formats (e.g., .png, .pdf) is now possible 
 
 Bug fixes:
 - fixed a bug in the GUI causing saving to fail after deleting events in the EventViewer
 - the progress bar in the GUI now correctly reflects the progress of event detection
 
->[!IMPORTANT]
-> This update added an additional dependency (ruptures) that needs to be installed. To install this dependency, run the following command in your Python environment: `pip install ruptures==1.1.10`
 
 #### 13 November 2025
 
@@ -52,15 +51,12 @@ We have added several small updates to miniML that improve performance or fix sm
 
 The latest update introduces updated GUI functionality. The GUI now includes a new version of the EventViewer that allows for more detailed inspection of detected events. The EventViewer now includes infomration on each event, the location in the datatrace, as well as the ability to delete individual events. We also updated the filter and cutout functionality, with enhanced user control.
 
-#### 8 January 2025
-We have updated the documentation for miniML. The latest version of the documentation is available [here](https://delvendahl.github.io/miniML/intro.html).
-
 
 ### 💻 INSTALLATION
 
-To use miniML, clone the GitHub Repository and install the requirements. miniML has been tested with Python 3.9 and 3.10. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf. To install all dependencies using pip, run the following command in your Python environment:
+To use miniML, clone the GitHub Repository and install, e.g. using pip. miniML has been tested with Python 3.9 and 3.10. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf, ruptures. 
 
-`pip install -r requirements.txt`
+For the GUI, PyQt5, qt-material, and pyqtgraph are also required.
 
 >[!IMPORTANT]
 >The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
@@ -68,10 +64,9 @@ To use miniML, clone the GitHub Repository and install the requirements. miniML 
 > [!NOTE]
 >miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
 
+### 📚 DOCUMENTATION
 
-To use miniML with a graphical user interface (GUI), you need to install the additional dependencies from the requirements_gui.txt file.  
-
-`pip install -r requirements_gui.txt`
+Detailed documentation for miniML can be found [here](https://delvendahl.github.io/miniML/intro.html).
 
 
 ### ⏱ RUNNING MINIML
@@ -96,11 +91,6 @@ Event data and statistics can be saved in different formats (.pickle, .h5, .csv)
 ### 💡 EXAMPLE
 
 The folder "example_data/" contains an example recording from a cerebellar mossy fiber to granule cell synapse. To use miniML on this data, run the commented example Jupyter Notebook ([tutorial](docs/general/tutorial.ipynb)) illustrating the use of miniML.
-
-
-### 📚 DOCUMENTATION
-
-Detailed documentation for miniML can be found [here](https://delvendahl.github.io/miniML/intro.html).
 
 
 ### 📦 MODELS
