@@ -21,6 +21,13 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 📢 UPDATES
 
+#### 23 July 2026
+
+Updates:
+- converted the repository into an installable Python package
+- increased the maximum number of breakpoints for detrending in the GUI from 99 to 9999
+
+
 #### 06 May 2026
 
 Updates:
