@@ -1,0 +1,21 @@
+name: miniml
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.9,<=3.11
+  - pip
+  - scikit-learn
+  - matplotlib
+  - h5py
+  - pandas
+  - numpy<2.0.0
+  - scipy
+  - pyabf
+  - ruptures
+  - pip:
+    - tensorflow>=2.14.0,<2.16.0
+    - PyQt5
+    - qt-material
+    - pyqtgraph
+    - -e .

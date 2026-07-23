@@ -3,10 +3,7 @@ import numpy as np
 import sys
 import os
 
-# Adjust path to import miniML_functions
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from miniML_functions import (
+from miniml.miniML_functions import (
     get_event_halfwidth,
     get_event_peak,
     get_event_baseline,

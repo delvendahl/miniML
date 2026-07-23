@@ -1,0 +1,4 @@
+include miniml/icons/*.svg
+include miniml/miniml.css.template
+include miniml/minML_icon.png
+recursive-include models *.h5

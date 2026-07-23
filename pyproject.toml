@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "miniml"
+version = "1.0.0"
+authors = [
+  { name="Philipp O'Neill", email="philipp.oneill@physiologie.uni-freiburg.de" },
+  { name="Igor Delvendahl", email="igor.delvendahl@physiologie.uni-freiburg.de" },
+]
+description = "A deep learning framework for synaptic event detection"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "scikit-learn",
+    "matplotlib",
+    "h5py",
+    "pandas",
+    "numpy<2.0.0",
+    "scipy",
+    "tensorflow>=2.14.0,<2.16.0",
+    "pyabf",
+    "ruptures",
+]
+
+[project.optional-dependencies]
+gui = [
+    "PyQt5",
+    "qt-material",
+    "pyqtgraph",
+]
+
+[project.scripts]
+miniml-gui = "miniml.miniML_gui:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["miniml*"]
+
+[tool.setuptools.package-data]
+miniml = ["icons/*.svg", "miniml.css.template", "minML_icon.png", "models/**/*.h5"]

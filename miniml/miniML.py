@@ -10,9 +10,9 @@ from pathlib import Path
 from scipy import signal
 from scipy.optimize import curve_fit
 from scipy.ndimage import maximum_filter1d
-from miniML_functions import (get_event_peak, get_event_baseline, get_event_onset, get_event_risetime, 
-                              get_event_halfdecay_time, get_event_charge, get_event_halfwidth)
-from miniML_updated_functions import get_event_baseline_v2
+from .miniML_functions import (get_event_peak, get_event_baseline, get_event_onset, get_event_risetime,
+                               get_event_halfdecay_time, get_event_charge, get_event_halfwidth)
+from .miniML_updated_functions import get_event_baseline_v2
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -228,7 +228,7 @@ class MiniTrace():
         if not Path(filename).suffix.lower() == '.dat':
             raise Exception('Incompatible file type. Method only loads .dat files.')
 
-        import FileImport.HekaReader as heka
+        from .FileImport import HekaReader as heka
         bundle = heka.Bundle(filename)
 
         if group < 0 or group > len(bundle.pul.children) - 1:
