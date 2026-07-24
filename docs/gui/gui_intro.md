@@ -4,14 +4,20 @@ miniML can be run in a graphical user interface (GUI). The GUI provides a user-f
 
 ## Installation
 
-To use the graphical user interface of miniML, install the additional dependencies from the requirements_gui.txt file. The additional dependencies are:
-- PyQt5
-- qt-material
-- pyqtgraph.
+To use the graphical user interface of miniML, install miniML with the GUI option. This can be done by running (navigate to the miniML folder first):
+```bash
+pip install ".[gui]"
+```
 
 ## Starting the GUI
 
-Run the `miniML_gui.py` file in the miniML core folder. This will initiate the GUI.
+The GUI can be started from terminal or command prompt. Activate the virtual environment (if applicable) and run:
+```bash
+miniml-gui
+```
+
+Alternatively, run the `miniML_gui.py` file in the miniML/miniml folder.
+
 
 ## Getting started
 

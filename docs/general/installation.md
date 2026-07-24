@@ -17,12 +17,19 @@ The Python dependencies for miniML are:
 - scipy
 - tensorflow
 - pyabf
+- ruptures
 
-To install all dependencies using pip, run the following command in your Python environment:
+To install miniML using pip, cd to the miniML folder and run the following command in your Python environment:
+```bash
+pip install .
+```
 
-`pip install -r requirements.txt`
+This will install everything you need to run miniML as a python package.
 
-This will install everything you need to run miniML locally.
+To install miniML with the GUI option, run:
+```bash
+pip install ".[gui]"
+```
 
 ```{important}
 The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
