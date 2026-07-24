@@ -19,6 +19,7 @@ The Python dependencies for miniML are:
 - pyabf
 - ruptures
 
+
 To install miniML using pip, cd to the miniML folder and run the following command in your Python environment:
 ```bash
 pip install .
