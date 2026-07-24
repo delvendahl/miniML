@@ -18,22 +18,22 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "scikit-learn",
-    "matplotlib",
-    "h5py",
-    "pandas",
+    "scikit-learn==1.5.1",
+    "matplotlib==3.6.3",
+    "h5py==3.11.0",
+    "pandas==1.5.3",
     "numpy<2.0.0",
-    "scipy",
+    "scipy==1.11.1",
     "tensorflow>=2.14.0,<2.16.0",
-    "pyabf",
-    "ruptures",
+    "pyabf==2.3.8",
+    "ruptures==1.1.10",
 ]
 
 [project.optional-dependencies]
 gui = [
-    "PyQt5",
-    "qt-material",
-    "pyqtgraph",
+    "PyQt5==5.15.11",
+    "qt-material==2.14",
+    "pyqtgraph==0.13.7",
 ]
 
 [project.scripts]
