@@ -18,7 +18,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "scikit-learn==1.5.1",
+    "scikit-learn==1.5.2",
     "matplotlib==3.6.3",
     "h5py==3.11.0",
     "pandas==1.5.3",
@@ -35,6 +35,8 @@ gui = [
     "qt-material==2.14",
     "pyqtgraph==0.13.7",
 ]
+
+dev = ["ruff"]
 
 [project.scripts]
 miniml-gui = "miniml.miniML_gui:main"

@@ -3,7 +3,7 @@
 # inspired by Kudoh & Taguchi (2002)
 # https://doi.org/10.1016/S0956-5663(02)00053-2
 # simplified numpy implementation
-# 
+#
 
 import numpy as np
 import h5py
@@ -12,33 +12,34 @@ import matplotlib.pyplot as plt
 
 
 class DetectionResult(object):
-    ''' Collection of results of threshold-based event detection. '''
+    """Collection of results of threshold-based event detection."""
+
     def __init__(self, indices, avg, dt, peak_win, threshold, detection_trace):
         self.indices = indices
-        '''the indices of detected events'''
+        """the indices of detected events"""
         self.avg = avg
-        '''the baseline window'''
+        """the baseline window"""
         self.dt = dt
-        '''event detection window'''
+        """event detection window"""
         self.peak_win = peak_win
-        '''the peak window'''
+        """the peak window"""
         self.threshold = threshold
-        '''the threshold used for detection'''
+        """the threshold used for detection"""
         self.detection_trace = detection_trace
-        '''the detection trace'''
+        """the detection trace"""
 
 
 def threshold_detection(data, sampling, threshold, baseline, dt, peak_win):
-    ''' 
+    """
     Detect events based on the threshold-based method.
-    '''
+    """
     nyq = 0.5 * (1 / sampling)
     # high-pass filter data
-    sos = butter(4, 1 / nyq, btype='high', output='sos')
+    sos = butter(4, 1 / nyq, btype="high", output="sos")
     filtered = sosfiltfilt(sos, data)
 
     # low-pass filter data
-    sos = butter(4, 2000 / nyq, btype='low', output='sos')
+    sos = butter(4, 2000 / nyq, btype="low", output="sos")
     filtered = sosfiltfilt(sos, filtered)
 
     bsl_win = int(baseline / sampling)
@@ -46,8 +47,8 @@ def threshold_detection(data, sampling, threshold, baseline, dt, peak_win):
     pk_win = int(peak_win / sampling)
     indices = []
 
-    baseline = np.convolve(filtered, np.ones((bsl_win,))/bsl_win)[(bsl_win-1):]
-    smoothed_data = np.convolve(filtered, np.ones((3,))/3)[(3-1):]
+    baseline = np.convolve(filtered, np.ones((bsl_win,)) / bsl_win)[(bsl_win - 1) :]
+    smoothed_data = np.convolve(filtered, np.ones((3,)) / 3)[(3 - 1) :]
 
     thresholded_data = smoothed_data - np.roll(baseline, (dt_win + bsl_win))
 
@@ -57,21 +58,22 @@ def threshold_detection(data, sampling, threshold, baseline, dt, peak_win):
     return DetectionResult(indices, baseline, dt, peak_win, threshold, thresholded_data)
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     # load data
-    filename = '../example_data/gc_mini_trace.h5'
+    filename = "../example_data/gc_mini_trace.h5"
     sampling = 2e-5
 
-    with h5py.File(filename, 'r') as f:
-        data = f['mini_data'][:]
+    with h5py.File(filename, "r") as f:
+        data = f["mini_data"][:]
     data *= 1e12
     time = np.arange(0, len(data)) * sampling
 
-    matching = threshold_detection(data, sampling, threshold=-5, baseline=0.0008, dt=0.0008, peak_win=0.0015)
+    matching = threshold_detection(
+        data, sampling, threshold=-5, baseline=0.0008, dt=0.0008, peak_win=0.0015
+    )
 
     print(len(matching.indices))
-    
+
     plt.plot(time, data)
-    plt.plot(time[matching.indices], data[matching.indices], 'o')
+    plt.plot(time[matching.indices], data[matching.indices], "o")
     plt.show()

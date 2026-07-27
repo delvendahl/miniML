@@ -2,7 +2,7 @@ import os
 from importlib.resources import files
 
 
-class MinimlSettings():
+class MinimlSettings:
     """
     Class to store the analysis settings for miniML. The settings are:
     - stride: int, default=20
@@ -22,21 +22,23 @@ class MinimlSettings():
     - filter_factor: float, default=20
         The filter factor used for low-pass filtering of the trace during peak finding.
     - gradient_convolve_win: int, default=0
-        The Hann window size to use for filtering the first derivative of the 
+        The Hann window size to use for filtering the first derivative of the
         data trace (used for determining event location).
     """
-    def __init__(self, 
-                 stride: int=20, 
-                 event_length: int=600,
-                 model: str='GC_lstm_model.h5',
-                 event_threshold: float=0.5,
-                 minimum_peak_width: int=5,
-                 direction: str='negative',
-                 batch_size: int=512,
-                 filter_factor: float=20,
-                 gradient_convolve_win: int=25,
-                 relative_prominence: float=0.25) -> None:
 
+    def __init__(
+        self,
+        stride: int = 20,
+        event_length: int = 600,
+        model: str = "GC_lstm_model.h5",
+        event_threshold: float = 0.5,
+        minimum_peak_width: int = 5,
+        direction: str = "negative",
+        batch_size: int = 512,
+        filter_factor: float = 20,
+        gradient_convolve_win: int = 25,
+        relative_prominence: float = 0.25,
+    ) -> None:
         self.stride = stride
         self.event_window = event_length
         self.model_path = model
@@ -50,26 +52,24 @@ class MinimlSettings():
         self.relative_prominence = relative_prominence
         self.colors = ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"]
 
-
     @property
     def stride(self) -> int:
         return self._stride
-    
+
     @stride.setter
     def stride(self, value) -> None:
         if value < 1:
-            raise ValueError('Stride must be larger than 0')
+            raise ValueError("Stride must be larger than 0")
         self._stride = value
 
-    
     @property
     def event_window(self) -> float:
         return self._event_window
-    
+
     @event_window.setter
     def event_window(self, value) -> None:
         if value < 1:
-            raise ValueError('Event window must be larger than 0')
+            raise ValueError("Event window must be larger than 0")
 
         self._event_window = value
 
@@ -81,79 +81,76 @@ class MinimlSettings():
     def model_path(self, value) -> None:
         model_path = files("miniml").joinpath(f"models/{value}")
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f'Model file not found: {model_path}')
+            raise FileNotFoundError(f"Model file not found: {model_path}")
 
         self._model_path = model_path
 
     @property
     def event_threshold(self) -> float:
         return self._event_threshold
-    
+
     @event_threshold.setter
     def event_threshold(self, value) -> None:
         if value < 0 or value > 1:
-            raise ValueError('Event threshold must be within (0,1)')
+            raise ValueError("Event threshold must be within (0,1)")
 
         self._event_threshold = value
 
     @property
     def minimum_peak_width(self) -> int:
         return self._minimum_peak_width
-    
+
     @minimum_peak_width.setter
     def minimum_peak_width(self, value) -> None:
         if value < 1:
-            raise ValueError('Minimum peak width must be larger than 0')
+            raise ValueError("Minimum peak width must be larger than 0")
         if type(value) is not int:
-            raise ValueError('Minimum peak width must be an integer')
+            raise ValueError("Minimum peak width must be an integer")
 
         self._minimum_peak_width = value
 
     @property
     def batch_size(self) -> int:
         return self._batch_size
-    
+
     @batch_size.setter
     def batch_size(self, value) -> None:
         if value <= 0 or type(value) is not int:
-            raise ValueError('Batch size must be a positive integer')
+            raise ValueError("Batch size must be a positive integer")
 
         self._batch_size = value
-
 
     @property
     def filter_factor(self) -> int:
         return self._filter_factor
-    
+
     @filter_factor.setter
     def filter_factor(self, value) -> None:
         if value < 0:
-            raise ValueError('filter_factor must be larger than 0')
+            raise ValueError("filter_factor must be larger than 0")
 
         self._filter_factor = value
-
 
     @property
     def gradient_convolve_win(self) -> int:
         return self._gradient_convolve_win
-    
+
     @gradient_convolve_win.setter
     def gradient_convolve_win(self, value) -> None:
         if value < 0:
-            raise ValueError('Convolution window must be positive')
+            raise ValueError("Convolution window must be positive")
         if type(value) is not int:
-            raise ValueError('Convolution window must be an integer')
+            raise ValueError("Convolution window must be an integer")
 
         self._gradient_convolve_win = value
 
     @property
     def relative_prominence(self) -> float:
         return self._relative_prominence
-    
+
     @relative_prominence.setter
     def relative_prominence(self, value) -> None:
         if value < 0 or value > 1:
-            raise ValueError('Relative prominence must be within (0,1)')
+            raise ValueError("Relative prominence must be within (0,1)")
 
         self._relative_prominence = value
-        
