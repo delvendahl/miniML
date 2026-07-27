@@ -23,7 +23,7 @@ dependencies = [
     "h5py==3.11.0",
     "pandas==1.5.3",
     "numpy<2.0.0",
-    "scipy==1.11.1",
+    "scipy==1.11.4",
     "tensorflow>=2.14.0,<2.16.0",
     "pyabf==2.3.8",
     "ruptures==1.1.10",
