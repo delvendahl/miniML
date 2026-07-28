@@ -28,24 +28,24 @@ class EventViewer(QDialog):
         self.exclude_events = parent.exclude_events
         self.use_for_avg = parent.use_for_avg
 
-        self.layout = QGridLayout(self)
-        self.layout.setColumnMinimumWidth(0, 200)
-        self.layout.setColumnMinimumWidth(1, 200)
-        self.layout.setColumnMinimumWidth(2, 225)
-        self.layout.setRowMinimumHeight(1, 120)
-        self.layout.setRowMinimumHeight(2, 160)
-        self.layout.setRowMinimumHeight(3, 180)
-        self.layout.setRowMinimumHeight(4, 140)
+        layout = QGridLayout(self)
+        layout.setColumnMinimumWidth(0, 200)
+        layout.setColumnMinimumWidth(1, 200)
+        layout.setColumnMinimumWidth(2, 225)
+        layout.setRowMinimumHeight(1, 120)
+        layout.setRowMinimumHeight(2, 160)
+        layout.setRowMinimumHeight(3, 180)
+        layout.setRowMinimumHeight(4, 140)
 
-        self.layout.setColumnStretch(0, 1)
-        self.layout.setColumnStretch(1, 1)
-        self.layout.setColumnStretch(2, 1)
-        self.layout.setRowStretch(4, 1)
+        layout.setColumnStretch(0, 1)
+        layout.setColumnStretch(1, 1)
+        layout.setColumnStretch(2, 1)
+        layout.setRowStretch(4, 1)
 
         self.toolbar = QToolBar()
         self.toolbar.setMovable(False)
 
-        self.layout.addWidget(self.toolbar, 0, 0, 1, 3)
+        layout.addWidget(self.toolbar, 0, 0, 1, 3)
 
         self.firstAction = QAction(
             QIcon(get_icon_file_path("first_page_24px_blue.svg")),
@@ -88,22 +88,22 @@ class EventViewer(QDialog):
         self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
         self.tracePlot.setLabel("bottom", "Time", "s")
         self.tracePlot.setLabel("left", "Imon", "")
-        self.layout.addWidget(self.tracePlot, 1, 0, 1, 3)
+        layout.addWidget(self.tracePlot, 1, 0, 1, 3)
 
         self.eventPlot = pg.PlotWidget()
         self.eventPlot.showGrid(x=True, y=True, alpha=0.1)
         self.eventPlot.setLabel("bottom", "Time", "s")
         self.eventPlot.setLabel("left", "Imon", "")
-        self.layout.addWidget(self.eventPlot, 2, 0, 2, 2)
+        layout.addWidget(self.eventPlot, 2, 0, 2, 2)
 
         self.averagePlot = pg.PlotWidget()
-        self.layout.addWidget(self.averagePlot, 4, 0, 1, 1)
+        layout.addWidget(self.averagePlot, 4, 0, 1, 1)
 
         self.ampHistPlot = pg.PlotWidget()
-        self.layout.addWidget(self.ampHistPlot, 4, 1, 1, 1)
+        layout.addWidget(self.ampHistPlot, 4, 1, 1, 1)
 
         self.decayHistPlot = pg.PlotWidget()
-        self.layout.addWidget(self.decayHistPlot, 4, 2, 1, 1)
+        layout.addWidget(self.decayHistPlot, 4, 2, 1, 1)
 
         self.ind = 0
         self.left_buffer = int(self.detection.window_size / 2)
@@ -124,7 +124,9 @@ class EventViewer(QDialog):
         self.update_event_plot()
 
         self.table = QTableWidget()
-        self.table.verticalHeader().setDefaultSectionSize(10)
+        header = self.table.verticalHeader()
+        if header is not None:
+            header.setDefaultSectionSize(10)
         self.table.setRowCount(12)
         self.table.setColumnCount(2)
         self.table.setColumnWidth(0, 85)
@@ -146,20 +148,23 @@ class EventViewer(QDialog):
                 "Interval",
             ]
         )
-        self.table.viewport().installEventFilter(self)
+        viewport = self.table.viewport()
+        if viewport is not None:
+            viewport.installEventFilter(self)
         self.table.setSelectionBehavior(QTableView.SelectRows)
         self.update_table()
 
-        self.layout.addWidget(self.table, 2, 2, 2, 1)
+        layout.addWidget(self.table, 2, 2, 2, 1)
 
         QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox.accepted.connect(self.close_event_viewer)
         self.buttonBox.rejected.connect(self.cancel_event_viewer)
 
-        self.layout.addWidget(self.buttonBox, 5, 2, 1, 1)
+        layout.addWidget(self.buttonBox, 5, 2, 1, 1)
         self.setWindowTitle("Event Viewer")
-        self.setWindowModality(pg.QtCore.Qt.ApplicationModal)
+        self.setWindowModality(pg.QtCore.Qt.WindowModality.ApplicationModal)
+        self.setLayout(layout)
 
     def update_table(self):
         """
@@ -365,7 +370,9 @@ class EventViewer(QDialog):
                     peak_loc * self.detection.trace.sampling,
                 ],
                 [np.min(self.detection.trace.data), np.max(self.detection.trace.data)],
-                pen=pg.mkPen(color="orange", width=2, style=pg.QtCore.Qt.DotLine),
+                pen=pg.mkPen(
+                    color="orange", width=2, style=pg.QtCore.Qt.PenStyle.DotLine
+                ),
             )
             self.tracePlot.addItem(self.eventitem)
 
@@ -438,7 +445,7 @@ class EventViewer(QDialog):
             bsl_vals = [bsl, bsl]
 
             def plot_symbols(trace_plot, x, y, color, symbol, size):
-                pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+                pen = pg.mkPen(None)
                 trace_plot.plot(
                     x,
                     y,
@@ -455,7 +462,12 @@ class EventViewer(QDialog):
 
             plot_symbols(self.eventPlot, bsl_times, bsl_vals, "r", "o", 10)
             plot_line(
-                self.eventPlot, bsl_times, bsl_vals, "r", 2.5, pg.QtCore.Qt.DotLine
+                self.eventPlot,
+                bsl_times,
+                bsl_vals,
+                "r",
+                2.5,
+                pg.QtCore.Qt.PenStyle.DotLine,
             )
             plot_line(
                 self.eventPlot,
@@ -463,7 +475,7 @@ class EventViewer(QDialog):
                 bsl_vals,
                 "k",
                 2.5,
-                pg.QtCore.Qt.DotLine,
+                pg.QtCore.Qt.PenStyle.DotLine,
             )
 
             plot_symbols(
@@ -480,7 +492,7 @@ class EventViewer(QDialog):
                 [min_value_rise, min_value_rise],
                 "magenta",
                 2.5,
-                pg.QtCore.Qt.DotLine,
+                pg.QtCore.Qt.PenStyle.DotLine,
             )
             plot_line(
                 self.eventPlot,
@@ -488,7 +500,7 @@ class EventViewer(QDialog):
                 [min_value_rise, max_value_rise],
                 "magenta",
                 2.5,
-                pg.QtCore.Qt.DotLine,
+                pg.QtCore.Qt.PenStyle.DotLine,
             )
 
             plot_symbols(
@@ -514,7 +526,7 @@ class EventViewer(QDialog):
                 [peak_val, peak_val - self.detection.event_stats.amplitudes[self.ind]],
                 "orange",
                 2.5,
-                pg.QtCore.Qt.DotLine,
+                pg.QtCore.Qt.PenStyle.DotLine,
             )
 
             if not np.isnan(self.detection.half_decay[self.ind]):
@@ -532,7 +544,7 @@ class EventViewer(QDialog):
                     [self.filtered_data[decay_loc], self.filtered_data[decay_loc]],
                     "green",
                     2.5,
-                    pg.QtCore.Qt.DotLine,
+                    pg.QtCore.Qt.PenStyle.DotLine,
                 )
 
         pen = pg.mkPen(color="k", width=1.5)
@@ -577,14 +589,14 @@ class EventViewer(QDialog):
         self.update_trace_plot()
         self.update_table()
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event):  # type: ignore
         key = event.key()
 
-        if key == Qt.Key_Right:
+        if key == Qt.Key.Key_Right:
             self.next()
-        elif key == Qt.Key_Left:
+        elif key == Qt.Key.Key_Left:
             self.previous()
-        elif key == Qt.Key_M:
+        elif key == Qt.Key.Key_M:
             self.delete_event()
-        elif key == Qt.Key_N:
+        elif key == Qt.Key.Key_N:
             self.exclude_event()

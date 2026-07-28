@@ -54,10 +54,8 @@ from miniml.settings import Settings
 
 
 class AutoSettingsWindow(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent):
         super().__init__(parent)
-        self.parent = parent
-
         self.peak_window = 200  # window in samples to search for peak after steepest rise point # TO DO: replace hard-coded value
 
         layout = QVBoxLayout(self)
@@ -76,7 +74,8 @@ class AutoSettingsWindow(QDialog):
         self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
 
         self.tracePlot.setTitle("Double click to mark events", size="16pt", bold=True)
-        self.tracePlot.scene().sigMouseClicked.connect(self.mouse_clicked)
+        if self.tracePlot.scene() is not None:
+            self.tracePlot.scene().sigMouseClicked.connect(self.mouse_clicked)  # type: ignore
 
         top_layout.addWidget(self.tracePlot)
 
@@ -214,7 +213,7 @@ class AutoSettingsWindow(QDialog):
 
     def update_window_size(self, new_value):
         """
-        Update the window size LneEdits using the provided value.
+        Update the window size using the provided value.
         If the value is an integer, it updates the window size in samples.
         If the value is a float, it updates the window size in milliseconds.
         """
@@ -224,7 +223,7 @@ class AutoSettingsWindow(QDialog):
         elif isinstance(new_value, float):
             new_value = int(np.round(new_value / self.parent.trace.sampling / 1000))
         else:
-            raise ValueError("new_value must be an integer or float")
+            raise TypeError("new_value must be an integer or float")
         # update the window size in the parent settings
         self.window_size.setText(str(new_value))
         self.window_time.setText(
@@ -516,7 +515,7 @@ class AutoSettingsWindow(QDialog):
 class AppMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.initUI()
+        self.init_ui()
         self._create_toolbar()
         self._connect_actions()
         self._create_menubar()
@@ -524,9 +523,10 @@ class AppMainWindow(QMainWindow):
         self.settings = Settings()
         self.was_analyzed = False
 
-    def initUI(self):
+    def init_ui(self):
         self.statusbar = self.statusBar()
-        self.statusbar.setSizeGripEnabled(False)
+        if self.statusbar is not None:
+            self.statusbar.setSizeGripEnabled(False)
 
         self.tracePlot = pg.PlotWidget()
         self.tracePlot.setLabel("bottom", "Time", "s")
@@ -540,21 +540,21 @@ class AppMainWindow(QMainWindow):
         self.histogramPlot = pg.PlotWidget()
         self.averagePlot = pg.PlotWidget()
 
-        self.splitter1 = QSplitter(Qt.Horizontal)
+        self.splitter1 = QSplitter(Qt.Orientation.Horizontal)
         self.splitter1.setHandleWidth(12)
         self.splitter1.addWidget(self.eventPlot)
         self.splitter1.addWidget(self.averagePlot)
         self.splitter1.addWidget(self.histogramPlot)
         self.splitter1.setSizes([250, 250, 250])
 
-        self.splitter2 = QSplitter(Qt.Vertical)
+        self.splitter2 = QSplitter(Qt.Orientation.Vertical)
         self.splitter2.setHandleWidth(12)
         self.splitter2.addWidget(self.predictionPlot)
         self.splitter2.addWidget(self.tracePlot)
         self.splitter2.addWidget(self.splitter1)
         self.splitter2.setSizes([130, 270, 150])
 
-        self.splitter3 = QSplitter(Qt.Horizontal)
+        self.splitter3 = QSplitter(Qt.Orientation.Horizontal)
         self.splitter3.setHandleWidth(12)
         self.splitter3.addWidget(self.splitter2)
 
@@ -573,30 +573,38 @@ class AppMainWindow(QMainWindow):
     def _create_menubar(self):
         menubar = self.menuBar()
 
+        if menubar is None:
+            return
+
         fileMenu = menubar.addMenu("File")
-        fileMenu.addAction(self.openAction)
-        fileMenu.addAction(self.resetAction)
-        fileMenu.addAction(self.saveAction)
-        fileMenu.addAction(self.closeAction)
+        if fileMenu is not None:
+            fileMenu.addAction(self.openAction)
+            fileMenu.addAction(self.resetAction)
+            fileMenu.addAction(self.saveAction)
+            fileMenu.addAction(self.closeAction)
 
         editMenu = menubar.addMenu("Edit")
-        editMenu.addAction(self.filterAction)
-        editMenu.addAction(self.cutAction)
-        editMenu.addAction(self.infoAction)
+        if editMenu is not None:
+            editMenu.addAction(self.filterAction)
+            editMenu.addAction(self.cutAction)
+            editMenu.addAction(self.infoAction)
 
         viewMenu = menubar.addMenu("View")
-        viewMenu.addAction(self.plotAction)
-        viewMenu.addAction(self.tableAction)
-        viewMenu.addAction(self.predictionAction)
+        if viewMenu is not None:
+            viewMenu.addAction(self.plotAction)
+            viewMenu.addAction(self.tableAction)
+            viewMenu.addAction(self.predictionAction)
+            viewMenu.addAction(self.eventViewerAction)
 
         runMenu = menubar.addMenu("Run")
-        runMenu.addAction(self.settingsAction)
-        runMenu.addAction(self.analyseAction)
-        runMenu.addAction(self.summaryAction)
+        if runMenu is not None:
+            runMenu.addAction(self.settingsAction)
+            runMenu.addAction(self.analyseAction)
+            runMenu.addAction(self.summaryAction)
 
         helpMenu = menubar.addMenu("Help")
-        helpMenu.addAction(self.aboutAction)
-        viewMenu.addAction(self.eventViewerAction)
+        if helpMenu is not None:
+            helpMenu.addAction(self.aboutAction)
 
     def _get_icon(self, icon_name):
         path = get_icon_file_path(icon_name)
@@ -604,7 +612,8 @@ class AppMainWindow(QMainWindow):
 
     def _create_toolbar(self):
         self.tb = self.addToolBar("Menu")
-        self.tb.setMovable(False)
+        if self.tb is None:
+            return
 
         self.openAction = QAction(
             self._get_icon("load_file_24px_blue.svg"), "Open...", self
@@ -697,14 +706,20 @@ class AppMainWindow(QMainWindow):
 
     def _create_table(self):
         tableWidget = QTableWidget()
-        tableWidget.verticalHeader().setDefaultSectionSize(10)
-        tableWidget.horizontalHeader().setDefaultSectionSize(90)
+        header = tableWidget.verticalHeader()
+        if header is not None:
+            header.setDefaultSectionSize(10)
+        header = tableWidget.horizontalHeader()
+        if header is not None:
+            header.setDefaultSectionSize(90)
         tableWidget.setRowCount(0)
         tableWidget.setColumnCount(5)
         tableWidget.setHorizontalHeaderLabels(
             ["Position", "Amplitude", "Area", "Risetime", "Decay"]
         )
-        tableWidget.viewport().installEventFilter(self)
+        viewport = tableWidget.viewport()
+        if viewport is not None:
+            viewport.installEventFilter(self)
         tableWidget.setSelectionBehavior(QTableView.SelectRows)
         return tableWidget
 
@@ -728,13 +743,13 @@ class AppMainWindow(QMainWindow):
         msgbox.setStandardButtons(QMessageBox.Ok)
         msgbox.exec_()
 
-    def eventFilter(self, source, event):
-        if event.type() == QEvent.MouseButtonPress:
-            if event.button() == Qt.LeftButton:
+    def eventFilter(self, source, event):  # type: ignore
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
                 index = self.tableWidget.indexAt(event.pos())
                 if index.data():
                     selected_ev = index.row()
-            elif event.button() == Qt.RightButton:
+            elif event.button() == Qt.MouseButton.RightButton:
                 index = self.tableWidget.indexAt(event.pos())
                 if index.isValid():
                     pass
@@ -925,7 +940,7 @@ class AppMainWindow(QMainWindow):
             ev_peakvalues = self.detection.trace.data[
                 self.detection.event_peak_locations
             ]
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            pen = pg.mkPen(None)
             self.plotDetected = self.tracePlot.plot(
                 ev_positions,
                 ev_peakvalues,
@@ -1294,7 +1309,9 @@ class AppMainWindow(QMainWindow):
             self.predictionPlot.plot(
                 [0, prediction_x[-1]],
                 [self.settings.event_threshold, self.settings.event_threshold],
-                pen=pg.mkPen(color=self.settings.colors[0], style=Qt.DashLine, width=1),
+                pen=pg.mkPen(
+                    color=self.settings.colors[0], style=Qt.PenStyle.DashLine, width=1
+                ),
             )
 
         if self.detection.event_locations.shape[0] > 0:
@@ -1302,7 +1319,7 @@ class AppMainWindow(QMainWindow):
             ev_peakvalues = self.detection.trace.data[
                 self.detection.event_peak_locations
             ]
-            pen = pg.mkPen(style=pg.QtCore.Qt.NoPen)
+            pen = pg.mkPen(None)
             self.plotDetected = self.tracePlot.plot(
                 ev_positions,
                 ev_peakvalues,

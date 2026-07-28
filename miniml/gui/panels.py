@@ -46,9 +46,12 @@ def finalize_dialog_window(
         window.buttonBox.rejected.connect(window.reject)
     else:
         window.buttonBox.clicked.connect(window.accept)
-    window.layout.addRow(window.buttonBox)
+
+    layout = window.layout()
+    if isinstance(layout, QFormLayout):
+        layout.addRow(window.buttonBox)
     window.setWindowTitle(title)
-    window.setWindowModality(pg.QtCore.Qt.ApplicationModal)
+    window.setWindowModality(pg.QtCore.Qt.WindowModality.ApplicationModal)
 
 
 class LoadAbfPanel(QDialog):
@@ -70,11 +73,12 @@ class LoadAbfPanel(QDialog):
         self.protocol.setReadOnly(True)
         self.protocol.setMinimumWidth(300)
 
-        self.layout = QFormLayout(self)
-        self.layout.addRow("Recording channel:", self.channel)
-        self.layout.addRow("Scaling factor:", self.scale)
-        self.layout.addRow("Data unit:", self.unit)
-        self.layout.addRow("Protocol:", self.protocol)
+        layout = QFormLayout(self)
+        layout.addRow("Recording channel:", self.channel)
+        layout.addRow("Scaling factor:", self.scale)
+        layout.addRow("Data unit:", self.unit)
+        layout.addRow("Protocol:", self.protocol)
+        self.setLayout(layout)
 
         finalize_dialog_window(self, title="Load AXON .abf file")
 
@@ -98,11 +102,12 @@ class LoadHdfPanel(QDialog):
         self.e4 = QLineEdit("pA")
         self.e4.setMinimumWidth(200)
 
-        self.layout = QFormLayout(self)
-        self.layout.addRow("Dataset name:", self.e1)
-        self.layout.addRow("Sampling interval (s):", self.e2)
-        self.layout.addRow("Scaling factor:", self.e3)
-        self.layout.addRow("Data unit:", self.e4)
+        layout = QFormLayout(self)
+        layout.addRow("Dataset name:", self.e1)
+        layout.addRow("Sampling interval (s):", self.e2)
+        layout.addRow("Scaling factor:", self.e3)
+        layout.addRow("Data unit:", self.e4)
+        self.setLayout(layout)
 
         finalize_dialog_window(self, title="Load HDF .h5 file")
 
@@ -134,13 +139,14 @@ class LoadDatPanel(QDialog):
         self.e2 = QLineEdit("1e12")
         self.e3 = QLineEdit("pA")
 
-        self.layout = QFormLayout(self)
-        self.layout.addRow("Import group:", self.group)
-        self.layout.addRow("Import series:", self.series)
-        self.layout.addRow("Import all series of this type:", self.load_option)
-        self.layout.addRow("Exclude selected series:", self.e1)
-        self.layout.addRow("Scaling factor:", self.e2)
-        self.layout.addRow("Data unit:", self.e3)
+        layout = QFormLayout(self)
+        layout.addRow("Import group:", self.group)
+        layout.addRow("Import series:", self.series)
+        layout.addRow("Import all series of this type:", self.load_option)
+        layout.addRow("Exclude selected series:", self.e1)
+        layout.addRow("Scaling factor:", self.e2)
+        layout.addRow("Data unit:", self.e3)
+        self.setLayout(layout)
 
         finalize_dialog_window(self, title="Load HEKA .dat file")
         self.finished.connect(self.on_dialog_finished)
@@ -182,14 +188,15 @@ class FileInfoPanel(QDialog):
         self.protocol.setReadOnly(True)
         self.protocol.setFixedWidth(300)
 
-        self.layout = QFormLayout(self)
-        self.layout.addRow("Filename:", self.filename)
-        self.layout.addRow("File format:", self.format)
-        self.layout.addRow("Recording duration (s):", self.length)
-        self.layout.addRow("Data unit", self.unit)
-        self.layout.addRow("Recording mode:", self.mode)
-        self.layout.addRow("Sampling rate (Hz):", self.sampling)
-        self.layout.addRow("Protocol:", self.protocol)
+        layout = QFormLayout(self)
+        layout.addRow("Filename:", self.filename)
+        layout.addRow("File format:", self.format)
+        layout.addRow("Recording duration (s):", self.length)
+        layout.addRow("Data unit", self.unit)
+        layout.addRow("Recording mode:", self.mode)
+        layout.addRow("Sampling rate (Hz):", self.sampling)
+        layout.addRow("Protocol:", self.protocol)
+        self.setLayout(layout)
 
         finalize_dialog_window(self, title="File info", cancel=False)
 
@@ -198,7 +205,7 @@ class AboutPanel(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.layout = QFormLayout(self)
+        layout = QFormLayout(self)
 
         logo = QLabel()
         logo.setPixmap(
@@ -206,27 +213,29 @@ class AboutPanel(QDialog):
                 QSize(100, 100)
             )
         )
-        self.layout.addRow(logo)
+        layout.addRow(logo)
 
         self.version = QLabel("miniML version 1.0.0")
-        self.layout.addRow(self.version)
+        layout.addRow(self.version)
 
         self.author = QLabel(
             "Authors: Philipp O'Neill, Martin Baccino Calace, Igor Delvendahl"
         )
-        self.layout.addRow(self.author)
+        layout.addRow(self.author)
 
         self.website = QLabel(
             'Website: <a href="https://github.com/delvendahl/miniML">miniML GitHub repository</a>'
         )
         self.website.setOpenExternalLinks(True)
-        self.layout.addRow(self.website)
+        layout.addRow(self.website)
 
         self.paper = QLabel(
             'Publication: <a href="https://doi.org/10.7554/eLife.98485.3">miniML eLife paper 2025</a>'
         )
         self.paper.setOpenExternalLinks(True)
-        self.layout.addRow(self.paper)
+        layout.addRow(self.paper)
+
+        self.setLayout(layout)
 
         finalize_dialog_window(self, title="About miniML", cancel=False)
 
@@ -236,28 +245,30 @@ class SummaryPanel(QDialog):
         super().__init__(parent)
 
         self.populate_fields(parent)
-        self.layout.addRow("Filename:", self.filename)
-        self.layout.addRow("Events found:", self.event_count)
-        self.layout.addRow("Events deleted:", self.deleted_event_count)
-        self.layout.addRow("Event frequency (Hz):", self.event_frequency)
-        self.layout.addRow("Average score:", self.average_score)
-        self.layout.addRow(
+        layout = QFormLayout(self)
+        layout.addRow("Filename:", self.filename)
+        layout.addRow("Events found:", self.event_count)
+        layout.addRow("Events deleted:", self.deleted_event_count)
+        layout.addRow("Event frequency (Hz):", self.event_frequency)
+        layout.addRow("Average score:", self.average_score)
+        layout.addRow(
             f"Average amplitude ({parent.detection.trace.y_unit}):",
             self.average_amplitude,
         )
-        self.layout.addRow(
+        layout.addRow(
             f"Median amplitude ({parent.detection.trace.y_unit}):",
             self.median_amplitude,
         )
-        self.layout.addRow("Coefficient of variation:", self.amplitude_cv)
-        self.layout.addRow(
+        layout.addRow("Coefficient of variation:", self.amplitude_cv)
+        layout.addRow(
             f"Average area ({parent.detection.trace.y_unit}*s):", self.average_area
         )
-        self.layout.addRow("Average risetime (ms):", self.average_rise_time)
-        self.layout.addRow("Average rise slope (pA/ms):", self.average_slope)
-        self.layout.addRow("Average 50% decay time (ms):", self.average_decay_time)
-        self.layout.addRow("Average halfwidth (ms):", self.average_halfwidth)
-        self.layout.addRow("Decay time constant (ms):", self.decay_tau)
+        layout.addRow("Average risetime (ms):", self.average_rise_time)
+        layout.addRow("Average rise slope (pA/ms):", self.average_slope)
+        layout.addRow("Average 50% decay time (ms):", self.average_decay_time)
+        layout.addRow("Average halfwidth (ms):", self.average_halfwidth)
+        layout.addRow("Decay time constant (ms):", self.decay_tau)
+        self.setLayout(layout)
 
         finalize_dialog_window(self, title="Summary", cancel=False)
 
@@ -312,7 +323,6 @@ class SummaryPanel(QDialog):
             f"{parent.detection.event_stats.mean(parent.detection.event_stats.avg_tau_decay) * 1e3:.5f}"
         )
         self.decay_tau.setReadOnly(True)
-        self.layout = QFormLayout(self)
 
 
 class SettingsPanel(QDialog):
@@ -323,7 +333,7 @@ class SettingsPanel(QDialog):
         self.ev_len = QLineEdit(str(parent.settings.event_window))
         self.thresh = QLineEdit(str(parent.settings.event_threshold))
         validator = QDoubleValidator(0.0, 1.0, 3)
-        validator.setNotation(QDoubleValidator.StandardNotation)
+        validator.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.thresh.setValidator(validator)
 
         self.peak_w = QLineEdit(str(parent.settings.minimum_peak_width))
@@ -352,16 +362,17 @@ class SettingsPanel(QDialog):
         )
         self.gradient_convolve_window.setValidator(QIntValidator(1, 10000))
 
-        self.layout = QFormLayout(self)
-        self.layout.addRow("Stride length (samples)", self.stride)
-        self.layout.addRow("Event length (samples)", self.ev_len)
-        self.layout.addRow("Min. peak height (0-1)", self.thresh)
-        self.layout.addRow("Min. peak width (samples)", self.peak_w)
-        self.layout.addRow("Model", self.model)
-        self.layout.addRow("Event direction", self.direction)
-        self.layout.addRow("Batch size", self.batchsize)
-        self.layout.addRow("Filter factor", self.filter_factor)
-        self.layout.addRow("Gradient filter window", self.gradient_convolve_window)
+        layout = QFormLayout(self)
+        layout.addRow("Stride length (samples)", self.stride)
+        layout.addRow("Event length (samples)", self.ev_len)
+        layout.addRow("Min. peak height (0-1)", self.thresh)
+        layout.addRow("Min. peak width (samples)", self.peak_w)
+        layout.addRow("Model", self.model)
+        layout.addRow("Event direction", self.direction)
+        layout.addRow("Batch size", self.batchsize)
+        layout.addRow("Filter factor", self.filter_factor)
+        layout.addRow("Gradient filter window", self.gradient_convolve_window)
+        self.setLayout(layout)
 
         finalize_dialog_window(self, title="miniML settings")
 
@@ -505,7 +516,7 @@ class CutPanel(QDialog):
         self.buttonBox.rejected.connect(self.reject)
         layout.addWidget(self.buttonBox)
         self.setWindowTitle("Cut trace")
-        self.setWindowModality(Qt.ApplicationModal)
+        self.setWindowModality(Qt.WindowModality.ApplicationModal)
         self.resize(600, 400)
 
 
@@ -537,17 +548,17 @@ class FilterPanel(QDialog):
 
         def comboBoxIndexChanged(index):
             if index == 1:
-                self.window.setEnabled(True)
+                self.time_window.setEnabled(True)
                 self.low.setEnabled(False)
                 self.order.setEnabled(True)
                 self.hann_window.setEnabled(False)
             elif index == 2:
-                self.window.setEnabled(False)
+                self.time_window.setEnabled(False)
                 self.low.setEnabled(False)
                 self.order.setEnabled(False)
                 self.hann_window.setEnabled(True)
             else:
-                self.window.setEnabled(False)
+                self.time_window.setEnabled(False)
                 self.low.setEnabled(True)
                 self.order.setEnabled(True)
                 self.hann_window.setEnabled(False)
@@ -592,7 +603,8 @@ class FilterPanel(QDialog):
                     )
                 elif self.filter_type.currentText() == "Savitzky-Golay":
                     self.filtered_trace = self.filtered_trace.filter(
-                        savgol=float(self.window.text()), order=int(self.order.text())
+                        savgol=float(self.time_window.text()),
+                        order=int(self.order.text()),
                     )
                 else:
                     self.filtered_trace = self.filtered_trace.filter(
@@ -628,10 +640,10 @@ class FilterPanel(QDialog):
         self.filter_type.addItems(["Butterworth", "Savitzky-Golay", "Hann window"])
         self.filter_type.currentIndexChanged.connect(comboBoxIndexChanged)
         self.filter_type.setFixedWidth(200)
-        self.window = QLineEdit("5.0")
-        self.window.setValidator(QDoubleValidator(0.001, 999.9, 3))
-        self.window.setEnabled(False)
-        self.window.editingFinished.connect(filter_toggled)
+        self.time_window = QLineEdit("5.0")
+        self.time_window.setValidator(QDoubleValidator(0.001, 999.9, 3))
+        self.time_window.setEnabled(False)
+        self.time_window.editingFinished.connect(filter_toggled)
         self.order = QLineEdit("4")
         self.order.setValidator(QIntValidator(1, 9))
         self.order.editingFinished.connect(filter_toggled)
@@ -648,12 +660,13 @@ class FilterPanel(QDialog):
         controls1.addRow("Line noise filter", self.line_noise)
         controls1.addRow("Line noise frequency (Hz)", self.line_freq)
         controls1.addRow("Line noise width (Hz)", self.notch_width)
+
         controls2 = QFormLayout()
         controls2.addRow("Lowpass filter", self.lowpass)
         controls2.addRow("Filter type", self.filter_type)
         controls2.addRow("Low-pass (Hz)", self.low)
         controls2.addRow("Filter order", self.order)
-        controls2.addRow("Window (ms)", self.window)
+        controls2.addRow("Window (ms)", self.time_window)
         controls2.addRow("Hann window size", self.hann_window)
 
         lower_layout = QHBoxLayout()
