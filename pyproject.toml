@@ -39,7 +39,7 @@ gui = [
 dev = ["ruff"]
 
 [project.scripts]
-miniml-gui = "miniml.miniML_gui:main"
+miniml-gui = "miniml.gui.main:entry_point"
 
 [tool.setuptools.packages.find]
 where = ["."]
