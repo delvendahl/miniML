@@ -40,7 +40,7 @@ from sklearn.preprocessing import scale, minmax_scale
 import sys
 from miniml.miniML import MiniTrace, EventDetection, is_keras_model
 from miniml.miniML_settings import MinimlSettings
-from miniml.FileImport import HekaReader as heka
+from miniml.fileio import heka_reader as heka
 from scipy.interpolate import interp1d
 
 

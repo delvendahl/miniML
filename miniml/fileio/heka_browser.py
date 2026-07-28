@@ -6,9 +6,11 @@ Adapted from https://github.com/campagnola/heka_reader
 
 import os
 import sys
-import pyqtgraph as pg
+
 import numpy as np
-import HekaReader
+import pyqtgraph as pg
+
+from miniml.fileio import heka_reader
 
 app = 0
 app = pg.mkQApp()
@@ -19,9 +21,9 @@ app = pg.mkQApp()
 win = pg.QtWidgets.QWidget()
 layout = pg.QtWidgets.QGridLayout()
 win.setLayout(layout)
-hsplit = pg.QtWidgets.QSplitter(pg.QtCore.Qt.Horizontal)
+hsplit = pg.QtWidgets.QSplitter(pg.QtCore.Qt.Orientation.Horizontal)
 layout.addWidget(hsplit, 0, 0)
-vsplit = pg.QtWidgets.QSplitter(pg.QtCore.Qt.Vertical)
+vsplit = pg.QtWidgets.QSplitter(pg.QtCore.Qt.Orientation.Vertical)
 hsplit.addWidget(vsplit)
 w1 = pg.QtWidgets.QWidget()
 w1l = pg.QtWidgets.QGridLayout()
@@ -61,16 +63,15 @@ def load_clicked():
     load(file_name[0])
 
 
-load_btn.clicked.connect(load_clicked)
-
-
 def load(file_name):
-    """Load a new .dat file into the browser."""
+    """
+    Load a new .dat file into the browser.
+    """
     global bundle, tree_items
 
     # Read the bundle header
     # (no data is read at this time)
-    bundle = HekaReader.Bundle(file_name)
+    bundle = heka_reader.Bundle(file_name)
 
     # Clear the tree and update to show the structure provided in the embedded
     # .pul file
@@ -80,7 +81,8 @@ def load(file_name):
 
 
 def update_tree(root_item, index):
-    """Recursively read tree information from the bundle's embedded .pul file
+    """
+    Recursively read tree information from the bundle's embedded .pul file
     and add items into the GUI tree to allow browsing.
     """
     global bundle
@@ -95,10 +97,7 @@ def update_tree(root_item, index):
         node_type += str(getattr(node, node_type + "Count"))
     except AttributeError:
         pass
-    try:
-        node_label = node.Label
-    except AttributeError:
-        node_label = ""
+    node_label = getattr(node, "Label", "")
     item = pg.QtWidgets.QTreeWidgetItem([node_type, node_label])
     root_item.addChild(item)
     item.node = node
@@ -110,7 +109,8 @@ def update_tree(root_item, index):
 
 
 def replot():
-    """Show data associated with the selected tree node.
+    """
+    Show data associated with the selected tree node.
 
     For all nodes, the meta-data is updated in the bottom tree.
     For trace nodes, the data is plotted.
@@ -141,6 +141,8 @@ def replot():
         )
         plot.plot(time, data)
 
+
+load_btn.clicked.connect(load_clicked)
 
 # replot when ever the user selects a new item
 tree.itemSelectionChanged.connect(replot)

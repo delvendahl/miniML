@@ -267,7 +267,7 @@ class MiniTrace:
         if not Path(filename).suffix.lower() == ".dat":
             raise Exception("Incompatible file type. Method only loads .dat files.")
 
-        from .FileImport import HekaReader as heka
+        from miniml.fileio import heka_reader as heka
 
         bundle = heka.Bundle(filename)
 

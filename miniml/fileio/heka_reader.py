@@ -17,14 +17,16 @@ Brief example::
 
     # Load data for this trace
     data = bundle.data[group_id, series_id, sweep_ind, trace_ind]
-
 """
 
-import numpy as np
-import re
-import struct
 import collections
 import datetime
+import io
+import re
+import struct
+from typing import Union
+
+import numpy as np
 
 
 def cstr(byt):
@@ -294,24 +296,31 @@ class Struct:
 
     """
 
-    field_info = None
+    field_info = []
     size_check = None
     _fields_parsed = None
 
-    def __init__(self, data, endian="<"):
-        """Read the structure from *data* and return an ordered dictionary of
+    def __init__(self, data: Union[bytes, io.RawIOBase, io.BufferedIOBase], endian="<"):
+        """
+        Read the structure from *data* and return an ordered dictionary of
         fields.
 
         *data* may be a string or file.
         *endian* may be '<' or '>'
         """
         field_info = self._field_info()
-        if not isinstance(data, (str, bytes)):
-            data = data.read(self._le_struct.size)
+
+        if isinstance(data, bytes):
+            _data = data
+        elif isinstance(data, (io.RawIOBase, io.BufferedIOBase)):
+            _data = data.read(self._le_struct.size)
+        else:
+            raise TypeError("data must be bytes or a file-like object")
+
         if endian == "<":
-            items = self._le_struct.unpack(data)
+            items = self._le_struct.unpack(_data)
         elif endian == ">":
-            items = self._be_struct.unpack(data)
+            items = self._be_struct.unpack(_data)
         else:
             raise ValueError("Invalid endian: %s" % endian)
 
@@ -364,8 +373,13 @@ class Struct:
                     func,
                 )  # instructs to unpack with sub-struct before calling function
                 ifmt = "%ds" % ifmt.size()
-            elif re.match(r"\d*[xcbB?hHiIlLqQfdspP]", ifmt) is None:
-                raise TypeError('Unsupported format string "%s"' % ifmt)
+            elif isinstance(ifmt, str):
+                if not re.match(r"\d*[xcbB?hHiIlLqQfdspP]", ifmt):
+                    raise TypeError('Unsupported format string "%s"' % ifmt)
+            else:
+                raise TypeError(
+                    'Unsupported format type "%s" for field "%s"' % (type(ifmt), name)
+                )
 
             fields.append((name, ifmt, func))
             fmt += ifmt
@@ -385,11 +399,12 @@ class Struct:
 
     @classmethod
     def array(cls, x):
-        """Return a new StructArray class of length *x* and using this struct
+        """
+        Return a new StructArray class of length *x* and using this struct
         as the array item type.
         """
         return type(
-            cls.__name__ + "[%d]" % x,
+            f"{cls.__name__}[{x}]",
             (StructArray,),
             {"item_struct": cls, "array_size": x},
         )
@@ -412,41 +427,47 @@ class Struct:
         return r
 
     def get_fields(self):
-        """Recursively convert struct fields+values to nested dictionaries."""
+        """
+        Recursively convert struct fields+values to nested dictionaries.
+        """
         fields = self.fields.copy()
         for k, v in fields.items():
             if isinstance(v, StructArray):
-                fields[k] = [x.get_fields() for x in v.array]
+                fields[k] = [x.get_fields() for x in v.items]
             elif isinstance(v, Struct):
                 fields[k] = v.get_fields()
         return fields
 
 
 class StructArray(Struct):
-    item_struct = None
-    array_size = None
+    item_struct: type
+    array_size: int
 
-    def __init__(self, data, endian="<"):
-        if not isinstance(data, (str, bytes)):
-            data = data.read(self.size())
-        items = []
+    def __init__(self, data: Union[bytes, io.RawIOBase, io.BufferedIOBase], endian="<"):
+        if isinstance(data, bytes):
+            _data = data
+        elif isinstance(data, (io.RawIOBase, io.BufferedIOBase)):
+            _data = data.read(self.size())
+        else:
+            raise TypeError("data must be bytes or a file-like object")
+
+        self.items = []
         isize = self.item_struct.size()
         for i in range(self.array_size):
-            d = data[:isize]
-            data = data[isize:]
-            items.append(self.item_struct(d, endian))
-        self.array = items
+            d = _data[:isize]
+            _data = _data[isize:]
+            self.items.append(self.item_struct(d, endian))
 
     def __getitem__(self, i):
-        return self.array[i]
+        return self.items[i]
 
     @classmethod
-    def size(self):
-        return self.item_struct.size() * self.array_size
+    def size(cls):
+        return cls.item_struct.size() * cls.array_size
 
     def __repr__(self, indent=0):
         r = "    " * indent + "%s(\n" % self.__class__.__name__
-        for item in self.array:
+        for item in self.items:
             r += item.__repr__(indent=indent + 1) + ",\n"
         r += "    " * indent + ")"
         return r
@@ -520,7 +541,7 @@ class TreeNode(Struct):
     def __repr__(self, indent=0):
         # Return a string describing this structure
         ind = "    " * indent
-        srep = Struct.__repr__(self, indent)[:-1]  # exclude final parenthese
+        srep = Struct.__repr__(self)[:-1]  # exclude final parenthese
         srep += ind + "    children = %d,\n" % len(self)
         # srep += ind + 'children = [\n'
         # for ch in self:
@@ -1133,9 +1154,9 @@ class Stimulus(TreeNode):
         # Do not close fh here
 
 
-class Bundle(object):
+class Bundle:
     """
-    Represent a PATCHMASTER tree file in memory
+    Represent a PATCHMASTER tree file in memory.
     """
 
     item_classes = {
@@ -1158,14 +1179,14 @@ class Bundle(object):
         endian = "<"
         self.header = BundleHeader(self.fh, endian)
         # If the header is bad, re-read using big endian
-        if not self.header.IsLittleEndian:
+        if not getattr(self.header, "IsLittleEndian", False):
             endian = ">"
             self.fh.seek(0)
             self.header = BundleHeader(self.fh, endian)
 
         # catalog extensions of bundled items
         self.catalog = {}
-        for item in self.header.BundleItems:
+        for item in getattr(self.header, "BundleItems"):
             item.instance = None
             ext = item.Extension
             self.catalog[ext] = item
@@ -1175,26 +1196,34 @@ class Bundle(object):
             self.fh.close()
 
     @property
-    def pul(self):
+    def pul(self) -> Pulsed:
         """The Pulsed object from this bundle."""
-        return self._get_item_instance(".pul")
+        instance = self._get_item_instance(".pul")
+        assert isinstance(instance, Pulsed), "Expected Pulsed instance"
+        return instance
 
     @property
-    def data(self):
+    def data(self) -> Data:
         """The Data object from this bundle."""
-        return self._get_item_instance(".dat")
+        instance = self._get_item_instance(".dat")
+        assert isinstance(instance, Data), "Expected Data instance"
+        return instance
 
     @property
-    def amp(self):
+    def amp(self) -> Amplifier:
         """The Amplifier object from this bundle."""
-        return self._get_item_instance(".amp")
+        instance = self._get_item_instance(".amp")
+        assert isinstance(instance, Amplifier), "Expected Amplifier instance"
+        return instance
 
     @property
-    def pgf(self):
+    def pgf(self) -> Stimulus:
         """The PGF object from this bundle."""
-        return self._get_item_instance(".pgf")
+        instance = self._get_item_instance(".pgf")
+        assert isinstance(instance, Stimulus), "Expected Stimulus instance"
+        return instance
 
-    def _get_item_instance(self, ext):
+    def _get_item_instance(self, ext) -> Union[Pulsed, Data, Amplifier, Stimulus, None]:
         if ext not in self.catalog:
             return None
         item = self.catalog[ext]
