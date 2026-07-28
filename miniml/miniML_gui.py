@@ -1,48 +1,51 @@
 # ------- Imports ------- #
+import sys
+from functools import cache
+from importlib import resources
+from pathlib import Path
+
+import h5py
+import numpy as np
+import pyabf
+import pyqtgraph as pg
+import tensorflow as tf
+from PyQt5.QtCore import QEvent, QSize, Qt, pyqtSlot
+from PyQt5.QtGui import QCursor, QDoubleValidator, QIcon, QIntValidator, QPixmap
 from PyQt5.QtWidgets import (
+    QAction,
     QApplication,
-    QMainWindow,
+    QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
-    QSplitter,
-    QAction,
-    QTableWidget,
-    QFrame,
-    QTableView,
-    QMenu,
-    QStyleFactory,
-    QMessageBox,
     QFileDialog,
-    QGridLayout,
-    QLineEdit,
-    QPushButton,
     QFormLayout,
-    QCheckBox,
-    QTableWidgetItem,
-    QComboBox,
-    QLabel,
-    QToolBar,
+    QFrame,
+    QGridLayout,
     QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QSplitter,
+    QStyleFactory,
+    QTableView,
+    QTableWidget,
+    QTableWidgetItem,
+    QToolBar,
     QVBoxLayout,
 )
-from PyQt5.QtCore import Qt, QEvent, pyqtSlot, QSize
-from PyQt5.QtGui import QIcon, QCursor, QDoubleValidator, QIntValidator, QPixmap
-import pyqtgraph as pg
-import numpy as np
-import tensorflow as tf
-from pathlib import Path
-import h5py
-import pyabf
 from qt_material import build_stylesheet
-from scipy.signal import find_peaks, convolve, resample
-from scipy.signal.windows import hann
-from sklearn.preprocessing import scale, minmax_scale
-import sys
-from miniml.miniML import MiniTrace, EventDetection, is_keras_model
-from miniml.miniML_settings import MinimlSettings
-from miniml.fileio import heka_reader as heka
 from scipy.interpolate import interp1d
+from scipy.signal import convolve, find_peaks, resample
+from scipy.signal.windows import hann
+from sklearn.preprocessing import minmax_scale, scale
 
+from miniml.fileio import heka_reader as heka
+from miniml.miniML import EventDetection, MiniTrace, is_keras_model
+from miniml.settings import RESOURCES_DIR, Settings
 
 # ------- GUI config ------- #
 pg.setConfigOption("background", "w")
@@ -51,22 +54,34 @@ pg.setConfigOption("leftButtonPan", False)
 
 
 # ------- Functions ------- #
-def get_available_models() -> list:
+def get_available_models() -> list[str]:
     """
-    Returns a list of available model paths in the /models folder.
+    Returns a list of available model paths in the resources/models folder.
     The list only contains relative paths.
     """
     # Look for models inside the package directory
-    models_dir = Path(__file__).parent / "models"
-    if not models_dir.exists():
-        return []
-    models = [
-        str(p.relative_to(models_dir))
-        for p in models_dir.glob("**/*.h5")
-        if is_keras_model(str(p))
-    ]
+    t = resources.files(str(__package__)).joinpath(f"{RESOURCES_DIR}/models")
+    with resources.as_file(t) as models_dir:
+        if not models_dir.exists():
+            return []
+        models = [
+            str(p.relative_to(models_dir))
+            for p in models_dir.glob("**/*.h5")
+            if is_keras_model(str(p))
+        ]
 
     return models
+
+
+@cache
+def get_icon_file_path(icon_name: str) -> str:
+    """
+    Returns the path to an icon file in the resources/icons folder.
+    """
+    with resources.as_file(
+        resources.files(str(__package__)).joinpath(f"{RESOURCES_DIR}/icons/{icon_name}")
+    ) as icon_path:
+        return icon_path.as_posix()
 
 
 def get_hdf_keys(filepath: str) -> list:
@@ -143,13 +158,13 @@ def hex_to_rgb(hexa):
 # ------- Classes ------- #
 class minimlGuiMain(QMainWindow):
     def __init__(self):
-        super(minimlGuiMain, self).__init__()
+        super().__init__()
         self.initUI()
         self._create_toolbar()
         self._connect_actions()
         self._create_menubar()
         self.info_dialog = None
-        self.settings = MinimlSettings()
+        self.settings = Settings()
         self.was_analyzed = False
 
     def initUI(self):
@@ -227,8 +242,8 @@ class minimlGuiMain(QMainWindow):
         viewMenu.addAction(self.eventViewerAction)
 
     def _get_icon(self, icon_name):
-        icon_path = Path(__file__).parent / "icons" / icon_name
-        return QIcon(str(icon_path))
+        path = get_icon_file_path(icon_name)
+        return QIcon(path)
 
     def _create_toolbar(self):
         self.tb = self.addToolBar("Menu")
@@ -1077,7 +1092,7 @@ class minimlGuiMain(QMainWindow):
 
 class LoadHdfPanel(QDialog):
     def __init__(self, parent=None):
-        super(LoadHdfPanel, self).__init__(parent)
+        super().__init__(parent)
 
         self.e1 = QComboBox()
         self.e1.setMinimumWidth(200)
@@ -1100,7 +1115,7 @@ class LoadHdfPanel(QDialog):
 
 class LoadAbfPanel(QDialog):
     def __init__(self, parent=None):
-        super(LoadAbfPanel, self).__init__(parent)
+        super().__init__(parent)
 
         self.abf_file = pyabf.ABF(parent.filename)
 
@@ -1133,7 +1148,7 @@ class LoadAbfPanel(QDialog):
 
 class LoadDatPanel(QDialog):
     def __init__(self, parent=None):
-        super(LoadDatPanel, self).__init__(parent)
+        super().__init__(parent)
 
         self.bundle = heka.Bundle(parent.filename)
 
@@ -1187,7 +1202,7 @@ class LoadDatPanel(QDialog):
 
 class FileInfoPanel(QDialog):
     def __init__(self, parent=None):
-        super(FileInfoPanel, self).__init__(parent)
+        super().__init__(parent)
 
         self.filename = QLineEdit(parent.trace.filename)
         self.filename.setReadOnly(True)
@@ -1220,7 +1235,7 @@ class FileInfoPanel(QDialog):
 
 class AboutPanel(QDialog):
     def __init__(self, parent=None):
-        super(AboutPanel, self).__init__(parent)
+        super().__init__(parent)
 
         self.layout = QFormLayout(self)
 
@@ -1257,7 +1272,7 @@ class AboutPanel(QDialog):
 
 class SummaryPanel(QDialog):
     def __init__(self, parent=None):
-        super(SummaryPanel, self).__init__(parent)
+        super().__init__(parent)
 
         self.populate_fields(parent)
         self.layout.addRow("Filename:", self.filename)
@@ -1341,7 +1356,7 @@ class SummaryPanel(QDialog):
 
 class SettingsPanel(QDialog):
     def __init__(self, parent=None):
-        super(SettingsPanel, self).__init__(parent)
+        super().__init__(parent)
 
         self.stride = QLineEdit(str(parent.settings.stride))
         self.ev_len = QLineEdit(str(parent.settings.event_window))
@@ -1392,7 +1407,7 @@ class SettingsPanel(QDialog):
 
 class CutPanel(QDialog):
     def __init__(self, parent=None):
-        super(CutPanel, self).__init__(parent)
+        super().__init__(parent)
 
         layout = QVBoxLayout(self)
         vb = CustomViewBox()
@@ -1461,17 +1476,16 @@ class CutPanel(QDialog):
         self.toggle_label1.setStyleSheet("font-weight: bold;")
         self.switch = QCheckBox()
         self.switch.setChecked(False)
-        icons_dir = Path(__file__).parent / "icons"
-        toggle_off = str(icons_dir / "toggle_off_24px.svg").replace("\\", "/")
-        toggle_on = str(icons_dir / "toggle_on_24px.svg").replace("\\", "/")
+        icon_toggle_off = get_icon_file_path("toggle_off_24px.svg")
+        icon_toggle_on = get_icon_file_path("toggle_on_24px.svg")
         self.switch.setStyleSheet(f"""
             QCheckBox::indicator:unchecked {{
-                image: url({toggle_off});
+                image: url({icon_toggle_off});
                 width: 48;
                 height: 48;
             }}
             QCheckBox::indicator:checked {{
-                image: url({toggle_on});
+                image: url({icon_toggle_on});
                 width: 48;
                 height: 48;
             }}
@@ -1480,12 +1494,13 @@ class CutPanel(QDialog):
 
         lower_layout = QHBoxLayout()
 
-        icons_dir = Path(__file__).parent / "icons"
+        icon_first_page = get_icon_file_path("first_page_24dp.svg")
+        icon_last_page = get_icon_file_path("last_page_24dp.svg")
         cursor1_icon = QLabel()
-        cursor1_icon.setPixmap(QPixmap(str(icons_dir / "first_page_24dp.svg")))
+        cursor1_icon.setPixmap(QPixmap(icon_first_page))
         cursor1_icon.setFixedSize(36, 36)
         cursor2_icon = QLabel()
-        cursor2_icon.setPixmap(QPixmap(str(icons_dir / "last_page_24dp.svg")))
+        cursor2_icon.setPixmap(QPixmap(icon_last_page))
         cursor2_icon.setFixedSize(36, 36)
         lower_layout.addWidget(cursor1_icon)
         lower_layout.addWidget(start_label)
@@ -1516,7 +1531,7 @@ class CutPanel(QDialog):
 
 class FilterPanel(QDialog):
     def __init__(self, parent=None):
-        super(FilterPanel, self).__init__(parent)
+        super().__init__(parent)
 
         layout = QVBoxLayout(self)
 
@@ -1684,7 +1699,7 @@ class FilterPanel(QDialog):
 
 class AutoSettingsWindow(QDialog):
     def __init__(self, parent=None):
-        super(AutoSettingsWindow, self).__init__(parent)
+        super().__init__(parent)
         self.parent = parent
 
         self.peak_window = 200  # window in samples to search for peak after steepest rise point # TO DO: replace hard-coded value
@@ -2045,11 +2060,9 @@ class AutoSettingsWindow(QDialog):
             window_sizes.append(window_size)
 
             win_start = t1 - window_size // 5
-            if win_start < 0:
-                win_start = 0
+            win_start = max(win_start, 0)
             win_end = t1 + window_size // 1.25
-            if win_end > len(event_avg_copy):
-                win_end = len(event_avg_copy)
+            win_end = min(win_end, len(event_avg_copy))
             data = event_avg_copy[int(win_start) : int(win_end)]
 
             # resample to 600 points and normalize, then predict using the model
@@ -2146,7 +2159,7 @@ class AutoSettingsWindow(QDialog):
 
 class EventViewer(QDialog):
     def __init__(self, parent=None):
-        super(EventViewer, self).__init__(parent)
+        super().__init__(parent)
 
         self.resize(750, 610)
 
@@ -2175,34 +2188,37 @@ class EventViewer(QDialog):
 
         self.layout.addWidget(self.toolbar, 0, 0, 1, 3)
 
-        icons_dir = Path(__file__).parent / "icons"
         self.firstAction = QAction(
-            QIcon(str(icons_dir / "first_page_24px_blue.svg")),
+            QIcon(get_icon_file_path("first_page_24px_blue.svg")),
             "First event",
             self.toolbar,
         )
         self.toolbar.addAction(self.firstAction)
         self.firstAction.triggered.connect(self.first_event)
         self.beforeAction = QAction(
-            QIcon(str(icons_dir / "navigate_before_24px_blue.svg")),
+            QIcon(get_icon_file_path("navigate_before_24px_blue.svg")),
             "Previous",
             self.toolbar,
         )
         self.toolbar.addAction(self.beforeAction)
         self.beforeAction.triggered.connect(self.previous)
         self.nextAction = QAction(
-            QIcon(str(icons_dir / "navigate_next_24px_blue.svg")), "Next", self.toolbar
+            QIcon(get_icon_file_path("navigate_next_24px_blue.svg")),
+            "Next",
+            self.toolbar,
         )
         self.toolbar.addAction(self.nextAction)
         self.nextAction.triggered.connect(self.next)
         self.toolbar.addSeparator()
         self.deleteAction = QAction(
-            QIcon(str(icons_dir / "clear_24px_blue.svg")), "Delete event", self.toolbar
+            QIcon(get_icon_file_path("clear_24px_blue.svg")),
+            "Delete event",
+            self.toolbar,
         )
         self.toolbar.addAction(self.deleteAction)
         self.deleteAction.triggered.connect(self.delete_event)
         self.excludeAction = QAction(
-            QIcon(str(icons_dir / "hide_image_24px_blue.svg")),
+            QIcon(get_icon_file_path("hide_image_24px_blue.svg")),
             "Exclude from average",
             self.toolbar,
         )
@@ -2736,21 +2752,30 @@ class CustomViewBox(pg.ViewBox):
 
 def main():
     app = QApplication(sys.argv)
-    package_dir = Path(__file__).parent
-    app.setWindowIcon(QIcon(str(package_dir / "minML_icon.png")))
-    window = minimlGuiMain()
+
+    with resources.as_file(
+        resources.files(str(__package__)) / RESOURCES_DIR / "minML_icon.png"
+    ) as app_icon_file:
+        app.setWindowIcon(QIcon(str(app_icon_file)))
+
     extra = {
         "density_scale": "-1",
     }
-    template_path = str(package_dir / "miniml.css.template")
-    app.setStyleSheet(
-        build_stylesheet(
-            theme="light_blue.xml",
-            invert_secondary=False,
-            extra=extra,
-            template=template_path,
+
+    with resources.as_file(
+        resources.files(str(__package__)) / RESOURCES_DIR / "miniml.css.template"
+    ) as template_file:
+        print(template_file)
+        app.setStyleSheet(
+            build_stylesheet(
+                theme="light_blue.xml",
+                invert_secondary=False,
+                extra=extra,
+                template=str(template_file),
+            )
         )
-    )
+
+    window = minimlGuiMain()
     window.show()
     sys.exit(app.exec_())
 

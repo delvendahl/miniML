@@ -1,2 +1,2 @@
-from .miniML import MiniTrace, EventDetection, EventStats, EventAnalysis
-from .miniML_settings import MinimlSettings
+from miniml.miniML import EventAnalysis, EventDetection, EventStats, MiniTrace
+from miniml.settings import Settings

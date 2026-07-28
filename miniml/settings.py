@@ -1,8 +1,10 @@
 import os
-from importlib.resources import files
+from importlib import resources
+
+RESOURCES_DIR = "resources"
 
 
-class MinimlSettings:
+class Settings:
     """
     Class to store the analysis settings for miniML. The settings are:
     - stride: int, default=20
@@ -78,12 +80,20 @@ class MinimlSettings:
         return self._model_path
 
     @model_path.setter
-    def model_path(self, value) -> None:
-        model_path = files("miniml").joinpath(f"models/{value}")
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model file not found: {model_path}")
+    def model_path(self, value: str) -> None:
+        if value.strip() == "":
+            self._model_path = ""
+            return
 
-        self._model_path = model_path
+        with resources.as_file(
+            resources.files(str(__package__)).joinpath(
+                f"{RESOURCES_DIR}/models/{value}"
+            )
+        ) as fspath:
+            self._model_path = str(fspath)
+
+        if not os.path.exists(self._model_path):
+            raise FileNotFoundError(f"Model file not found: {self._model_path}")
 
     @property
     def event_threshold(self) -> float:
