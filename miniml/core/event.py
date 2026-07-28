@@ -182,10 +182,10 @@ class EventDetection:
         model_path: str = "",
         model_threshold: float = 0.5,
         compile_model=True,
-        callbacks: list = [],
+        callbacks: list | None = None,
     ) -> None:
         self.trace = data
-        self.prediction = None
+        self.prediction: np.ndarray = np.array([])
         self.window_size = window_size
         self.event_direction = event_direction
         self.training_direction = training_direction
@@ -200,12 +200,12 @@ class EventDetection:
         if model:
             self.model = model
             self.model_threshold = model_threshold
-            self.callbacks = callbacks
+            self.callbacks = callbacks or []
         elif model_path:
             self.load_model(
                 filepath=model_path, threshold=model_threshold, compile=compile_model
             )
-            self.callbacks = callbacks
+            self.callbacks = callbacks or []
         self.deleted_events = 0
 
     @property

@@ -5,15 +5,17 @@
 #
 
 import h5py
-import numpy as np
-from scipy.signal import savgol_filter, butter, sosfiltfilt
-from scipy.fft import fft, ifft
-from scipy.stats import norm
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.fft import fft, ifft
+from scipy.signal import butter, savgol_filter, sosfiltfilt
+from scipy.stats import norm
 
 
-class DeconvolutionResult(object):
-    """Collection of results of deconvolution-based event detection."""
+class DeconvolutionResult:
+    """
+    Collection of results of deconvolution-based event detection.
+    """
 
     def __init__(self, indices, threshold, kernel, detection_trace):
         self.indices = indices

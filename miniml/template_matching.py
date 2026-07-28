@@ -7,11 +7,11 @@
 #
 
 import h5py
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
-class TemplateMatchResult(object):
+class TemplateMatchResult:
     """Collection of results of least squares optimization for template matching."""
 
     def __init__(self, indices, detection_trace, s, c, threshold, kernel):
@@ -52,18 +52,18 @@ def template_matching(data, kernel, threshold):
     """
     .. note::
             Threshold values usually should be in the range 1 to 5 for reasonable results.
-    Input :math:`\mathbf{y}` and :math:`\mathbf{e}` are two vectors, the normalized
+    Input :math:`\\mathbf{y}` and :math:`\\mathbf{e}` are two vectors, the normalized
     template that should be used for matching and the data vector. Some intermediate values are:
-    :math:`\overline{e} = \frac{1}{K}\sum_k e_k`
-    :math:`\overline{y_n} = \frac{1}{K}\sum_k y_{n+k}`
+    :math:`\\overline{e} = \frac{1}{K}\\sum_k e_k`
+    :math:`\\overline{y_n} = \frac{1}{K}\\sum_k y_{n+k}`
     The goal is to minimize the least squares distance:
-    :math:`\chi_n^2(S,C)=\sum_K\left[y_{n+k} - (S e_k +C)\right]^2`
+    :math:`\\chi_n^2(S,C)=\\sum_K\\left[y_{n+k} - (S e_k +C)\right]^2`
     W.r.t. the variables :math:`S` and :math:`C`. According to (ClementsBekkers, Appendix  I)[1] the result is:
-    :math:`S_n = \frac{\sum_k e_k y_{n+k}-1/K \sum_k e_k \sum_k y_{n+k}}{\sum e_k^2-1/K \sum_k e_k \sum_k e_k} = \frac{\sum_k e_k y_{n+k}-K\overline{e}\ \overline{y_n}}{\sum e_k^2-K\overline{e}^2}`
+    :math:`S_n = \frac{\\sum_k e_k y_{n+k}-1/K \\sum_k e_k \\sum_k y_{n+k}}{\\sum e_k^2-1/K \\sum_k e_k \\sum_k e_k} = \frac{\\sum_k e_k y_{n+k}-K\\overline{e}\\ \\overline{y_n}}{\\sum e_k^2-K\\overline{e}^2}`
     and
-    :math:`C_n = \overline{y_n} -S_n \overline{e}`
-    :param data: 1D numpy array with the timeseries to analyze, above denoted as :math:`\mathbf{y}`
-    :param kernel: 1D numpy array with the template to use, above denoted as :math:`\mathbf{e}`
+    :math:`C_n = \\overline{y_n} -S_n \\overline{e}`
+    :param data: 1D numpy array with the timeseries to analyze, above denoted as :math:`\\mathbf{y}`
+    :param kernel: 1D numpy array with the template to use, above denoted as :math:`\\mathbf{e}`
     :param threshold: scalar value usually between 4 to 5.
     :return: A result object :py:class:`template_matching.ClementsBekkersResult`
     [1] http://dx.doi.org/10.1016%2FS0006-3495(97)78062-7

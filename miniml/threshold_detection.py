@@ -5,13 +5,13 @@
 # simplified numpy implementation
 #
 
-import numpy as np
 import h5py
-from scipy.signal import butter, sosfiltfilt
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.signal import butter, sosfiltfilt
 
 
-class DetectionResult(object):
+class DetectionResult:
     """Collection of results of threshold-based event detection."""
 
     def __init__(self, indices, avg, dt, peak_win, threshold, detection_trace):
