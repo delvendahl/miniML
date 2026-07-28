@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSplitter,
+    QStatusBar,
     QStyleFactory,
     QTableView,
     QTableWidget,
@@ -524,9 +525,9 @@ class AppMainWindow(QMainWindow):
         self.was_analyzed = False
 
     def init_ui(self):
-        self.statusbar = self.statusBar()
-        if self.statusbar is not None:
-            self.statusbar.setSizeGripEnabled(False)
+        statusbar = QStatusBar(self)
+        statusbar.setSizeGripEnabled(False)
+        self.setStatusBar(statusbar)
 
         self.tracePlot = pg.PlotWidget()
         self.tracePlot.setLabel("bottom", "Time", "s")
@@ -540,35 +541,34 @@ class AppMainWindow(QMainWindow):
         self.histogramPlot = pg.PlotWidget()
         self.averagePlot = pg.PlotWidget()
 
-        self.splitter1 = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter1.setHandleWidth(12)
-        self.splitter1.addWidget(self.eventPlot)
-        self.splitter1.addWidget(self.averagePlot)
-        self.splitter1.addWidget(self.histogramPlot)
-        self.splitter1.setSizes([250, 250, 250])
+        splitter1 = QSplitter(Qt.Orientation.Horizontal)
+        splitter1.setHandleWidth(12)
+        splitter1.addWidget(self.eventPlot)
+        splitter1.addWidget(self.averagePlot)
+        splitter1.addWidget(self.histogramPlot)
+        splitter1.setSizes([250, 250, 250])
 
-        self.splitter2 = QSplitter(Qt.Orientation.Vertical)
-        self.splitter2.setHandleWidth(12)
-        self.splitter2.addWidget(self.predictionPlot)
-        self.splitter2.addWidget(self.tracePlot)
-        self.splitter2.addWidget(self.splitter1)
-        self.splitter2.setSizes([130, 270, 150])
+        splitter2 = QSplitter(Qt.Orientation.Vertical)
+        splitter2.setHandleWidth(12)
+        splitter2.addWidget(self.predictionPlot)
+        splitter2.addWidget(self.tracePlot)
+        splitter2.addWidget(splitter1)
+        splitter2.setSizes([130, 270, 150])
 
-        self.splitter3 = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter3.setHandleWidth(12)
-        self.splitter3.addWidget(self.splitter2)
+        splitter3 = QSplitter(Qt.Orientation.Horizontal)
+        splitter3.setHandleWidth(12)
+        splitter3.addWidget(splitter2)
 
         self.tableWidget = self._create_table()
 
-        self.splitter3.addWidget(self.tableWidget)
-        self.splitter3.setSizes([750, 400])
+        splitter3.addWidget(self.tableWidget)
+        splitter3.setSizes([750, 400])
 
-        self.setCentralWidget(self.splitter3)
+        self.setCentralWidget(splitter3)
         QApplication.setStyle(QStyleFactory.create("Cleanlooks"))
 
         self.setGeometry(100, 100, 1150, 750)
         self.setWindowTitle("miniML")
-        self.show()
 
     def _create_menubar(self):
         menubar = self.menuBar()
