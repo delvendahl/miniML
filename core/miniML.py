@@ -1299,12 +1299,14 @@ class EventDetection():
         self.halfwidths = np.delete(self.halfwidths, event_indices, axis=0)
         self.events = np.delete(self.events, event_indices, axis=0)
         self.event_scores = np.delete(self.event_scores, event_indices, axis=0)
-        
+        if hasattr(self, 'slopes'):
+            self.slopes = np.delete(self.slopes, event_indices, axis=0)
+
         self.deleted_events += len(event_indices)
 
         if eval:
-            self.detection._get_singular_event_indices()
-            self.detection._eval_events()
+            self._get_singular_event_indices()
+            self._eval_events()
 
 
     def save_to_h5(self, filename: str, include_prediction: bool=False) -> None:
