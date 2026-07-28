@@ -1,25 +1,28 @@
 from __future__ import annotations
-import numpy as np
-import h5py
-import matplotlib.pyplot as plt
-import tensorflow as tf
+
 import os
-import pandas as pd
 import pickle as pkl
 from pathlib import Path
+
+import h5py
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import tensorflow as tf
 from scipy import signal
-from scipy.optimize import curve_fit
 from scipy.ndimage import maximum_filter1d
-from .miniML_functions import (
-    get_event_peak,
+from scipy.optimize import curve_fit
+
+from miniml.core.functions import (
     get_event_baseline,
-    get_event_onset,
-    get_event_risetime,
-    get_event_halfdecay_time,
     get_event_charge,
+    get_event_halfdecay_time,
     get_event_halfwidth,
+    get_event_onset,
+    get_event_peak,
+    get_event_risetime,
 )
-from .miniML_updated_functions import get_event_baseline_v2
+from miniml.core.updated_functions import get_event_baseline_v2
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 

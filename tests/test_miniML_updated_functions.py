@@ -1,12 +1,13 @@
 import unittest
+
 import numpy as np
 
-from miniml.miniML_updated_functions import (
+from miniml.core.updated_functions import (
+    baseline_score,
+    get_event_baseline_new,
+    get_event_baseline_v2,
     get_segment_stats,
     get_steepest_rise_position,
-    baseline_score,
-    get_event_baseline_v2,
-    get_event_baseline_new,
 )
 
 

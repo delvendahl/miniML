@@ -1,14 +1,15 @@
 import unittest
+
 import numpy as np
 
-from miniml.miniML_functions import (
-    get_event_halfwidth,
-    get_event_peak,
+from miniml.core.functions import (
     get_event_baseline,
-    get_event_onset,
-    get_event_risetime,
-    get_event_halfdecay_time,
     get_event_charge,
+    get_event_halfdecay_time,
+    get_event_halfwidth,
+    get_event_onset,
+    get_event_peak,
+    get_event_risetime,
 )
 
 

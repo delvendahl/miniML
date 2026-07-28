@@ -1,5 +1,5 @@
-from __future__ import annotations
 from collections import namedtuple
+
 import numpy as np
 
 
@@ -32,7 +32,7 @@ def get_event_peak(
     else:
         right_window_limit = int(data.shape[0] / 5)
 
-    peak_position = (
+    peak_position = int(
         np.argmax(data[add_points : add_points + right_window_limit]) + add_points
     )
 
@@ -87,18 +87,13 @@ def get_event_baseline(
         bsl_duration = int(
             duration / 10
         )  # make baseline duration shorter if previous event is close
-        bsl_start = (
-            (min_position - bsl_duration // 2)
-            if (min_position - bsl_duration // 2) > 0
-            else 0
-        )
+        bsl_start = max(0, min_position - bsl_duration // 2)
         bsl_end = min_position + bsl_duration // 2
     else:
         bsl_duration = duration
         bsl_end = add_points - (peak_positions[event_num] - add_points) * 3
-        if bsl_end < bsl_duration:
-            bsl_end = bsl_duration
-        bsl_start = (bsl_end - bsl_duration) if (bsl_end - bsl_duration) > 0 else 0
+        bsl_end = max(bsl_end, bsl_duration)
+        bsl_start = max(0, bsl_end - bsl_duration)
 
     if np.mean(data[bsl_start:bsl_end]) >= data[peak_positions[event_num]]:
         min_position = np.argmin(data[int(add_points / 2) : add_points]) + int(
@@ -106,11 +101,7 @@ def get_event_baseline(
         )
 
         bsl_duration = int(duration / 4)
-        bsl_start = (
-            (min_position - bsl_duration // 2)
-            if (min_position - bsl_duration // 2) > 0
-            else 0
-        )
+        bsl_start = max(0, min_position - bsl_duration // 2)
         bsl_end = min_position + bsl_duration // 2
 
     baseline, bsl_var = (

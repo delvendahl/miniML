@@ -1,9 +1,9 @@
-from __future__ import annotations
-import numpy as np
+from collections import namedtuple
+
 import matplotlib.pyplot as plt
+import numpy as np
 import ruptures as rpt
 import scipy as sc
-from collections import namedtuple
 
 
 def get_segment_stats(breakpoints: list, data: np.ndarray):
@@ -97,8 +97,7 @@ def get_event_baseline_v2(
         search_start = 0
 
     search_end = int(relative_event_position * 1.75)
-    if search_end > data.shape[0]:
-        search_end = data.shape[0]
+    search_end = min(search_end, data.shape[0])
 
     model = rpt.KernelCPD(kernel="rbf", min_size=min_size).fit(
         data[search_start:search_end]
@@ -228,8 +227,7 @@ def get_event_baseline_new(
             print("previous peak in trace detected")
         penalty = 5
         trace_start = int(positions[event_num]) - int(positions[event_num - 1])
-        if trace_start > peak_win_start:
-            trace_start = peak_win_start
+        trace_start = min(trace_start, peak_win_start)
     # check if beginning of baseline is above peak
     elif np.sum(data[0:peak_win_start] > data[peak_position]) > (peak_win_start / 2):
         if debug:
