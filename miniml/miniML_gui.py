@@ -1,4 +1,3 @@
-# ------- Imports ------- #
 import sys
 from functools import cache
 from importlib import resources
@@ -43,8 +42,10 @@ from scipy.signal import convolve, find_peaks, resample
 from scipy.signal.windows import hann
 from sklearn.preprocessing import minmax_scale, scale
 
+from miniml.core.event import EventDetection
+from miniml.core.trace import MiniTrace
 from miniml.fileio import heka_reader as heka
-from miniml.miniML import EventDetection, MiniTrace, is_keras_model
+from miniml.fileio.util import is_keras_model
 from miniml.settings import RESOURCES_DIR, Settings
 
 # ------- GUI config ------- #
