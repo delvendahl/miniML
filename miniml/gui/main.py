@@ -24,11 +24,7 @@ def entry_point():
     """
     app = QApplication(sys.argv)
     app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
-
-    with resources.as_file(
-        resources.files(miniml.resources) / "minML_icon.png"
-    ) as app_icon_file:
-        app.setWindowIcon(QIcon(str(app_icon_file)))
+    app.setWindowIcon(QIcon(get_app_icon_file_path()))
 
     extra = {
         "density_scale": "-1",
