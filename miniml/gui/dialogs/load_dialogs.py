@@ -3,8 +3,8 @@ from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QFormLayout, QLineEdit
 
 from miniml.fileio import heka_reader as heka
+from miniml.fileio.util import get_hdf_keys
 from miniml.gui.dialogs.common import finalize_dialog_window
-from miniml.gui.util import get_hdf_keys
 
 
 class LoadAbfPanel(QDialog):

@@ -19,7 +19,14 @@ from scipy.signal.windows import hann
 from sklearn.preprocessing import minmax_scale, scale
 
 from miniml.gui.dialogs.common import finalize_dialog_window
-from miniml.gui.util import get_available_models, hex_to_rgb
+from miniml.resources.util import get_available_models
+
+
+def hex_to_rgb(hexa):
+    """
+    Convert a hex color code to a tuple of RGB values.
+    """
+    return tuple(int(hexa[i : i + 2], 16) for i in (1, 3, 5))
 
 
 class SettingsPanel(QDialog):

@@ -38,8 +38,8 @@ from miniml.gui.dialogs import (
 from miniml.gui.presenters import AnalysisPlotPresenter
 from miniml.gui.services import AppServices
 from miniml.gui.state import AppState
-from miniml.gui.util import get_icon_file_path
 from miniml.gui.views import EventViewer
+from miniml.resources.util import get_icon_file_path
 
 
 class MainWindow(QMainWindow):

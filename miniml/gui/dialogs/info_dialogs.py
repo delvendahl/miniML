@@ -4,7 +4,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QDialog, QFormLayout, QLabel, QLineEdit
 
 from miniml.gui.dialogs.common import finalize_dialog_window
-from miniml.gui.util import get_app_icon_file_path
+from miniml.resources.util import get_app_icon_file_path
 
 
 class FileInfoPanel(QDialog):

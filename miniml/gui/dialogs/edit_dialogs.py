@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from miniml.gui.util import get_icon_file_path
+from miniml.resources.util import get_icon_file_path
 
 
 class CustomViewBox(pg.ViewBox):
