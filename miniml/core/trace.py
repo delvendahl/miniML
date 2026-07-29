@@ -137,9 +137,9 @@ class MiniTrace:
         filename: str,
         rectype: str,
         group: int = 0,
-        load_series: list = [],
-        exclude_series: list = [],
-        exclude_sweeps: dict = {},
+        load_series: list[int] | None = None,
+        exclude_series: list[int] | None = None,
+        exclude_sweeps: dict[int, int] | None = None,
         scaling: float = 1,
         unit: str = "",
         resample: bool = True,
@@ -196,7 +196,13 @@ class MiniTrace:
         for i, SeriesRecord in enumerate(bundle.pul[group].children):
             bundle_series.update({i: SeriesRecord.Label})
 
-        if load_series == []:
+        if exclude_series is None:
+            exclude_series = []
+
+        if exclude_sweeps is None:
+            exclude_sweeps = {}
+
+        if not load_series:
             series_list = [
                 series_number
                 for series_number, record_type in bundle_series.items()

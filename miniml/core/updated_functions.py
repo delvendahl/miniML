@@ -82,7 +82,7 @@ def get_event_baseline_v2(
     bsl_duration: int,
     event_num: int,
     relative_event_position: int,
-    positions: np.ndarray,
+    positions: np.ndarray | list[int],
 ):
     """
     Calculate the baseline and baseline variance for an event in the given data.

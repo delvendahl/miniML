@@ -42,9 +42,9 @@ def get_event_baseline(
     duration: int,
     event_num: int,
     add_points,
-    diffs: np.ndarray,
-    peak_positions: np.ndarray,
-    positions: np.ndarray,
+    diffs: np.ndarray | list[int] | list[float],
+    peak_positions: np.ndarray | list[int],
+    positions: np.ndarray | list[int],
 ):
     """
     Calculate the baseline and baseline variance for an event in the given data.
