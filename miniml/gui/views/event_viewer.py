@@ -17,93 +17,35 @@ from miniml.gui.util import get_icon_file_path
 
 
 class EventViewer(QDialog):
-    def __init__(self, parent=None):
+    """
+    Interactive dialog for reviewing and curating detected events.
+    """
+
+    def __init__(
+        self,
+        *,
+        detection,
+        settings,
+        num_events: int,
+        exclude_events,
+        use_for_avg,
+        time_ax_display,
+        data_display,
+        on_commit,
+        parent=None,
+    ):
+        """
+        Initialize viewer state and render event-inspection widgets.
+        """
         super().__init__(parent)
+        self.detection = detection
+        self.settings = settings
+        self.num_events = num_events
+        self.exclude_events = exclude_events
+        self.use_for_avg = use_for_avg
+        self.on_commit = on_commit
 
         self.resize(750, 610)
-
-        self.detection = parent.detection
-        self.settings = parent.settings
-        self.num_events = parent.num_events
-        self.exclude_events = parent.exclude_events
-        self.use_for_avg = parent.use_for_avg
-
-        layout = QGridLayout(self)
-        layout.setColumnMinimumWidth(0, 200)
-        layout.setColumnMinimumWidth(1, 200)
-        layout.setColumnMinimumWidth(2, 225)
-        layout.setRowMinimumHeight(1, 120)
-        layout.setRowMinimumHeight(2, 160)
-        layout.setRowMinimumHeight(3, 180)
-        layout.setRowMinimumHeight(4, 140)
-
-        layout.setColumnStretch(0, 1)
-        layout.setColumnStretch(1, 1)
-        layout.setColumnStretch(2, 1)
-        layout.setRowStretch(4, 1)
-
-        self.toolbar = QToolBar()
-        self.toolbar.setMovable(False)
-
-        layout.addWidget(self.toolbar, 0, 0, 1, 3)
-
-        self.firstAction = QAction(
-            QIcon(get_icon_file_path("first_page_24px_blue.svg")),
-            "First event",
-            self.toolbar,
-        )
-        self.toolbar.addAction(self.firstAction)
-        self.firstAction.triggered.connect(self.first_event)
-        self.beforeAction = QAction(
-            QIcon(get_icon_file_path("navigate_before_24px_blue.svg")),
-            "Previous",
-            self.toolbar,
-        )
-        self.toolbar.addAction(self.beforeAction)
-        self.beforeAction.triggered.connect(self.previous)
-        self.nextAction = QAction(
-            QIcon(get_icon_file_path("navigate_next_24px_blue.svg")),
-            "Next",
-            self.toolbar,
-        )
-        self.toolbar.addAction(self.nextAction)
-        self.nextAction.triggered.connect(self.next)
-        self.toolbar.addSeparator()
-        self.deleteAction = QAction(
-            QIcon(get_icon_file_path("clear_24px_blue.svg")),
-            "Delete event",
-            self.toolbar,
-        )
-        self.toolbar.addAction(self.deleteAction)
-        self.deleteAction.triggered.connect(self.delete_event)
-        self.excludeAction = QAction(
-            QIcon(get_icon_file_path("hide_image_24px_blue.svg")),
-            "Exclude from average",
-            self.toolbar,
-        )
-        self.toolbar.addAction(self.excludeAction)
-        self.excludeAction.triggered.connect(self.exclude_event)
-
-        self.tracePlot = pg.PlotWidget()
-        self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
-        self.tracePlot.setLabel("bottom", "Time", "s")
-        self.tracePlot.setLabel("left", "Imon", "")
-        layout.addWidget(self.tracePlot, 1, 0, 1, 3)
-
-        self.eventPlot = pg.PlotWidget()
-        self.eventPlot.showGrid(x=True, y=True, alpha=0.1)
-        self.eventPlot.setLabel("bottom", "Time", "s")
-        self.eventPlot.setLabel("left", "Imon", "")
-        layout.addWidget(self.eventPlot, 2, 0, 2, 2)
-
-        self.averagePlot = pg.PlotWidget()
-        layout.addWidget(self.averagePlot, 4, 0, 1, 1)
-
-        self.ampHistPlot = pg.PlotWidget()
-        layout.addWidget(self.ampHistPlot, 4, 1, 1, 1)
-
-        self.decayHistPlot = pg.PlotWidget()
-        layout.addWidget(self.decayHistPlot, 4, 2, 1, 1)
 
         self.ind = 0
         self.left_buffer = int(self.detection.window_size / 2)
@@ -115,14 +57,111 @@ class EventViewer(QDialog):
             order=4,
         )
 
-        self.trace_x = parent.time_ax_display[::10]
-        self.trace_y = parent.data_display[::10]
+        self.trace_x = time_ax_display[::10]
+        self.trace_y = data_display[::10]
 
+        self.init_ui()
         self.init_trace_plot()
         self.init_avg_plot()
         self.init_histogram_plots()
         self.update_event_plot()
+        self.update_table()
 
+    def init_ui(self):
+        """
+        Build the main layout and child UI components.
+        """
+        self._layout = QGridLayout(self)
+        self._layout.setColumnMinimumWidth(0, 200)
+        self._layout.setColumnMinimumWidth(1, 200)
+        self._layout.setColumnMinimumWidth(2, 225)
+        self._layout.setRowMinimumHeight(1, 120)
+        self._layout.setRowMinimumHeight(2, 160)
+        self._layout.setRowMinimumHeight(3, 180)
+        self._layout.setRowMinimumHeight(4, 140)
+
+        self._layout.setColumnStretch(0, 1)
+        self._layout.setColumnStretch(1, 1)
+        self._layout.setColumnStretch(2, 1)
+        self._layout.setRowStretch(4, 1)
+
+        self._create_actions()
+        self._create_toolbar()
+        self._create_plots()
+        self._create_table()
+        self._create_button_box()
+
+        self.setWindowTitle("Event Viewer")
+        self.setWindowModality(pg.QtCore.Qt.WindowModality.ApplicationModal)
+        self.setLayout(self._layout)
+
+    def _create_actions(self):
+        """
+        Create toolbar actions and connect navigation handlers.
+        """
+
+        def _action(icon, text, shortcut=None):
+            path = get_icon_file_path(icon)
+            action = QAction(QIcon(path), text, self)
+            if shortcut:
+                action.setShortcut(shortcut)
+            return action
+
+        self.firstAction = _action("first_page_24px_blue.svg", "First event")
+        self.beforeAction = _action("navigate_before_24px_blue.svg", "Previous")
+        self.nextAction = _action("navigate_next_24px_blue.svg", "Next")
+        self.deleteAction = _action("clear_24px_blue.svg", "Delete event")
+        self.excludeAction = _action("hide_image_24px_blue.svg", "Exclude from average")
+
+        self.firstAction.triggered.connect(self.first_event)
+        self.beforeAction.triggered.connect(self.previous)
+        self.nextAction.triggered.connect(self.next)
+        self.deleteAction.triggered.connect(self.delete_event)
+        self.excludeAction.triggered.connect(self.exclude_event)
+
+    def _create_toolbar(self):
+        """
+        Build the top toolbar for event navigation and curation.
+        """
+        self.toolbar = QToolBar()
+        self.toolbar.setMovable(False)
+        self.toolbar.addAction(self.firstAction)
+        self.toolbar.addAction(self.beforeAction)
+        self.toolbar.addAction(self.nextAction)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.deleteAction)
+        self.toolbar.addAction(self.excludeAction)
+        self._layout.addWidget(self.toolbar, 0, 0, 1, 3)
+
+    def _create_plots(self):
+        """
+        Create and place trace, event, average, and histogram plots.
+        """
+        self.tracePlot = pg.PlotWidget()
+        self.tracePlot.showGrid(x=True, y=True, alpha=0.1)
+        self.tracePlot.setLabel("bottom", "Time", "s")
+        self.tracePlot.setLabel("left", "Imon", "")
+        self._layout.addWidget(self.tracePlot, 1, 0, 1, 3)
+
+        self.eventPlot = pg.PlotWidget()
+        self.eventPlot.showGrid(x=True, y=True, alpha=0.1)
+        self.eventPlot.setLabel("bottom", "Time", "s")
+        self.eventPlot.setLabel("left", "Imon", "")
+        self._layout.addWidget(self.eventPlot, 2, 0, 2, 2)
+
+        self.averagePlot = pg.PlotWidget()
+        self._layout.addWidget(self.averagePlot, 4, 0, 1, 1)
+
+        self.ampHistPlot = pg.PlotWidget()
+        self._layout.addWidget(self.ampHistPlot, 4, 1, 1, 1)
+
+        self.decayHistPlot = pg.PlotWidget()
+        self._layout.addWidget(self.decayHistPlot, 4, 2, 1, 1)
+
+    def _create_table(self):
+        """
+        Create and configure the per-event metrics table.
+        """
         self.table = QTableWidget()
         header = self.table.verticalHeader()
         if header is not None:
@@ -152,19 +191,17 @@ class EventViewer(QDialog):
         if viewport is not None:
             viewport.installEventFilter(self)
         self.table.setSelectionBehavior(QTableView.SelectRows)
-        self.update_table()
+        self._layout.addWidget(self.table, 2, 2, 2, 1)
 
-        layout.addWidget(self.table, 2, 2, 2, 1)
-
+    def _create_button_box(self):
+        """
+        Create commit/cancel buttons for the event-review session.
+        """
         QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         self.buttonBox = QDialogButtonBox(QBtn)
         self.buttonBox.accepted.connect(self.close_event_viewer)
         self.buttonBox.rejected.connect(self.cancel_event_viewer)
-
-        layout.addWidget(self.buttonBox, 5, 2, 1, 1)
-        self.setWindowTitle("Event Viewer")
-        self.setWindowModality(pg.QtCore.Qt.WindowModality.ApplicationModal)
-        self.setLayout(layout)
+        self._layout.addWidget(self.buttonBox, 5, 2, 1, 1)
 
     def update_table(self):
         """
@@ -172,58 +209,7 @@ class EventViewer(QDialog):
 
         Sets the values of the table according to the current event index
         """
-        self.table.setItem(0, 0, QTableWidgetItem(f"{self.ind + 1}"))
-        self.table.setItem(
-            1,
-            0,
-            QTableWidgetItem(
-                f"{self.detection.event_locations[self.ind] * self.detection.trace.sampling:.5f}"
-            ),
-        )
-        self.table.setItem(
-            2, 0, QTableWidgetItem(f"{self.detection.event_scores[self.ind]:.5f}")
-        )
-        self.table.setItem(
-            3, 0, QTableWidgetItem(f"{self.detection.event_bsls[self.ind]:.5f}")
-        )
-        self.table.setItem(
-            4,
-            0,
-            QTableWidgetItem(f"{self.detection.event_stats.amplitudes[self.ind]:.5f}"),
-        )
-        self.table.setItem(
-            5,
-            0,
-            QTableWidgetItem(f"{self.detection.event_stats.charges[self.ind]:.5f}"),
-        )
-        self.table.setItem(
-            6,
-            0,
-            QTableWidgetItem(
-                f"{self.detection.event_stats.risetimes[self.ind] * 1e3:.5f}"
-            ),
-        )
-        self.table.setItem(
-            7,
-            0,
-            QTableWidgetItem(
-                f"{self.detection.event_stats.slopes[self.ind] * 1e-3:.5f}"
-            ),
-        )
-        self.table.setItem(
-            8,
-            0,
-            QTableWidgetItem(
-                f"{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}"
-            ),
-        )
-        self.table.setItem(
-            9,
-            0,
-            QTableWidgetItem(
-                f"{self.detection.event_stats.halfwidths[self.ind] * 1e3:.5f}"
-            ),
-        )
+
         bsl_sd = np.std(
             self.detection.trace.data[
                 self.detection.bsl_starts[self.ind]
@@ -233,43 +219,80 @@ class EventViewer(QDialog):
                 - self.left_buffer
             ]
         )
-        self.table.setItem(
-            10,
-            0,
-            QTableWidgetItem(
-                f"{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}"
-            ),
-        )
-        self.table.setItem(
-            11,
-            0,
-            QTableWidgetItem(f"{self.detection.interevent_intervals[self.ind]:.5f}"),
-        )
 
-        self.table.setItem(0, 1, QTableWidgetItem(""))
-        self.table.setItem(1, 1, QTableWidgetItem("s"))
-        self.table.setItem(2, 1, QTableWidgetItem(""))
-        self.table.setItem(3, 1, QTableWidgetItem(self.detection.trace.y_unit))
-        self.table.setItem(4, 1, QTableWidgetItem(self.detection.trace.y_unit))
-        self.table.setItem(5, 1, QTableWidgetItem(f"{self.detection.trace.y_unit}*s"))
-        self.table.setItem(6, 1, QTableWidgetItem("ms"))
-        self.table.setItem(7, 1, QTableWidgetItem(self.detection.trace.y_unit + "/ms"))
-        self.table.setItem(8, 1, QTableWidgetItem("ms"))
-        self.table.setItem(9, 1, QTableWidgetItem("ms"))
-        self.table.setItem(10, 1, QTableWidgetItem(""))
-        self.table.setItem(11, 1, QTableWidgetItem("s"))
+        table_content = [
+            (
+                self.ind + 1,
+                "",
+            ),
+            (
+                f"{self.detection.event_locations[self.ind] * self.detection.trace.sampling:.5f}",
+                "s",
+            ),
+            (
+                f"{self.detection.event_scores[self.ind]:.5f}",
+                "",
+            ),
+            (
+                f"{self.detection.event_bsls[self.ind]:.5f}",
+                self.detection.trace.y_unit,
+            ),
+            (
+                f"{self.detection.event_stats.amplitudes[self.ind]:.5f}",
+                self.detection.trace.y_unit,
+            ),
+            (
+                f"{self.detection.event_stats.charges[self.ind]:.5f}",
+                self.detection.trace.y_unit + "*s",
+            ),
+            (
+                f"{self.detection.event_stats.risetimes[self.ind] * 1e3:.5f}",
+                "ms",
+            ),
+            (
+                f"{self.detection.event_stats.slopes[self.ind] * 1e-3:.5f}",
+                self.detection.trace.y_unit + "/ms",
+            ),
+            (
+                f"{self.detection.event_stats.halfdecays[self.ind] * 1e3:.5f}",
+                "ms",
+            ),
+            (
+                f"{self.detection.event_stats.halfwidths[self.ind] * 1e3:.5f}",
+                "ms",
+            ),
+            (
+                f"{np.abs(self.detection.event_stats.amplitudes[self.ind] / bsl_sd):.5f}",
+                "",
+            ),
+            (
+                f"{self.detection.interevent_intervals[self.ind]:.5f}",
+                "s",
+            ),
+        ]
+
+        for i, (value, unit) in enumerate(table_content):
+            self.table.setItem(i, 0, QTableWidgetItem(str(value)))
+            self.table.setItem(i, 1, QTableWidgetItem(unit))
 
     def cancel_event_viewer(self):
-        self.exclude_events = 0
-        self.use_for_avg = 1
+        """
+        Close the viewer without committing selection changes.
+        """
         self.close()
 
     def close_event_viewer(self):
+        """
+        Commit excluded events and close the viewer.
+        """
         rows = np.where(self.exclude_events == 1)[0]
-        self.parent().delete_multiple_events(rows)
+        self.on_commit(rows)
         self.close()
 
     def init_trace_plot(self):
+        """
+        Initialize overview trace plot and active-event marker.
+        """
         self.tracePlot.clear()
         trace = pg.PlotDataItem(
             self.trace_x,
@@ -283,6 +306,9 @@ class EventViewer(QDialog):
         self.update_trace_plot()
 
     def init_avg_plot(self):
+        """
+        Initialize the average waveform plot from selected events.
+        """
         self.averagePlot.clear()
         self.avg_time_ax = (
             np.arange(0, self.detection.events[0].shape[0])
@@ -300,6 +326,9 @@ class EventViewer(QDialog):
         self.averagePlot.setLabel("left", "Amplitude", self.detection.trace.y_unit)
 
     def init_histogram_plots(self):
+        """
+        Initialize amplitude and decay histograms.
+        """
         self.ampHistPlot.clear()
         self.decayHistPlot.clear()
 
@@ -326,6 +355,9 @@ class EventViewer(QDialog):
         self.decayHistPlot.setLabel("left", "Count", "")
 
     def update_avg_plot(self):
+        """
+        Refresh the average waveform after selection changes.
+        """
         if np.sum(self.use_for_avg) == 0:
             self.avg.setData(self.avg_time_ax, np.zeros(self.avg_time_ax.shape))
         else:
@@ -335,6 +367,9 @@ class EventViewer(QDialog):
             )
 
     def update_histogram_plots(self):
+        """
+        Refresh histogram curves using currently included events.
+        """
         if np.sum(self.exclude_events) == self.num_events:
             self.amp_curve.setData([0, 0], [0])
             self.decay_curve.setData([0, 0], [0])
@@ -353,6 +388,9 @@ class EventViewer(QDialog):
             self.decay_curve.setData(x, y)
 
     def update_trace_plot(self):
+        """
+        Move or create the vertical marker for the active event.
+        """
         peak_loc = self.detection.event_peak_locations[self.ind]
 
         if hasattr(self, "eventitem"):
@@ -559,18 +597,27 @@ class EventViewer(QDialog):
         self.eventPlot.setLabel("left", "Amplitude", self.detection.trace.y_unit)
 
     def first_event(self):
+        """
+        Jump to the first detected event.
+        """
         self.ind = 0
         self.update_event_plot()
         self.update_trace_plot()
         self.update_table()
 
     def previous(self):
+        """
+        Navigate to the previous event, wrapping around.
+        """
         self.ind = (self.ind - 1) % self.num_events
         self.update_event_plot()
         self.update_trace_plot()
         self.update_table()
 
     def delete_event(self):
+        """
+        Toggle deletion state for the active event.
+        """
         self.exclude_events[self.ind] = (self.exclude_events[self.ind] + 1) % 2
         self.use_for_avg[self.ind] = (self.exclude_events[self.ind] + 1) % 2
         self.update_event_plot()
@@ -578,18 +625,27 @@ class EventViewer(QDialog):
         self.update_histogram_plots()
 
     def exclude_event(self):
+        """
+        Toggle average-inclusion state for the active event.
+        """
         self.use_for_avg[self.ind] = (self.use_for_avg[self.ind] + 1) % 2
         self.update_event_plot()
         self.update_avg_plot()
         self.update_histogram_plots()
 
     def next(self):
+        """
+        Navigate to the next event, wrapping around.
+        """
         self.ind = (self.ind + 1) % self.num_events
         self.update_event_plot()
         self.update_trace_plot()
         self.update_table()
 
     def keyPressEvent(self, event):  # type: ignore
+        """
+        Handle keyboard shortcuts for event navigation and curation.
+        """
         key = event.key()
 
         if key == Qt.Key.Key_Right:

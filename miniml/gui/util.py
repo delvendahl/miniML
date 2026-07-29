@@ -46,6 +46,16 @@ def get_icon_file_path(icon_name: str) -> str:
         return icon_path.as_posix()
 
 
+def get_app_icon_file_path() -> str:
+    """
+    Returns the path to the application icon file in the resources folder.
+    """
+    with resources.as_file(
+        resources.files(miniml.resources).joinpath("minML_icon.png")
+    ) as icon_path:
+        return icon_path.as_posix()
+
+
 def get_hdf_keys(filepath: str) -> list:
     """
     Returns a list of keys in an hdf5 file.

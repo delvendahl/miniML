@@ -7,7 +7,10 @@ from PyQt5.QtWidgets import QApplication
 from qt_material import build_stylesheet
 
 import miniml.resources
-from miniml.gui.windows import AppMainWindow
+from miniml.gui.presenters import MainWindowPresenter
+from miniml.gui.services import AppServices
+from miniml.gui.state import AppState
+from miniml.gui.views import MainWindow
 
 # ------- GUI config ------- #
 pg.setConfigOption("background", "w")
@@ -16,6 +19,9 @@ pg.setConfigOption("leftButtonPan", False)
 
 
 def entry_point():
+    """
+    Initialize and launch the miniML GUI application.
+    """
     app = QApplication(sys.argv)
 
     with resources.as_file(
@@ -42,7 +48,11 @@ def entry_point():
             )
         )
 
-    window = AppMainWindow()
+    state = AppState()
+    services = AppServices()
+    window = MainWindow(state=state, services=services)
+    presenter = MainWindowPresenter(state=state, services=services, parent=window)
+    presenter.bind_view(window)
     window.show()
     sys.exit(app.exec_())
 
