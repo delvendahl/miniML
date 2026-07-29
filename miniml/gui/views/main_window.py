@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import keras
 import numpy as np
 import pyqtgraph as pg
 import tensorflow as tf
@@ -490,7 +491,7 @@ class MainWindow(QMainWindow):
                 """
                 self.dlg += 1
 
-            class CustomCallback(tf.keras.callbacks.Callback):
+            class CustomCallback(keras.callbacks.Callback):
                 def on_predict_batch_end(self, batch, logs=None):
                     """
                     Update progress periodically during prediction.

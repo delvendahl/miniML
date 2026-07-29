@@ -1,6 +1,7 @@
 import pickle as pkl
 
 import h5py
+import keras
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -145,7 +146,7 @@ class EventDetection:
         The batch size for the event detection (used in model.predict).
     model_path: str, default=''
         The path of the model file (.h5) to be used for event detection.
-    model: tf.keras.Model, default=None
+    model: keras.Model, default=None
         A model instance to be used for event detection. Overrides loading from model_path method if specified.
     model_threshold: float, default=0.5
         The minimum peak heigth of the model prediction to be considered as an event; range=(0,1).
@@ -178,7 +179,7 @@ class EventDetection:
         training_direction: str = "negative",
         verbose=1,
         batch_size: int = 128,
-        model: tf.keras.Model = None,
+        model: keras.Model | None = None,
         model_path: str = "",
         model_threshold: float = 0.5,
         compile_model=True,
@@ -244,7 +245,7 @@ class EventDetection:
         """Loads a trained miniML model from hdf5 file"""
         if not is_keras_model(filepath):
             raise ValueError("Model file is not a valid Keras model")
-        self.model = tf.keras.models.load_model(filepath, compile=compile)
+        self.model = keras.models.load_model(filepath, compile=compile)
         self.model_threshold = threshold
         if self.verbose:
             print(f"Model loaded from {filepath}")
@@ -326,7 +327,7 @@ class EventDetection:
         if stride <= 0 or stride > win_size:
             raise ValueError("Invalid stride")
 
-        ds = tf.keras.utils.timeseries_dataset_from_array(
+        ds = keras.utils.timeseries_dataset_from_array(
             data=np.expand_dims(data, axis=1).astype(np.float32),
             targets=None,
             sequence_length=win_size,

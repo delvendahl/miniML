@@ -1,6 +1,6 @@
+import keras
 import numpy as np
 import pyqtgraph as pg
-import tensorflow as tf
 from PyQt5.QtGui import QDoubleValidator, QIntValidator
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -454,7 +454,7 @@ class AutoSettingsWindow(QDialog):
 
         suggested_window = ((t2 - t1) // 100 + 1) * 100
 
-        model = tf.keras.models.load_model(self.settings.model_path)
+        model = keras.models.load_model(self.settings.model_path)
         scores, window_sizes = [], []
         for factor in [0.6, 0.8, 1, 1.2, 1.4, 1.6]:
             window_size = (int(suggested_window * factor) // 100) * 100
