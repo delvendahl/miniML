@@ -126,7 +126,8 @@ class EventStats:
 
 
 class EventDetection:
-    """miniML main class with methods for event detection and analysis.
+    """
+    miniML main class with methods for event detection and analysis.
 
     Parameters
     ----------
@@ -196,7 +197,7 @@ class EventDetection:
         self.events = np.array([])
         self.batch_size = batch_size
         self.model_path = model_path
-        self.model = None
+        self.model: keras.Model
         self.model_threshold = None
         if model is not None:
             self.model = model
@@ -228,12 +229,6 @@ class EventDetection:
         self._training_direction = (
             -1 if training_direction_str.lower() == "negative" else 1
         )
-
-    def _init_arrays(self, attr_names: list, shape: int, dtype: type) -> None:
-        """initialize multiple 1d ndarrays with given shape containing NaNs"""
-        for label in attr_names:
-            value = -1 if "int" in str(dtype) else np.nan
-            setattr(self, str(label), np.full(int(shape), value, dtype=dtype))
 
     def events_present(self) -> bool:
         """Checks if events are present"""
@@ -577,37 +572,28 @@ class EventDetection:
             mini_trace = self.trace.data.copy()
         mini_trace *= self.event_direction
 
-        self._init_arrays(
-            ["event_peak_locations", "bsl_starts", "bsl_ends", "event_start"],
-            positions.shape[0],
-            dtype=np.int64,
-        )
-        self._init_arrays(
-            [
-                "event_peak_values",
-                "event_bsls",
-                "event_bsl_durations",
-                "decaytimes",
-                "charges",
-                "risetimes",
-                "half_decay",
-                "halfwidths",
-                "rise_half_amp_times",
-                "decay_half_amp_times",
-            ],
-            positions.shape[0],
-            dtype=np.float64,
-        )
-        self._init_arrays(
-            [
-                "min_positions_rise",
-                "max_positions_rise",
-                "min_values_rise",
-                "max_values_rise",
-            ],
-            positions.shape[0],
-            dtype=np.float64,
-        )
+        # Initialize arrays to store event properties
+
+        self.event_peak_locations = np.full_like(positions, -1, dtype=np.int64)
+        self.bsl_starts = np.full_like(positions, -1, dtype=np.int64)
+        self.bsl_ends = np.full_like(positions, -1, dtype=np.int64)
+        self.event_start = np.full_like(positions, -1, dtype=np.int64)
+
+        self.event_peak_values = np.full_like(positions, np.nan, dtype=np.float64)
+        self.event_bsls = np.full_like(positions, np.nan, dtype=np.float64)
+        self.event_bsl_durations = np.full_like(positions, np.nan, dtype=np.float64)
+        self.decaytimes = np.full_like(positions, np.nan, dtype=np.float64)
+        self.charges = np.full_like(positions, np.nan, dtype=np.float64)
+        self.risetimes = np.full_like(positions, np.nan, dtype=np.float64)
+        self.half_decay = np.full_like(positions, np.nan, dtype=np.float64)
+        self.halfwidths = np.full_like(positions, np.nan, dtype=np.float64)
+        self.rise_half_amp_times = np.full_like(positions, np.nan, dtype=np.float64)
+        self.decay_half_amp_times = np.full_like(positions, np.nan, dtype=np.float64)
+
+        self.min_positions_rise = np.full_like(positions, np.nan, dtype=np.float64)
+        self.max_positions_rise = np.full_like(positions, np.nan, dtype=np.float64)
+        self.min_values_rise = np.full_like(positions, np.nan, dtype=np.float64)
+        self.max_values_rise = np.full_like(positions, np.nan, dtype=np.float64)
 
         for ix, position in enumerate(positions):
             indices = position + np.arange(-self.add_points, after)
