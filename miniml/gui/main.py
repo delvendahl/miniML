@@ -23,6 +23,7 @@ def entry_point():
     Initialize and launch the miniML GUI application.
     """
     app = QApplication(sys.argv)
+    app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
 
     with resources.as_file(
         resources.files(miniml.resources) / "minML_icon.png"
