@@ -6,7 +6,7 @@ import numpy as np
 
 from miniml.core.event import EventDetection
 from miniml.core.trace import MiniTrace
-from miniml.gui.util import load_trace_from_file
+from miniml.fileio.trace_loader import TraceLoader
 from miniml.settings import Settings
 
 
@@ -17,7 +17,7 @@ class TraceService:
         """
         Load trace data from disk using the selected file adapter.
         """
-        return load_trace_from_file(filetype, load_args)
+        return TraceLoader.load_trace_from_file(filetype, load_args)
 
     def infer_recording_mode(self, trace: MiniTrace) -> str:
         """

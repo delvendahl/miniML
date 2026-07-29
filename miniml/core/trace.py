@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import ClassVar
 
-import h5py
 import matplotlib.pyplot as plt
 import numpy as np
-import pyabf
 from scipy import signal
 
 
@@ -28,6 +26,10 @@ class MiniTrace:
     events: np.ndarray
         Detected events as 2d array.
     """
+
+    excluded_sweeps: ClassVar[dict[int, list[int]]] = {}
+    excluded_series: ClassVar[list[int]] = []
+    Rseries: ClassVar[list[float]] = []
 
     def __init__(
         self,
@@ -111,24 +113,14 @@ class MiniTrace:
         FileNotFoundError
             When the specified file does not exist.
         """
-        with h5py.File(filename, "r") as f:
-            path = f.visit(
-                lambda key: (
-                    key
-                    if isinstance(f[key], h5py.Dataset)
-                    and key.split("/")[-1] == tracename
-                    else None
-                )
-            )
-            if path is None:
-                raise FileNotFoundError("Trace not found in file")
-            data = f[path][:] * scaling
+        from miniml.fileio.trace_loader import TraceLoader
 
-        return cls(
-            data=data,
-            sampling_interval=sampling,
-            y_unit=unit,
-            filename=Path(filename).name,
+        return TraceLoader.from_h5_file(
+            filename=filename,
+            tracename=tracename,
+            scaling=scaling,
+            sampling=sampling,
+            unit=unit,
         )
 
     @classmethod
@@ -139,7 +131,7 @@ class MiniTrace:
         group: int = 0,
         load_series: list[int] | None = None,
         exclude_series: list[int] | None = None,
-        exclude_sweeps: dict[int, int] | None = None,
+        exclude_sweeps: dict[int, list[int]] | None = None,
         scaling: float = 1,
         unit: str = "",
         resample: bool = True,
@@ -182,89 +174,18 @@ class MiniTrace:
         ValueError
             When the sampling rates of different series mismatch and resampling is set to False.
         """
-        if not Path(filename).suffix.lower() == ".dat":
-            raise ValueError("Incompatible file type. Method only loads .dat files.")
+        from miniml.fileio.trace_loader import TraceLoader
 
-        from miniml.fileio import heka_reader as heka
-
-        bundle = heka.Bundle(filename)
-
-        if group < 0 or group > len(bundle.pul.children) - 1:
-            raise IndexError("Group index out of range")
-
-        bundle_series = {}
-        for i, SeriesRecord in enumerate(bundle.pul[group].children):
-            bundle_series.update({i: SeriesRecord.Label})
-
-        if exclude_series is None:
-            exclude_series = []
-
-        if exclude_sweeps is None:
-            exclude_sweeps = {}
-
-        if not load_series:
-            series_list = [
-                series_number
-                for series_number, record_type in bundle_series.items()
-                if record_type == rectype and series_number not in exclude_series
-            ]
-        else:
-            load_series = [x for x in load_series if x not in exclude_series]
-            series_list = [
-                series_number
-                for series_number, record_type in bundle_series.items()
-                if record_type == rectype and series_number in load_series
-            ]
-
-        series_data = []
-        series_resistances = []
-        for series in series_list:
-            sweep_data = []
-            for sweep in range(len(bundle.pul[group][series])):
-                if series not in exclude_sweeps:
-                    sweep_data.append(bundle.data[group, series, sweep, 0])
-                else:
-                    if sweep not in exclude_sweeps[int(series)]:
-                        sweep_data.append(bundle.data[group, series, sweep, 0])
-            pgf_series_index = (
-                sum(len(bundle.pul[i].children) for i in range(group)) + series
-            )
-            series_data.append(
-                (
-                    np.array(sweep_data).flatten(),
-                    bundle.pgf[pgf_series_index].SampleInterval,
-                )
-            )
-            series_resistances.append(
-                (1 / bundle.pul[group][series][0][0].GSeries) * 1e-6
-            )
-
-        max_sampling_interval = max([el[1] for el in series_data])
-        data = np.array([], dtype=np.float64)
-        for i, dat in enumerate(series_data):
-            if dat[1] < max_sampling_interval:
-                if not resample:
-                    raise ValueError(
-                        f"Sampling interval of series {i} is smaller than maximum sampling interval of all series"
-                    )
-                step = int(max_sampling_interval / dat[1])
-                data = np.append(data, dat[0][::step])
-            else:
-                data = np.append(data, dat[0])
-
-        data_unit = unit if unit else bundle.pul[group][series_list[0]][0][0].YUnit
-
-        # MiniTrace.excluded_sweeps = exclude_sweeps
-        # MiniTrace.exlucded_series = exclude_series
-        # MiniTrace.Rseries = series_resistances
-
-        bundle.close()
-
-        return cls(
-            data=data * scaling,
-            sampling_interval=max_sampling_interval,
-            y_unit=data_unit,
-            filename=Path(filename).name,
+        return TraceLoader.from_heka_file(
+            filename=filename,
+            rectype=rectype,
+            group=group,
+            load_series=load_series,
+            exclude_series=exclude_series,
+            exclude_sweeps=exclude_sweeps,
+            scaling=scaling,
+            unit=unit,
+            resample=resample,
         )
 
     @classmethod
@@ -296,20 +217,13 @@ class MiniTrace:
         IndexError
             When the selected channel does not exist in the file.
         """
-        if not Path(filename).suffix.lower() == ".abf":
-            raise Exception("Incompatible file type. Method only loads .abf files.")
+        from miniml.fileio.trace_loader import TraceLoader
 
-        abf_file = pyabf.ABF(filename)
-        if channel not in abf_file.channelList:
-            raise IndexError("Selected channel does not exist.")
-
-        data_unit = unit if unit else abf_file.adcUnits[channel]
-
-        return cls(
-            data=abf_file.data[channel] * scaling,
-            sampling_interval=1 / abf_file.sampleRate,
-            y_unit=data_unit,
-            filename=Path(filename).name,
+        return TraceLoader.from_axon_file(
+            filename=filename,
+            channel=channel,
+            scaling=scaling,
+            unit=unit,
         )
 
     def plot_trace(self) -> None:
