@@ -1,9 +1,14 @@
 from collections import namedtuple
+from collections.abc import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
 import ruptures as rpt
 import scipy as sc
+
+BaselineResult = namedtuple(
+    "BaselineResult", ["value", "var", "start", "end", "duration"]
+)
 
 
 def get_segment_stats(breakpoints: list, data: np.ndarray):
@@ -40,12 +45,12 @@ def get_steepest_rise_position(data: np.ndarray, filter_win: int = 20):
 
 
 def baseline_score(
-    positions: np.ndarray,
+    positions: np.ndarray | list[int],
     median_values: np.ndarray,
     slope_values: np.ndarray,
     variance_values: np.ndarray,
     steepest_rise: int,
-    weights: list = [0.5, 0.35, 0.1, 0.05],
+    weights: Sequence[float] = (0.5, 0.35, 0.1, 0.05),
     verbose: int = 0,
 ) -> float:
     rank_median = np.array(median_values).argsort().argsort()
@@ -67,9 +72,9 @@ def baseline_score(
         print("position", positions, rank_position)
 
     arr = np.stack([rank_position, rank_median, rank_slope, rank_var])
-    weights = np.asarray(weights, dtype=float)
+    a_weights = np.asarray(list(weights), dtype=float)
 
-    return weights @ arr
+    return a_weights @ arr
 
 
 def get_event_baseline_v2(
@@ -113,11 +118,11 @@ def get_event_baseline_v2(
     # print("rise_pos", relative_event_position)
 
     score = baseline_score(
-        result,
-        values,
-        slopes,
-        variances,
-        relative_event_position,
+        positions=result,
+        median_values=values,
+        slope_values=slopes,
+        variance_values=variances,
+        steepest_rise=relative_event_position,
         weights=[0.55, 0.35, 0.05, 0.05],
         verbose=0,
     )
@@ -166,11 +171,7 @@ def get_event_baseline_v2(
     # plt.plot(relative_event_position, data[relative_event_position], 'ko')
     # plt.show()
 
-    bsl_result = namedtuple(
-        "BaselineResult", ["value", "var", "start", "end", "duration"]
-    )
-
-    return bsl_result(
+    return BaselineResult(
         value=np.median(data[bsl_start:bsl_end]),
         var=np.std(data[bsl_start:bsl_end]),
         start=bsl_start,
@@ -307,11 +308,7 @@ def get_event_baseline_new(
     if debug:
         plt.show()
 
-    bsl_result = namedtuple(
-        "BaselineResult", ["value", "var", "start", "end", "duration"]
-    )
-
-    return bsl_result(
+    return BaselineResult(
         value=np.median(data[bsl_end - bsl_duration : bsl_end]),
         var=np.var(data[bsl_end - bsl_duration : bsl_end]),
         start=bsl_end - bsl_duration,

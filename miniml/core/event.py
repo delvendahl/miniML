@@ -198,13 +198,15 @@ class EventDetection:
         self.model_path = model_path
         self.model = None
         self.model_threshold = None
-        if model:
+        if model is not None:
             self.model = model
             self.model_threshold = model_threshold
             self.callbacks = callbacks or []
         elif model_path:
             self.load_model(
-                filepath=model_path, threshold=model_threshold, compile=compile_model
+                filepath=model_path,
+                threshold=model_threshold,
+                compile=compile_model,
             )
             self.callbacks = callbacks or []
         self.deleted_events = 0
@@ -245,7 +247,7 @@ class EventDetection:
         """Loads a trained miniML model from hdf5 file"""
         if not is_keras_model(filepath):
             raise ValueError("Model file is not a valid Keras model")
-        self.model = keras.models.load_model(filepath, compile=compile)
+        self.model: keras.Model = keras.models.load_model(filepath, compile=compile)
         self.model_threshold = threshold
         if self.verbose:
             print(f"Model loaded from {filepath}")
@@ -527,7 +529,7 @@ class EventDetection:
 
     def _get_event_properties(
         self, filter: bool = True, use_legacy_baseline_method: bool = True
-    ) -> dict:
+    ) -> None:
         """
         Find more detailed event location properties required for analysis. Namely, baseline, event onset,
         peak half-decay and 10 & 90% rise positions. Also extracts the actual event properties, such as
@@ -976,7 +978,7 @@ class EventDetection:
 
     def detect_events(
         self,
-        stride: int = None,
+        stride: int | None = None,
         eval: bool = False,
         resample_to_600: bool = True,
         peak_w: int = 5,
@@ -1072,7 +1074,7 @@ class EventDetection:
             if eval:
                 self._eval_events()
 
-    def _get_average_event_decay(self) -> float:
+    def _get_average_event_decay(self) -> np.ndarray:
         """
         Returns the decay time constant of the averaged events.
         """
@@ -1215,7 +1217,7 @@ class EventDetection:
                 return
 
         if not filename.endswith("h5"):
-            filename = "".join(filename, ".h5")
+            filename += ".h5"
 
         with h5py.File(filename, "w", track_order=True) as f:
             f.create_dataset("events", data=np.array(self.events))

@@ -24,7 +24,7 @@ import datetime
 import io
 import re
 import struct
-from typing import Union
+from typing import ClassVar
 
 import numpy as np
 
@@ -296,11 +296,11 @@ class Struct:
 
     """
 
-    field_info = []
+    field_info: ClassVar[list] = []
     size_check = None
     _fields_parsed = None
 
-    def __init__(self, data: Union[bytes, io.RawIOBase, io.BufferedIOBase], endian="<"):
+    def __init__(self, data: bytes | io.RawIOBase | io.BufferedIOBase, endian="<"):
         """
         Read the structure from *data* and return an ordered dictionary of
         fields.
@@ -322,7 +322,7 @@ class Struct:
         elif endian == ">":
             items = self._be_struct.unpack(_data)
         else:
-            raise ValueError("Invalid endian: %s" % endian)
+            raise ValueError(f"Invalid endian: {endian}")
 
         fields = collections.OrderedDict()
 
@@ -387,8 +387,8 @@ class Struct:
         cls._be_struct = struct.Struct(">" + fmt)
         cls._fields_parsed = fields
         if cls.size_check is not None:
-            assert cls._le_struct.size == cls.size_check, "{} expected vs. {}".format(
-                cls.size_check, cls._le_struct.size
+            assert cls._le_struct.size == cls.size_check, (
+                f"{cls.size_check} expected vs. {cls._le_struct.size}"
             )
         return fields
 
@@ -440,10 +440,10 @@ class Struct:
 
 
 class StructArray(Struct):
-    item_struct: type
+    item_struct: Struct
     array_size: int
 
-    def __init__(self, data: Union[bytes, io.RawIOBase, io.BufferedIOBase], endian="<"):
+    def __init__(self, data: bytes | io.RawIOBase | io.BufferedIOBase, endian="<"):
         if isinstance(data, bytes):
             _data = data
         elif isinstance(data, (io.RawIOBase, io.BufferedIOBase)):
@@ -474,7 +474,7 @@ class StructArray(Struct):
 
 
 class BundleItem(Struct):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Start", "i"),
         ("Length", "i"),
         ("Extension", "8s", cstr),
@@ -483,7 +483,7 @@ class BundleItem(Struct):
 
 
 class BundleHeader(Struct):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Signature", "8s", cstr),
         ("Version", "32s", cstr),
         ("Time", "d", heka_time_to_date),
@@ -551,7 +551,7 @@ class TreeNode(Struct):
 
 
 class TraceRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("Label", "32s", cstr),
         ("TraceID", "i"),
@@ -621,7 +621,7 @@ class TraceRecord(TreeNode):
 
 
 class SweepRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("Label", "32s", cstr),
         ("AuxDataFileOffset", "i"),
@@ -649,7 +649,7 @@ class SweepRecord(TreeNode):
 
 
 class UserParamDescrType(Struct):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Name", "32s", cstr),
         ("Unit", "8s", cstr),
     ]
@@ -657,7 +657,7 @@ class UserParamDescrType(Struct):
 
 
 class AmplifierState(Struct):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("StateVersion", "8s", cstr),
         ("RealCurrentGain", "d"),
         ("RealF2Bandwidth", "d"),
@@ -773,7 +773,7 @@ class AmplifierState(Struct):
 
 
 class LockInParams(Struct):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("ExtCalPhase", "d"),
         ("ExtCalAtten", "d"),
         ("PLPhase", "d"),
@@ -792,7 +792,7 @@ class LockInParams(Struct):
 
 
 class SeriesRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("Label", "32s", cstr),
         ("Comment", "80s", cstr),
@@ -822,7 +822,7 @@ class SeriesRecord(TreeNode):
 
 
 class GroupRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("Label", "32s", cstr),
         ("Text", "80s", cstr),
@@ -836,7 +836,7 @@ class GroupRecord(TreeNode):
 
 
 class AmplStateRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("StateCount", "i"),
         ("StateVersion", "b"),
@@ -855,7 +855,7 @@ class AmplStateRecord(TreeNode):
 
 
 class AmpSeriesRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("StateCount", "i"),
         ("Filler1", "i", None),
@@ -865,7 +865,7 @@ class AmpSeriesRecord(TreeNode):
 
 
 class StimulationRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("EntryName", "32s", cstr),
         ("FileName", "32s", cstr),
@@ -905,7 +905,7 @@ class StimulationRecord(TreeNode):
 
 
 class ChannelRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("LinkedChannel", "i"),
         ("CompressionFactor", "i"),
@@ -981,7 +981,7 @@ class ChannelRecord(TreeNode):
 
 
 class StimSegmentRecord(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Mark", "i"),
         ("Class", "b", getSegmentClass),
         ("StoreKind", "b", getStoreType),
@@ -1003,7 +1003,7 @@ class StimSegmentRecord(TreeNode):
 
 
 class Pulsed(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Version", "i"),
         ("Mark", "i"),
         ("VersionName", "32s", cstr),
@@ -1020,7 +1020,13 @@ class Pulsed(TreeNode):
     ]
     size_check = 640
 
-    rectypes = [None, GroupRecord, SeriesRecord, SweepRecord, TraceRecord]
+    rectypes: ClassVar[list] = [
+        None,
+        GroupRecord,
+        SeriesRecord,
+        SweepRecord,
+        TraceRecord,
+    ]
 
     def __init__(self, bundle, offset=0, size=None):
         fh = bundle.fh  # Use bundle.fh
@@ -1033,7 +1039,7 @@ class Pulsed(TreeNode):
         elif magic == b"Tree":
             self.endian = ">"
         else:
-            raise RuntimeError("Bad file magic: %s" % magic)
+            raise RuntimeError(f"Bad file magic: {magic}")
 
         levels = struct.unpack(self.endian + "i", fh.read(4))[0]
 
@@ -1047,7 +1053,7 @@ class Pulsed(TreeNode):
         # Do not close fh here
 
 
-class Data(object):
+class Data:
     def __init__(self, bundle, offset=0, size=None):
         self.bundle = bundle
         self.offset = offset
@@ -1071,7 +1077,7 @@ class Data(object):
 
 
 class Amplifier(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Version", "i"),
         ("Mark", "i"),
         ("VersionName", "32s", cstr),
@@ -1084,7 +1090,7 @@ class Amplifier(TreeNode):
     ]
     size_check = 80
 
-    rectypes = [None, AmpSeriesRecord, AmplStateRecord]
+    rectypes: ClassVar[list] = [None, AmpSeriesRecord, AmplStateRecord]
 
     def __init__(self, bundle, offset=0, size=None):
         fh = bundle.fh  # Use bundle.fh
@@ -1097,7 +1103,7 @@ class Amplifier(TreeNode):
         elif magic == b"Tree":
             self.endian = ">"
         else:
-            raise RuntimeError("Bad file magic: %s" % magic)
+            raise RuntimeError(f"Bad file magic: {magic}")
 
         levels = struct.unpack(self.endian + "i", fh.read(4))[0]
 
@@ -1112,7 +1118,7 @@ class Amplifier(TreeNode):
 
 
 class Stimulus(TreeNode):
-    field_info = [
+    field_info: ClassVar[list] = [
         ("Version", "i"),
         ("Mark", "i"),
         ("VersionName", "32s", cstr),
@@ -1127,7 +1133,12 @@ class Stimulus(TreeNode):
     ]
     size_check = 1144
 
-    rectypes = [None, StimulationRecord, ChannelRecord, StimSegmentRecord]
+    rectypes: ClassVar[list] = [
+        None,
+        StimulationRecord,
+        ChannelRecord,
+        StimSegmentRecord,
+    ]
 
     def __init__(self, bundle, offset=0, size=None):
         fh = bundle.fh  # Use bundle.fh
@@ -1140,7 +1151,7 @@ class Stimulus(TreeNode):
         elif magic == b"Tree":
             self.endian = ">"
         else:
-            raise RuntimeError("Bad file magic: %s" % magic)
+            raise RuntimeError(f"Bad file magic: {magic}")
 
         levels = struct.unpack(self.endian + "i", fh.read(4))[0]
 
@@ -1159,7 +1170,7 @@ class Bundle:
     Represent a PATCHMASTER tree file in memory.
     """
 
-    item_classes = {
+    item_classes: ClassVar[dict] = {
         ".pul": Pulsed,
         ".dat": Data,
         ".amp": Amplifier,
@@ -1186,7 +1197,7 @@ class Bundle:
 
         # catalog extensions of bundled items
         self.catalog = {}
-        for item in getattr(self.header, "BundleItems"):
+        for item in getattr(self.header, "BundleItems", []):
             item.instance = None
             ext = item.Extension
             self.catalog[ext] = item
@@ -1223,7 +1234,7 @@ class Bundle:
         assert isinstance(instance, Stimulus), "Expected Stimulus instance"
         return instance
 
-    def _get_item_instance(self, ext) -> Union[Pulsed, Data, Amplifier, Stimulus, None]:
+    def _get_item_instance(self, ext) -> Pulsed | Data | Amplifier | Stimulus | None:
         if ext not in self.catalog:
             return None
         item = self.catalog[ext]
@@ -1234,4 +1245,4 @@ class Bundle:
         return item.instance
 
     def __repr__(self):
-        return "Bundle(%r)" % list(self.catalog.keys())
+        return f"Bundle({list(self.catalog.keys())!r})"

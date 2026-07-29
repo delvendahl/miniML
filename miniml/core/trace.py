@@ -31,11 +31,13 @@ class MiniTrace:
 
     def __init__(
         self,
-        data: np.ndarray | list = None,
+        data: np.ndarray | list | None = None,
         sampling_interval: float = 1,
         y_unit: str = "",
         filename: str = "",
     ) -> None:
+        if data is None:
+            data = []
         self.data = data
         self.sampling = sampling_interval
         self.events = []
@@ -47,16 +49,16 @@ class MiniTrace:
         return self._data
 
     @data.setter
-    def data(self, data) -> None:
+    def data(self, data: np.ndarray | list[float] | list[int]) -> None:
         # ensure data is float64 to avoid issues with minmax_scale
-        self._data = data.astype(np.float64)
+        self._data = np.array(data).astype(np.float64)
 
     @property
     def sampling(self) -> float:
         return self._sampling
 
     @sampling.setter
-    def sampling(self, value) -> None:
+    def sampling(self, value: float) -> None:
         if value < 0:
             raise ValueError("Sampling interval must be positive")
         self._sampling = value
@@ -139,7 +141,7 @@ class MiniTrace:
         exclude_series: list = [],
         exclude_sweeps: dict = {},
         scaling: float = 1,
-        unit: str = None,
+        unit: str = "",
         resample: bool = True,
     ) -> MiniTrace:
         """Loads data from a HEKA .dat file. Name of the PGF sequence needs to be specified.
@@ -173,7 +175,7 @@ class MiniTrace:
 
         Raises
         ------
-        Exception or ValueError
+        ValueError
             If the file is not a valid .dat file.
         IndexError
             When the group index is out of range.
@@ -181,7 +183,7 @@ class MiniTrace:
             When the sampling rates of different series mismatch and resampling is set to False.
         """
         if not Path(filename).suffix.lower() == ".dat":
-            raise Exception("Incompatible file type. Method only loads .dat files.")
+            raise ValueError("Incompatible file type. Method only loads .dat files.")
 
         from miniml.fileio import heka_reader as heka
 
@@ -190,7 +192,7 @@ class MiniTrace:
         if group < 0 or group > len(bundle.pul.children) - 1:
             raise IndexError("Group index out of range")
 
-        bundle_series = dict()
+        bundle_series = {}
         for i, SeriesRecord in enumerate(bundle.pul[group].children):
             bundle_series.update({i: SeriesRecord.Label})
 
@@ -244,13 +246,11 @@ class MiniTrace:
             else:
                 data = np.append(data, dat[0])
 
-        data_unit = (
-            unit if unit is not None else bundle.pul[group][series_list[0]][0][0].YUnit
-        )
+        data_unit = unit if unit else bundle.pul[group][series_list[0]][0][0].YUnit
 
-        MiniTrace.excluded_sweeps = exclude_sweeps
-        MiniTrace.exlucded_series = exclude_series
-        MiniTrace.Rseries = series_resistances
+        # MiniTrace.excluded_sweeps = exclude_sweeps
+        # MiniTrace.exlucded_series = exclude_series
+        # MiniTrace.Rseries = series_resistances
 
         bundle.close()
 
@@ -263,7 +263,7 @@ class MiniTrace:
 
     @classmethod
     def from_axon_file(
-        cls, filename: str, channel: int = 0, scaling: float = 1.0, unit: str = None
+        cls, filename: str, channel: int = 0, scaling: float = 1.0, unit: str = ""
     ) -> MiniTrace:
         """Loads data from an AXON .abf file.
 
@@ -297,7 +297,7 @@ class MiniTrace:
         if channel not in abf_file.channelList:
             raise IndexError("Selected channel does not exist.")
 
-        data_unit = unit if unit is not None else abf_file.adcUnits[channel]
+        data_unit = unit if unit else abf_file.adcUnits[channel]
 
         return cls(
             data=abf_file.data[channel] * scaling,
@@ -347,13 +347,13 @@ class MiniTrace:
 
     def filter(
         self,
-        line_freq: float = None,
-        width: float = None,
-        highpass: float = None,
-        lowpass: float = None,
+        line_freq: float | None = None,
+        width: float | None = None,
+        highpass: float | None = None,
+        lowpass: float | None = None,
         order: int = 4,
-        savgol: float = None,
-        hann: int = None,
+        savgol: float | None = None,
+        hann: int | None = None,
     ) -> MiniTrace:
         """Filters trace with a combination of line frequency, high- and lowpass filters.
         If both lowpass and savgol arguments are passed, only the lowpass filter is applied.
@@ -383,7 +383,10 @@ class MiniTrace:
         filtered_data = self.data.copy()
         nyq = 0.5 * self.sampling_rate
 
-        if line_freq:
+        if line_freq is not None:
+            if width is None:
+                raise ValueError("Width must be specified for line noise filtering.")
+
             from scipy.fftpack import irfft, rfft, rfftfreq
 
             fft = rfft(filtered_data)
@@ -397,11 +400,11 @@ class MiniTrace:
                 ] = 0
 
             filtered_data = irfft(fft)
-        if highpass:
+        if highpass is not None:
             sos = signal.butter(order, highpass / nyq, btype="high", output="sos")
             filtered_data = signal.sosfilt(sos, filtered_data)
-        if lowpass:
-            if savgol:
+        if lowpass is not None:
+            if savgol is not None:
                 print(
                     "Warning: Two lowpass filters selected, Savgol filter is ignored."
                 )
@@ -409,11 +412,11 @@ class MiniTrace:
                 order, lowpass / nyq, btype="low", analog=False, output="sos", fs=None
             )
             filtered_data = signal.sosfiltfilt(sos, filtered_data)
-        elif savgol:
+        elif savgol is not None:
             filtered_data = signal.savgol_filter(
                 filtered_data, int(savgol / 1000 / self.sampling), polyorder=order
             )
-        elif hann:
+        elif hann is not None:
             win = signal.windows.hann(hann)
             filtered_data = signal.convolve(filtered_data, win, mode="same") / sum(win)
             # Hann window generates edge artifacts due to zero-padding. Retain unfiltered data at edges.
@@ -429,7 +432,7 @@ class MiniTrace:
             filename=self.filename,
         )
 
-    def resample(self, sampling_frequency: float = None) -> MiniTrace:
+    def resample(self, sampling_frequency: float | None = None) -> MiniTrace:
         """Resamples the data trace to the given frequency
 
         sampling_frequency: float

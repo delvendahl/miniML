@@ -1,7 +1,6 @@
 """
 Heka Patchmaster .dat file browser
 Adapted from https://github.com/campagnola/heka_reader
-
 """
 
 import os
@@ -11,9 +10,13 @@ import numpy as np
 import pyqtgraph as pg
 
 from miniml.fileio import heka_reader
+from miniml.fileio.heka_reader import Bundle
 
 app = 0
 app = pg.mkQApp()
+
+# Globals
+bundle: Bundle
 
 # Configure Qt GUI:
 
@@ -67,7 +70,7 @@ def load(file_name):
     """
     Load a new .dat file into the browser.
     """
-    global bundle, tree_items
+    global bundle
 
     # Read the bundle header
     # (no data is read at this time)
@@ -85,14 +88,11 @@ def update_tree(root_item, index):
     Recursively read tree information from the bundle's embedded .pul file
     and add items into the GUI tree to allow browsing.
     """
-    global bundle
     root = bundle.pul
     node = root
     for i in index:
         node = node[i]
-    node_type = node.__class__.__name__
-    if node_type.endswith("Record"):
-        node_type = node_type[:-6]
+    node_type = node.__class__.__name__.removesuffix("Record")
     try:
         node_type += str(getattr(node, node_type + "Count"))
     except AttributeError:

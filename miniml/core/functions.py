@@ -3,8 +3,6 @@ from collections import namedtuple
 import numpy as np
 
 
-# - - - - - - - - - - - - - - - - - - - - - - -
-# functions for evaluation of individual events
 def get_event_peak(
     data: np.ndarray,
     event_num: int,
@@ -153,7 +151,7 @@ def get_event_onset(
         level_crossing = int(peak_position / 2)
         onset_position = peak_position - level_crossing
 
-    return onset_position
+    return int(onset_position)
 
 
 def get_event_risetime(
@@ -162,7 +160,7 @@ def get_event_risetime(
     baseline: float,
     min_percentage: float = 10,
     max_percentage: float = 90,
-    amplitude: float = None,
+    amplitude: float | None = None,
 ) -> tuple[float, float, float, float, float]:
     """
     Get the risetime of an event (default, 10-90%). Data will automatically be resampled to 200 kHz (by linear interpolation) sampling rate for better accuracy.
@@ -268,7 +266,7 @@ def get_event_halfdecay_time(
     """
 
     level = baseline + (data[peak_position] - baseline) / 2
-    halfdecay_time = np.argmax(data[peak_position:] < level)
+    halfdecay_time = int(np.argmax(data[peak_position:] < level))
     halfdecay_position = int(peak_position + halfdecay_time)
 
     return halfdecay_position, halfdecay_time
@@ -300,8 +298,9 @@ def get_event_charge(
     """
 
     integrate_array = (data[start_point:end_point]) - baseline
+    # numpy deprecated and later removed np.trapz with v2.0
     try:
-        charge = np.trapezoid(integrate_array, dx=sampling)
+        charge = np.trapezoid(integrate_array, dx=sampling)  # type: ignore
     except AttributeError:
         charge = np.trapz(integrate_array, dx=sampling)
 
