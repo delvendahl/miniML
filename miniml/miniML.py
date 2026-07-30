@@ -10,9 +10,8 @@ from pathlib import Path
 from scipy import signal
 from scipy.optimize import curve_fit
 from scipy.ndimage import maximum_filter1d
-from miniml.miniML_functions import (get_event_peak, get_event_baseline, get_event_onset, get_event_risetime,
-                               get_event_halfdecay_time, get_event_charge, get_event_halfwidth)
-from miniml.miniML_updated_functions import get_event_baseline_v2
+from miniml.miniML_functions import (get_event_peak, get_event_baseline, legacy_get_event_baseline, get_event_onset, 
+                                     get_event_risetime, get_event_halfdecay_time, get_event_charge, get_event_halfwidth)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -936,11 +935,11 @@ class EventDetection():
             self.event_peak_values[ix] = np.mean(data[event_peak_pos - self.peak_spacer:event_peak_pos + self.peak_spacer])
             
             if use_legacy_baseline_method:
-                baseline = get_event_baseline(data=data, duration=baseline_duration, event_num=ix, diffs=diffs,
-                                              add_points=self.add_points, peak_positions=self.event_peak_locations, positions=positions)
+                baseline = legacy_get_event_baseline(data=data, duration=baseline_duration, event_num=ix, diffs=diffs,
+                                                     add_points=self.add_points, peak_positions=self.event_peak_locations, positions=positions)
             else:
-                baseline = get_event_baseline_v2(data=data, bsl_duration=baseline_duration, event_num=ix, 
-                                                 relative_event_position=self.add_points, positions=positions)
+                baseline = get_event_baseline(data=data, bsl_duration=baseline_duration, event_num=ix, add_points=self.add_points,
+                                              peak_position=self.event_peak_locations[ix], positions=positions, debug=False)
 
             self.bsl_starts[ix] = baseline.start
             self.bsl_ends[ix] = baseline.end

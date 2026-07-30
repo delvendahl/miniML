@@ -1,10 +1,15 @@
 from __future__ import annotations
 from collections import namedtuple
 import numpy as np
+import matplotlib.pyplot as plt
+import ruptures as rpt
+import scipy as sc
 
 
 # - - - - - - - - - - - - - - - - - - - - - - -
 # functions for evaluation of individual events
+# - - - - - - - - - - - - - - - - - - - - - - -
+
 def get_event_peak(data: np.ndarray, event_num: int, add_points: int, window_size: int, diffs: np.ndarray) -> int:
     """
     A function that calculates the peak position of an event in a given dataset.
@@ -31,8 +36,9 @@ def get_event_peak(data: np.ndarray, event_num: int, add_points: int, window_siz
     return peak_position
 
 
-def get_event_baseline(data: np.ndarray, duration: int, event_num: int, add_points, diffs: np.ndarray, 
-                       peak_positions: np.ndarray, positions: np.ndarray):
+
+def legacy_get_event_baseline(data: np.ndarray, duration: int, event_num: int, add_points, diffs: np.ndarray, 
+                              peak_positions: np.ndarray, positions: np.ndarray):
     """
     Calculate the baseline and baseline variance for an event in the given data.
 
@@ -91,6 +97,7 @@ def get_event_baseline(data: np.ndarray, duration: int, event_num: int, add_poin
                       duration=bsl_duration)
 
 
+
 def get_event_onset(data: np.ndarray, peak_position: int, baseline: float, baseline_var: float) -> int:
     """
     Calculate the position of the event onset relative to the peak position.
@@ -121,6 +128,7 @@ def get_event_onset(data: np.ndarray, peak_position: int, baseline: float, basel
         onset_position = peak_position - level_crossing
 
     return onset_position
+
 
 
 def get_event_risetime(data: np.ndarray, sampling_rate: int, baseline: float, min_percentage: float = 10, max_percentage: float = 90,
@@ -193,6 +201,7 @@ def get_event_risetime(data: np.ndarray, sampling_rate: int, baseline: float, mi
     return risetime, min_position_rise, min_value_rise, max_position_rise, max_value_rise
 
 
+
 def get_event_halfdecay_time(data: np.ndarray, peak_position: int, baseline: float) -> tuple[int, int]:
     """"
     Calculate halfdecay time (in points) in a stretch of data.
@@ -219,6 +228,7 @@ def get_event_halfdecay_time(data: np.ndarray, peak_position: int, baseline: flo
     halfdecay_position = int(peak_position + halfdecay_time)
     
     return halfdecay_position, halfdecay_time
+
 
 
 def get_event_charge(data: np.ndarray, start_point: int, end_point: int, baseline: float, sampling: float) -> float:
@@ -251,6 +261,7 @@ def get_event_charge(data: np.ndarray, start_point: int, end_point: int, baselin
         charge = np.trapz(integrate_array, dx=sampling)
 
     return charge
+
 
 
 def get_event_halfwidth(event_data: np.ndarray, peak_index: int, baseline: float, amplitude: float, 
@@ -376,3 +387,195 @@ def get_event_halfwidth(event_data: np.ndarray, peak_index: int, baseline: float
         return np.nan, t_rise_half, t_decay_half
 
     return half_width, t_rise_half, t_decay_half
+
+
+
+def get_segment_stats(breakpoints: list, data: np.ndarray):
+    '''
+    Calculate median, variance, and slope for each segment in the provided data.
+    '''
+    values, slopes, variances = [], [], []
+    for i, p2 in enumerate(breakpoints):
+        p1 = breakpoints[i - 1] if i else 0
+        p1 += 1
+        p2 -= 1
+        values.append(np.median(data[p1:p2]))
+        variances.append(np.std(data[p1:p2]))
+        if p2 - p1 > 1:
+            coef = np.polynomial.polynomial.Polynomial.fit(np.arange(p1,p2), data[p1:p2], 1).convert().coef
+            if len(coef) > 1:
+                slopes.append(coef[1])
+            else:
+                slopes.append(0.0)
+        else:
+            slopes.append(0.0)
+
+    return np.array(values), np.array(variances), np.array(slopes)
+
+
+
+def get_steepest_rise_position(data: np.ndarray, filter_win: int=20):
+    '''
+    Calculate the position of the steepest rise in the given data.
+    '''
+    win = sc.signal.windows.hann(filter_win)
+    filtered_data = sc.signal.convolve(data, win, mode='same') / sum(win)
+
+    return np.argmax(np.gradient(filtered_data))
+
+
+
+def baseline_score(positions: np.ndarray, median_values: np.ndarray, slope_values: np.ndarray, 
+                   variance_values: np.ndarray, steepest_rise: int, weights: list=[0.5, 0.35, 0.1, 0.05], verbose: int=0) -> float:
+    '''
+    Calculate a weighted baseline score for the given data.
+    Four parameters are used:
+    1. Position relative to the steepest rise (penalizes positions after the steepest rise).
+    2. Median value of the segment (lower median values are preferred).
+    3. Slope of the segment (lower slopes are preferred).
+    4. Variance of the segment (lower variance is preferred).
+    The weights for each parameter can be adjusted using the 'weights' argument.
+
+    '''
+    rank_median = np.array(median_values).argsort().argsort()
+    rank_slope = np.abs(slope_values).argsort().argsort()
+    rank_var = np.array(variance_values).argsort().argsort()
+    
+    relative_positions = np.array(positions, dtype=float) - (steepest_rise + 3) # Add samples because steepest rise position is sometimes too far left due to filtering
+    bkps_after_event = relative_positions > 0
+    relative_positions[bkps_after_event] = np.nan
+    rank_position = np.abs(relative_positions).argsort().argsort()
+    rank_position[bkps_after_event] += 10 # penalize positions after steepest rise
+    
+    if verbose:
+        print("median values", median_values, rank_median)
+        print("slopes", slope_values, rank_slope)
+        print("variances", variance_values, rank_var)
+        print("position", positions, rank_position)
+        
+    arr = np.stack([rank_position, rank_median, rank_slope, rank_var])
+    weights = np.asarray(weights, dtype=float)
+
+    return weights @ arr
+
+
+
+def get_event_baseline(data: np.ndarray, bsl_duration: int, event_num: int, add_points,
+                       peak_position: int, positions: np.ndarray, debug: bool=False):
+    """
+    Calculate the baseline and baseline variance for an event in the given data.  
+    
+    Uses change point detection to find the baseline segment.
+
+    Parameters
+    ----------
+    - data (np.ndarray): The input data (i.e. the event snippet).
+    - bsl_duration (int): The duration (in points) to consider for baseline calculation.
+    - event_num (int): The index of the event.
+    - add_points (int): The number of additional points to consider (typically 200 samples).
+    - peak_position (int): The position of the peak relative to start of the event snippet.
+    - positions (np.ndarray): The absolute positions of the events in the main trace.
+    - debug (bool): If True, enables debug mode with additional plots.
+
+    Returns
+    ----------
+
+    BaselineResult: A named tuple containing the following fields:
+    - baseline (float): The calculated baseline.
+    - bsl_var (float): The calculated baseline variance.
+    - bsl_start (int): The starting index for baseline calculation.
+    - bsl_end (int): The ending index for baseline calculation.
+    """
+
+    previous_peak_present = False
+    if int(positions[event_num]) - int(positions[event_num - 1]) < add_points and event_num != 0:
+        previous_peak_present = True
+
+    bsl_limit_factor = 1.5
+    search_end = int(add_points * 2)
+    peak_win_start = add_points // 2
+    win = sc.signal.windows.hann(25)
+
+    penalty = 10
+    trace_start = 0
+    
+    if previous_peak_present:
+        if debug:
+            print("previous peak in trace detected")
+        penalty = 5
+        trace_start = int(positions[event_num]) - int(positions[event_num - 1])
+        if trace_start > peak_win_start:
+            trace_start = peak_win_start
+    # check if beginning of baseline is above peak 
+    elif np.sum(data[0:peak_win_start] > data[peak_position]) > (peak_win_start / 2):
+        if debug:
+            print("baseline indicating previous peak")
+        penalty = 5
+        trace_start = int(peak_win_start / 2)
+
+    model = rpt.KernelCPD(kernel="rbf", min_size=2).fit(data[trace_start:search_end])
+    result = model.predict(n_bkps=2) 
+    result = [val + trace_start for val in result]
+    
+    filtered_data = sc.signal.convolve(data, win, mode='same') / sum(win)
+    gradient = np.gradient(filtered_data)
+    ev_position = np.argmax(gradient[50:300]) + 50
+    cutoff = ev_position - bsl_limit_factor * bsl_duration
+    if debug:
+        print(cutoff)
+
+    if result[0] < cutoff:
+        if result[1] > peak_position or result[1] < cutoff:
+            result2 = model.predict(pen=penalty)
+            result2 = [val + trace_start for val in result2]
+            onset = result2[np.where(np.array(result2) - peak_position < 0)[0][-1]]
+            if debug: 
+                rpt.display(data, result2)
+                print("re-analysis")
+        else:
+            onset = result[1]
+            if debug: 
+                rpt.display(data, result)
+    else:
+        onset = result[0]
+        if debug: 
+            rpt.display(data, result)
+
+    if debug: 
+        plt.axvline(result[0], linestyle=':', c='k')
+        plt.axvline(ev_position, linestyle=':', c='g')
+    bsl_end = onset - 10
+    if bsl_end > bsl_duration:
+        bsl_snippet = data[bsl_end - bsl_duration: bsl_end]
+        fit = np.polynomial.polynomial.Polynomial.fit(np.arange(bsl_snippet.shape[0]), bsl_snippet, 1)
+        coef = fit.convert().coef
+        if debug:
+            print(coef)
+        if len(coef) > 1 and coef[1] < -0.12 and bsl_duration > 20:
+            bsl_duration = bsl_duration // 2
+            bsl_snippet = data[bsl_end - bsl_duration: bsl_end]
+            fit = np.polynomial.polynomial.Polynomial.fit(np.arange(bsl_snippet.shape[0]), bsl_snippet, 1)
+            coef = fit.convert().coef
+            if debug:
+                print(coef)
+            if len(coef) > 1 and coef[1] < -0.12 and bsl_duration > 20:
+                bsl_duration = bsl_duration // 2
+                bsl_snippet = data[bsl_end - bsl_duration: bsl_end]
+                fit = np.polynomial.polynomial.Polynomial.fit(np.arange(bsl_snippet.shape[0]), bsl_snippet, 1)
+                coef = fit.convert().coef
+                if debug:
+                    print(coef)
+        if debug: 
+            plt.plot(np.arange(bsl_end - bsl_duration, bsl_end), data[bsl_end - bsl_duration: bsl_end], c='darkorange')
+            plt.axhline(np.median(data[bsl_end - bsl_duration: bsl_end]), linestyle='--', c='gray')
+    if debug:
+        plt.show()
+
+    bsl_result = namedtuple('BaselineResult', ['value', 'var', 'start', 'end', 'duration'])
+
+    return bsl_result(value=np.median(data[bsl_end - bsl_duration: bsl_end]),
+                      var=np.var(data[bsl_end - bsl_duration: bsl_end]),
+                      start=bsl_end - bsl_duration,
+                      end=bsl_end,
+                      duration=bsl_duration)
+
