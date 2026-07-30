@@ -1095,10 +1095,10 @@ class EventDetection():
         event_peak = get_event_peak(data=data, event_num=0, add_points=self.add_points, window_size=self.window_size, diffs=diffs)
         event_peak_value = data[event_peak]
         if use_legacy_baseline_method:
-            baseline = get_event_baseline(data=data, duration=int(self.window_size * 0.1), event_num=0, diffs=diffs, 
+            baseline = legacy_get_event_baseline(data=data, duration=int(self.window_size * 0.1), event_num=0, diffs=diffs, 
                                           add_points=self.add_points, peak_positions=[event_peak], positions=[self.add_points])
         else:
-            baseline = get_event_baseline_v2(data=data, bsl_duration=int(self.window_size * 0.1), event_num=0, relative_event_position=self.add_points, 
+            baseline = get_event_baseline(data=data, bsl_duration=int(self.window_size * 0.1), event_num=0, relative_event_position=self.add_points, 
                                              positions=[self.add_points])
         onset_position = get_event_onset(data=data, peak_position=event_peak, baseline=baseline.value, baseline_var=baseline.var)
                 
