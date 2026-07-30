@@ -25,45 +25,67 @@ from miniml.fileio.util import is_keras_model
 
 
 class EventStats:
-    """miniML class for event statistics.
+    """
+    Store summary statistics for detected events.
 
     Parameters
     ----------
-    amplitudes: np.ndarray
+    amplitudes : np.ndarray
         Amplitudes of individual events.
-    scores: np.ndarray
+    scores : np.ndarray
         Prediction scores of individual events.
-    charges: np.ndarray
+    charges : np.ndarray
         Charge transfer of individual events.
-    risetimes: np.ndarray
+    risetimes : np.ndarray
         10-90 percent rise times of individual events.
-    slopes: np.ndarray
+    slopes : np.ndarray
         Rise slopes of individual events.
-    halfdecays: np.ndarray
+    decaytimes : np.ndarray
         Half decay times of individual events.
-    halfwidths: np.ndarray
+    halfwidths : np.ndarray
         Half-width of individual events (seconds).
-    avg_tau_decay: float
+    tau : float
         Average decay time constant (seconds).
-    rec_time: float
+    time : float
         Total recording duration (seconds).
-    y_unit: str
+    unit : str
         Data unit.
 
     Attributes
     ----------
-    event_count: number of events
+    amplitudes : np.ndarray
+        Amplitudes of individual events.
+    event_scores : np.ndarray
+        Prediction scores of individual events.
+    charges : np.ndarray
+        Charge transfer of individual events.
+    risetimes : np.ndarray
+        10-90 percent rise times of individual events.
+    slopes : np.ndarray
+        Rise slopes of individual events.
+    halfdecays : np.ndarray
+        Half decay times of individual events.
+    halfwidths : np.ndarray
+        Half-widths of individual events.
+    avg_tau_decay : float
+        Average decay time constant.
+    rec_time : float
+        Total recording duration.
+    y_unit : str
+        Signal unit.
+    event_count : int
+        Number of detected events.
     """
 
     def __init__(
         self,
-        amplitudes,
-        scores,
-        charges,
-        risetimes,
-        slopes,
-        decaytimes,
-        halfwidths,
+        amplitudes: np.ndarray,
+        scores: np.ndarray,
+        charges: np.ndarray,
+        risetimes: np.ndarray,
+        slopes: np.ndarray,
+        decaytimes: np.ndarray,
+        halfwidths: np.ndarray,
         tau,
         time,
         unit: str,
@@ -81,33 +103,94 @@ class EventStats:
         self.event_count = len(self.amplitudes)
 
     def mean(self, values: np.ndarray) -> float:
-        """Returns mean of event parameter"""
+        """
+        Return the mean of an event metric, ignoring NaN values.
+
+        Parameters
+        ----------
+        values : np.ndarray
+            Event metric values.
+
+        Returns
+        -------
+        float
+            Mean value, or ``np.nan`` if the input is empty or all-NaN.
+        """
         if ~np.all(np.isnan(values)) and self.event_count:
-            return np.nanmean(values)
+            return np.nanmean(values).item()
         else:
-            return np.nan
+            return float("nan")
 
     def std(self, values: np.ndarray) -> float:
-        """Returns standard deviation of event parameter"""
-        return np.nanstd(values, ddof=1) if values.shape[0] > 1 else np.nan
+        """
+        Return the sample standard deviation of an event metric.
+
+        Parameters
+        ----------
+        values : np.ndarray
+            Event metric values.
+
+        Returns
+        -------
+        float
+            Sample standard deviation, or ``np.nan`` when fewer than two values
+            are available.
+        """
+        if values.shape[0] > 1:
+            return np.nanstd(values, ddof=1).item()
+
+        return float("nan")
 
     def median(self, values: np.ndarray) -> float:
-        """Returns median of event parameter"""
+        """
+        Return the median of an event metric, ignoring NaN values.
+
+        Parameters
+        ----------
+        values : np.ndarray
+            Event metric values.
+
+        Returns
+        -------
+        float
+            Median value, or ``np.nan`` if the input is empty or all-NaN.
+        """
         if ~np.all(np.isnan(values)) and self.event_count:
-            return np.nanmedian(values)
+            return np.nanmedian(values).item()
         else:
-            return np.nan
+            return float("nan")
 
     def cv(self, values: np.ndarray) -> float:
-        """Returns coefficient of variation of event parameter"""
-        return abs(self.std(values) / self.mean(values))
+        """
+        Return the coefficient of variation of an event metric.
+
+        Parameters
+        ----------
+        values : np.ndarray
+            Event metric values.
+
+        Returns
+        -------
+        float
+            Absolute ratio of standard deviation to mean.
+        """
+        return float(abs(self.std(values) / self.mean(values)))
 
     def frequency(self) -> float:
-        """Returns frequency of events"""
-        return len(self.amplitudes) / self.rec_time
+        """
+        Return the detected event frequency.
+
+        Returns
+        -------
+        float
+            Event frequency in hertz.
+        """
+        return float(len(self.amplitudes) / self.rec_time)
 
     def print(self) -> None:
-        """Prints event statistics to stdout"""
+        """
+        Print event summary statistics to standard output.
+        """
         print("\nEvent statistics:\n-------------------------")
         print(f"    Number of events: {self.event_count}")
         print(f"    Average score: {self.mean(self.event_scores):.3f}")
@@ -127,49 +210,51 @@ class EventStats:
 
 class EventDetection:
     """
-    miniML main class with methods for event detection and analysis.
+    Detect and analyze synaptic events in a trace.
 
     Parameters
     ----------
-    data: miniML MiniTrace object
-        The data trace to be analysed.
-    window_size: int, default=600
-        The window size for the event detection (samples per event window).
-    event_direction: str, default='negative'
-        Event direction in data. Should be 'negative' or any other string for positive events.
-    training_direction: str, default='negative'
-        Event direction during training. Should be 'negative' or 'positive'. All provided GitHub
-        models were trained with negative events (improved TL performance). If a model is trained
-        with positive events, this needs to be specified to run inference.
-    verbose: int, default=1
-        set verbose level (0 = no output, 1 = info, 2 = full)
-    batch_size: int, default=128
-        The batch size for the event detection (used in model.predict).
-    model_path: str, default=''
-        The path of the model file (.h5) to be used for event detection.
-    model: keras.Model, default=None
-        A model instance to be used for event detection. Overrides loading from model_path method if specified.
-    model_threshold: float, default=0.5
-        The minimum peak heigth of the model prediction to be considered as an event; range=(0,1).
-    compile_model: bool, default=True
+    data : MiniTrace
+        Trace to analyze.
+    window_size : int, default=600
+        Detection window size in samples.
+    event_direction : str, default="negative"
+        Event polarity in the trace.
+    training_direction : str, default="negative"
+        Event polarity used when the model was trained.
+    verbose : int, default=1
+        Verbosity level for prediction and reporting.
+    batch_size : int, default=128
+        Batch size used by ``model.predict``.
+    model : keras.Model | None, optional
+        Model instance to use for event detection.
+    model_path : str, default=""
+        Path to a saved Keras model.
+    model_threshold : float, default=0.5
+        Minimum model prediction peak height required for event detection.
+    compile_model : bool, default=True
         Whether to compile the model.
-    callbacks: list, default=[]
-        List of callback functions to be used during event detection.
+    callbacks : list | None, optional
+        Callbacks passed to ``model.predict``.
 
     Attributes
     ----------
-    event_locations: np.ndarray
-        The individual event locations
-    event_scores: np.ndarray
-        The individual prediction scores of events
-    event_peak_locations: np.ndarray
-        The individual event peak locations in samples
-    event_peak_times: np.ndarray
-        The individual event peak times
-    events: np.ndarray
-        The events as 2d array
-    event_stats: EventStats object
-        Contains event statistics
+    trace : MiniTrace
+        Source trace being analyzed.
+    prediction : np.ndarray
+        Model prediction trace.
+    event_locations : np.ndarray
+        Detected event onset locations in samples.
+    event_scores : np.ndarray
+        Prediction scores associated with detected events.
+    event_peak_locations : np.ndarray
+        Event peak locations in samples.
+    event_peak_times : np.ndarray
+        Event peak times in seconds.
+    events : np.ndarray
+        Extracted event windows.
+    event_stats : EventStats
+        Summary statistics for the detected events.
     """
 
     def __init__(
@@ -178,12 +263,12 @@ class EventDetection:
         window_size: int = 600,
         event_direction: str = "negative",
         training_direction: str = "negative",
-        verbose=1,
+        verbose: int = 1,
         batch_size: int = 128,
         model: keras.Model | None = None,
         model_path: str = "",
         model_threshold: float = 0.5,
-        compile_model=True,
+        compile_model: bool = True,
         callbacks: list | None = None,
     ) -> None:
         self.trace = data
@@ -231,7 +316,14 @@ class EventDetection:
         )
 
     def events_present(self) -> bool:
-        """Checks if events are present"""
+        """
+        Check whether any event windows are currently stored.
+
+        Returns
+        -------
+        bool
+            True if at least one event is present.
+        """
         num_events = self.events.shape[0]
 
         return num_events != 0
@@ -239,7 +331,23 @@ class EventDetection:
     def load_model(
         self, filepath: str, threshold: float = 0.5, compile: bool = True
     ) -> None:
-        """Loads a trained miniML model from hdf5 file"""
+        """
+        Load a trained miniML model from an HDF5 file.
+
+        Parameters
+        ----------
+        filepath : str
+            Path to the saved Keras model.
+        threshold : float, default=0.5
+            Prediction threshold used during peak detection.
+        compile : bool, default=True
+            Whether to compile the loaded model.
+
+        Raises
+        ------
+        ValueError
+            If the file does not contain a valid Keras model.
+        """
         if not is_keras_model(filepath):
             raise ValueError("Model file is not a valid Keras model")
         self.model: keras.Model = keras.models.load_model(filepath, compile=compile)
@@ -251,7 +359,21 @@ class EventDetection:
         self, data: np.ndarray, cutoff: float, order: int = 4
     ) -> np.ndarray:
         """
-        Butterworth lowpass filter.
+        Apply a Butterworth low-pass filter.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Input trace to filter.
+        cutoff : float
+            Cutoff frequency in hertz.
+        order : int, default=4
+            Filter order.
+
+        Returns
+        -------
+        np.ndarray
+            Filtered trace.
         """
         nyq = 0.5 * self.trace.sampling_rate
 
@@ -263,8 +385,19 @@ class EventDetection:
 
     def hann_filter(self, data: np.ndarray, filter_size: int) -> np.ndarray:
         """
-        Hann window filter. Start and end of the data are not filtered to avoid artifacts
-        resulting from zero padding.
+        Apply a Hann-window smoothing filter.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Input trace to filter.
+        filter_size : int
+            Hann window size.
+
+        Returns
+        -------
+        np.ndarray
+            Smoothed trace with unfiltered edges preserved to reduce padding artifacts.
         """
         if filter_size == 0:
             return data
@@ -279,14 +412,19 @@ class EventDetection:
         self, data: np.ndarray, interpol_to_len: int
     ) -> tuple[np.ndarray, float]:
         """
-        linear interpolation of a data stretch to match the indicated number of points.
+        Interpolate a data segment to a target number of samples.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            Input samples.
+        interpol_to_len : int
+            Desired output length.
 
         Returns
         -------
-        data_interpolated:
-            the interpolated data
-        interpol_factor:
-            the factor by which the data was up- or downsampled
+        tuple[np.ndarray, float]
+            Interpolated data and the applied resampling factor.
         """
         x = np.arange(0, data.shape[0])
         x_interpol = np.linspace(0, data.shape[0], interpol_to_len)
@@ -300,14 +438,12 @@ class EventDetection:
 
     def __predict(self) -> None:
         """
-        Performs prediction on a data trace using a sliding window of size `window_size` with a stride size given by `stride`.
-        The prediction is performed on the data using the miniML model.
-        Speed of prediction depends on batch size of model.predict(), but too high batch sizes will give low precision results.
+        Run model inference on the trace using a sliding window.
 
         Raises
         ------
         ValueError
-            When stride is below 1 or above window length
+            If the derived stride is invalid.
         """
         # resample values for prediction:
         data = signal.resample(
@@ -343,9 +479,12 @@ class EventDetection:
 
     def _interpolate_prediction_trace(self) -> tuple[np.ndarray, float]:
         """
-        Interpolate the prediction trace such that it corresponds 1:1 to the raw data before resampling.
-        Last few points of the data will not have prediction values because the data is shorter than the
-        required window size.
+        Interpolate the prediction trace back onto raw-data coordinates.
+
+        Returns
+        -------
+        tuple[np.ndarray, float]
+            Interpolated prediction trace and the interpolation factor.
         """
         stride = round(self.stride_length * self.resampling_factor)
         pn = len(self.prediction) - 1
@@ -361,8 +500,17 @@ class EventDetection:
         self, peak_w: int = 10
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Find peaks in prediction trace and extracted start- and endpoints of event areas based on left
-        and right ips respectively.
+        Find candidate event regions in the prediction trace.
+
+        Parameters
+        ----------
+        peak_w : int, default=10
+            Minimum peak width used during prediction peak detection.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray, np.ndarray]
+            Start indices, end indices, and peak scores for candidate events.
         """
         filtered_prediction = maximum_filter1d(
             self.prediction, size=int(5 * self.interpol_factor), origin=-2
@@ -393,8 +541,12 @@ class EventDetection:
 
     def _make_smth_gradient(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        Generate a smoothed gradient trace of the data. The gradient is calculated after filtering
-        the raw data trace (hanning window * 2 or lowpass filter * 1.5).
+        Generate raw and smoothed first-derivative traces.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray]
+            Raw gradient and smoothed gradient arrays.
         """
         # filter raw data trace, calculate gradient and filter first derivative trace
         if self.convolve_win > 0:
@@ -425,7 +577,22 @@ class EventDetection:
         self, grad: np.ndarray, start_pnts: np.ndarray, end_pnts: np.ndarray
     ) -> int:
         """
-        Get threshold based on standard deviation of the derivative of event-free data sections.
+        Estimate a derivative threshold from event-free trace segments.
+
+        Parameters
+        ----------
+        grad : np.ndarray
+            Gradient trace.
+        start_pnts : np.ndarray
+            Candidate event start indices.
+        end_pnts : np.ndarray
+            Candidate event end indices.
+
+        Returns
+        -------
+        int
+            Gradient threshold derived from the standard deviation of event-free
+            segments.
         """
         split_data = np.split(grad, np.vstack((start_pnts, end_pnts)).ravel("F"))
         event_free_data = np.concatenate(split_data[::2]).ravel()
@@ -437,25 +604,21 @@ class EventDetection:
         self, limit: int, scores: np.ndarray, rel_prom_cutoff: float = 0.25
     ) -> tuple[np.ndarray, np.ndarray]:
         """
-        Find approximate event positions based on negative threshold crossings in prediction trace. Extract
-        segment of peak windows in prediction trace and search for peaks in first derivative. If no peak is found,
-        the maximum first derivate is used as peak localization.
+        Refine approximate event positions from prediction peaks.
 
         Parameters
-        ------
-        limit: int
-            Right trace limit to make sure events at the very border are not picked up.
-        scores: numpy array
-            Prediction value for the events
-        rel_prom_cutoff: float
-            Relative prominence cutoff. Determines the minimum relative prominence for detection of overlapping events
+        ----------
+        limit : int
+            Right-edge limit used to reject border events.
+        scores : np.ndarray
+            Prediction values associated with candidate events.
+        rel_prom_cutoff : float, default=0.25
+            Minimum relative prominence used to keep overlapping derivative peaks.
 
         Returns
-        ------
-        event_locations: numpy array
-            Location of steepest rise of the events
-        event_scores: numpy array
-            Prediction value for the events
+        -------
+        tuple[np.ndarray, np.ndarray]
+            Event locations and their corresponding prediction scores.
         """
         # Remove indices at left and right borders to prevent boundary issues.
         mask = (self.start_pnts > self.window_size) & (
@@ -505,8 +668,7 @@ class EventDetection:
 
     def _remove_duplicate_locations(self) -> None:
         """
-        Remove event locations and associated scores that have potentially been picked up by
-        overlapping start-/ end-points of different detection peaks.
+        Remove duplicate or near-duplicate detected event locations.
         """
         unique_indices = np.unique(self.event_locations, return_index=True)[1]
         self.event_locations = self.event_locations[unique_indices]
@@ -526,16 +688,20 @@ class EventDetection:
         self, filter: bool = True, use_legacy_baseline_method: bool = True
     ) -> None:
         """
-        Find more detailed event location properties required for analysis. Namely, baseline, event onset,
-        peak half-decay and 10 & 90% rise positions. Also extracts the actual event properties, such as
-        amplitude or half-decay time.
+        Extract detailed event properties required for downstream analysis.
 
         Parameters
+        ----------
+        filter : bool, default=True
+            If True, derive properties from a filtered version of the trace.
+        use_legacy_baseline_method : bool, default=True
+            If True, use the legacy baseline estimator. Otherwise, use the newer
+            baseline method.
+
+        Raises
         ------
-        filter: bool
-            If true, properties are extracted from the filtered data.
-        use_legacy_baseline_method: bool
-            If true, the legacy baseline calculation method is used. Otherwise, the new method is used.
+        ValueError
+            If the requested extraction window exceeds the trace boundaries.
         """
         ### Prepare data
         diffs = np.diff(
@@ -842,9 +1008,9 @@ class EventDetection:
                     self.half_decay[ix] + self.event_locations[ix] - self.add_points
                 )
 
-    def _get_singular_event_indices(self):
+    def _get_singular_event_indices(self) -> None:
         """
-        Extract indices of events that have no overlap with any other events.
+        Identify events that do not overlap neighboring events.
         """
         no_events_in_decay = np.where(
             np.diff(self.event_locations) > self.window_size * 1.5
@@ -877,7 +1043,17 @@ class EventDetection:
         self, use_legacy_baseline_method: bool = True
     ) -> dict:
         """
-        Extract properties of the event average the same way the individual events are analysed.
+        Analyze the average waveform of non-overlapping events.
+
+        Parameters
+        ----------
+        use_legacy_baseline_method : bool, default=True
+            If True, use the legacy baseline estimator.
+
+        Returns
+        -------
+        dict
+            Summary properties extracted from the average event waveform.
         """
         diffs = [self.add_points * 10]  # Set right limit larger than window size
         charge_factor = 4  # Charge window is 4 * decay time
@@ -976,30 +1152,36 @@ class EventDetection:
         use_legacy_baseline_method: bool = True,
     ) -> None:
         """
-        Wrapper function to perform event detection, extraction and analysis
+        Perform event detection, extraction, and optional evaluation.
 
         Parameters
-        ------
-        stride: int, default = None
-            The stride used during prediction. If not specified, it will be set to 1/30 of the window size
-        eval: bool, default = False
+        ----------
+        stride : int | None, optional
+            Prediction stride. If omitted, defaults to roughly one thirtieth of
+            the window size.
+        eval : bool, default=False
             Whether to evaluate detected events.
-        resample_to_600: bool, default = True
-            Whether to resample the the data to match a 600 point window. Should always be true, unless a model was trained with a different window size.
-        peak_w: int, default = 5
+        resample_to_600 : bool, default=True
+            Whether to resample the trace to the 600-sample model window.
+        peak_w : int, default=5
             The minimum prediction peak width.
-        rel_prom_cutoff: int, float = 0.25
-            The relative prominence cutoff. Overlapping events are separated based on a peak-finding in the first derivative. To be considered
-            an event, any detected peak must have at least 25% prominence of the largest detected prominence.
-        filter_factor: float, default = 20
-            Filter factor for the lowpass filter used to filter the data for event analysis. Fraction of sampling rate (20 = 1/20 of sampling rate).
-        convolve_win: int, default = 0
-            Window size for the hanning window used to filter the data for event analysis. If 0, no filtering is applied. Used for legacy compatibility.
-        gradient_convolve_win: int, default = 0
-            Window size for the hanning window used to filter the derivative for event analysis
-        bsl_win: float, default = 0.33
+        rel_prom_cutoff : float, default=0.25
+            Relative prominence cutoff used when separating overlapping events.
+        filter_factor : float, default=20.0
+            Low-pass filter factor expressed as a fraction of the sampling rate.
+        convolve_win : int, default=0
+            Hann window size used for event-analysis filtering.
+        gradient_convolve_win : int, default=0
+            Hann window size used to smooth the derivative.
+        bsl_win : float, default=0.33
             Baseline window size as fraction of window size.
-        use_legacy_baseline_method: bool, default = True
+        use_legacy_baseline_method : bool, default=True
+            If True, use the legacy baseline estimator.
+
+        Raises
+        ------
+        ValueError
+            If ``bsl_win`` is not positive.
         """
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
@@ -1062,7 +1244,13 @@ class EventDetection:
 
     def _get_average_event_decay(self) -> np.ndarray:
         """
-        Returns the decay time constant of the averaged events.
+        Fit a single-exponential decay to the average event waveform.
+
+        Returns
+        -------
+        np.ndarray
+            Fit parameters for the average event decay, or ``np.nan`` values when
+            the fit fails.
         """
         events_for_avg = self.events[self.singular_event_indices]
 
@@ -1097,9 +1285,13 @@ class EventDetection:
             return np.full(3, np.nan)
 
     def _eval_events(self) -> None:
-        """Evaluates events. Calculates mean, std and median of amplitudes & charge, as well as decay tau and
-        frequency of events. Results are stored as EventStats object in self.event_stats.
-        In addition, times of event peaks, onset and half decay are calculated.
+        """
+        Compute event statistics and derived timing metrics.
+
+        Notes
+        -----
+        Results are stored on the instance, including ``event_stats``, event peak
+        times, onset times, half-decay times, and inter-event intervals.
         """
         if not self.events_present():
             return
@@ -1130,22 +1322,25 @@ class EventDetection:
         if self.verbose:
             self.event_stats.print()
 
-    def delete_events(self, event_indices: list = [], eval: bool = True) -> None:
+    def delete_events(
+        self, event_indices: list[int] | None = None, eval: bool = True
+    ) -> None:
         """
-        Deletes events from the event list. The indices of the events to be deleted are passed as an array.
+        Delete events by index and optionally recompute statistics.
 
         Parameters
         ----------
-        event_indices: list
-            Indices of the events to be deleted.
-        eval: bool
-            Whether to re-evaluate the events after deletion. If False, the event statistics will not be updated.
+        event_indices : list[int] | None, optional
+            Event indices to remove.
+        eval : bool, default=True
+            Whether to recompute event statistics after deletion.
 
         Raises
         ------
         ValueError
-            When the event index does not exist.
+            If any requested event index does not exist.
         """
+        event_indices = event_indices or []
         if not self.events_present():
             return
 
@@ -1189,12 +1384,15 @@ class EventDetection:
             self.detection._eval_events()
 
     def save_to_h5(self, filename: str, include_prediction: bool = False) -> None:
-        """Save detection results to an hdf5 (.h5) file.
+        """
+        Save detection results to an HDF5 file.
 
-        filename: str
-            Filename to save results to. Needs to be an .h5 file.
-        include_prediction: bool
-            Boolean wether to include the prediction trace in the output file.
+        Parameters
+        ----------
+        filename : str
+            Destination filename. The ``.h5`` suffix is added if needed.
+        include_prediction : bool, default=False
+            If True, include the prediction trace in the output file.
         """
         if not hasattr(self, "event_stats"):
             self._eval_events()
@@ -1313,11 +1511,14 @@ class EventDetection:
         print(f"Events saved to {filename}")
 
     def save_to_csv(self, filename: str = "") -> None:
-        """Save detection results to a .csv file. Generates two files, one with averages and one with the values for the individual events.
-        Filenames are automatically generated.
+        """
+        Save detection results to CSV files.
 
-        filename: str
-            filename, including path. Results will be split into "filename + _avgs.csv" and "filename + _individual.csv"
+        Parameters
+        ----------
+        filename : str, default=""
+            Output filename stem. Results are written to ``*_avgs.csv`` and
+            ``*_individual.csv`` files.
         """
         if filename.endswith(".csv"):
             filename = filename.removesuffix(".csv")
@@ -1399,16 +1600,17 @@ class EventDetection:
         include_prediction: bool = True,
         include_data: bool = True,
     ) -> None:
-        """Save detection results to a .pickle file.
+        """
+        Save detection results to a pickle file.
 
         Parameters
-        ------
-        filename: str
-            Name and if desired directory in which to save the file
-        include_prediction: bool
+        ----------
+        filename : str, default=""
+            Output filename, optionally including a directory.
+        include_prediction : bool, default=True
             Include the prediction trace.
-        include_data: bool
-            Save the mini trace together with the analysis results
+        include_data : bool, default=True
+            Include the source trace data together with the analysis results.
         """
         if not hasattr(self, "event_stats"):
             self._eval_events()
@@ -1497,31 +1699,29 @@ class EventDetection:
 
 
 class EventAnalysis(EventDetection):
-    """miniML class for analysis of events detected by an alternative method. Convenient for method comparison.
+    """
+    Analyze events detected by an external method.
 
     Parameters
     ----------
-    trace: miniML trace object
-        The raw data as miniML trace object.
-    window_size: int
+    trace : MiniTrace
+        Raw input trace.
+    window_size : int
         Number of samples to extract for each individual event.
-    event_direction: str
-        The direction of the events.
-    verbose: int
-        Verbosity level
-    event_positions: np.ndarray or list
-        The position(s) of detected events.
-    filter_factor: int
+    event_direction : str
+        Event polarity.
+    verbose : int
+        Verbosity level.
+    event_positions : np.ndarray | list
+        Positions of detected events.
+    filter_factor : int
         Fraction of the sampling rate used to lowpass filter the data for analysis.
-    convolve_win: int
-        Window size for the hanning window used to filter the data for event analysis.
-    resampling_factor: float
-        The factor by which to resample the data.
-
-    Methods
-    ----------
-    eval_events():
-        Perform event analysis.
+    convolve_win : int
+        Hann window size used to filter the data for event analysis.
+    gradient_convolve_win : int
+        Hann window size used to smooth the derivative.
+    resampling_factor : float
+        Resampling factor applied during analysis.
     """
 
     def __init__(
@@ -1535,7 +1735,7 @@ class EventAnalysis(EventDetection):
         convolve_win,
         gradient_convolve_win,
         resampling_factor,
-    ):
+    ) -> None:
         super().__init__(
             data=trace,
             window_size=window_size,
@@ -1564,6 +1764,14 @@ class EventAnalysis(EventDetection):
         self.gradient_convolve_win = gradient_convolve_win
 
     def eval_events(self, filter: bool = True) -> None:
+        """
+        Evaluate externally detected events.
+
+        Parameters
+        ----------
+        filter : bool, default=True
+            If True, derive event properties from filtered trace data.
+        """
         if self.event_locations.shape[0] > 0:
             super()._get_event_properties(filter=filter)
             self.events = self.events - self.event_bsls[:, None]

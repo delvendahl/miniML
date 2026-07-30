@@ -1,23 +1,34 @@
 import os
+from typing import TypeAlias
 
 import numpy as np
+import numpy.typing as npt
 import tensorflow as tf
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
+FloatArray: TypeAlias = npt.NDArray[np.float64]
 
-def exp_fit(x: np.ndarray, amp: float, tau: float, offset: float) -> np.ndarray:
+
+def exp_fit(x: FloatArray, amp: float, tau: float, offset: float) -> FloatArray:
     """
-    Fit an exponential curve to the given data.
+    Evaluate a single-exponential decay curve.
 
-    Parameters:
-        x (np.ndarray): The input data.
-        amp (float): The amplitude of the exponential curve.
-        tau (float): The time constant of the exponential curve.
-        offset (float): The offset of the exponential curve.
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Sample positions at which to evaluate the curve.
+    amp : float
+        Exponential amplitude.
+    tau : float
+        Exponential time constant.
+    offset : float
+        Constant offset added to the curve.
 
-    Returns:
-        np.ndarray: The fitted exponential curve.
+    Returns
+    -------
+    numpy.ndarray
+        Exponential decay evaluated relative to the first sample in ``x``.
     """
 
     return amp * np.exp(-(x - x[0]) / tau) + offset
@@ -26,13 +37,17 @@ def exp_fit(x: np.ndarray, amp: float, tau: float, offset: float) -> np.ndarray:
 @tf.function
 def minmax_scaling(x: tf.Tensor) -> tf.Tensor:
     """
-    Apply min-max scaling to the input tensor.
+    Apply min-max normalization to a tensor.
 
-    Args:
-        x (tf.Tensor): The input tensor to be scaled.
+    Parameters
+    ----------
+    x : tf.Tensor
+        Input tensor to normalize.
 
-    Returns:
-        tf.Tensor: The scaled tensor.
+    Returns
+    -------
+    tf.Tensor
+        Tensor rescaled to the ``[0, 1]`` range using its minimum and maximum.
     """
     x_min = tf.expand_dims(tf.math.reduce_min(x), axis=-1)
     x_max = tf.expand_dims(tf.math.reduce_max(x), axis=-1)
@@ -41,26 +56,34 @@ def minmax_scaling(x: tf.Tensor) -> tf.Tensor:
 
 
 def mEPSC_template(
-    x: np.ndarray, amplitude: float, t_rise: float, t_decay: float, x0: float
-) -> np.ndarray:
+    x: FloatArray, amplitude: float, t_rise: float, t_decay: float, x0: float
+) -> FloatArray:
     """
-    Generate a template miniature excitatory postsynaptic current
-    (mEPSC) based on the given parameters.
+    Generate a miniature excitatory postsynaptic current template.
 
-    Parameters:
-        x (np.ndarray): An array of x values.
-        amplitude (float): The amplitude of the mEPSCs.
-        t_rise (float): The rise time constant of the mEPSCs.
-        t_decay (float): The decay time constant of the mEPSCs.
-        x0 (float): The onset time point for the mEPSCs.
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Sample positions for the template waveform.
+    amplitude : float
+        Peak scaling factor of the template current.
+    t_rise : float
+        Rise time constant.
+    t_decay : float
+        Decay time constant.
+    x0 : float
+        Onset position of the template.
 
-    Returns:
-        np.ndarray: An array of y values representing an mEPSC template.
+    Returns
+    -------
+    numpy.ndarray
+        Template waveform with all samples before ``x0`` set to zero.
 
-    Note:
-        - The formula used to calculate the template is
-          y = amplitude * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay).
-        - Any values of x that are less than x0 will be set to 0 in the resulting array.
+    Notes
+    -----
+    The template is computed as
+
+    ``amplitude * (1 - exp(-(x - x0) / t_rise)) * exp(-(x - x0) / t_decay)``.
     """
     y = amplitude * (1 - np.exp(-(x - x0) / t_rise)) * np.exp(-(x - x0) / t_decay)
     y[x < x0] = 0

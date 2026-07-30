@@ -11,13 +11,30 @@ from miniml.core.trace import MiniTrace
 
 class TraceLoader:
     """
-    Encapsulates file loading logic for MiniTrace objects.
+    Encapsulate file loading logic for MiniTrace objects.
     """
 
     @staticmethod
     def load_trace_from_file(file_type: str, file_args: dict) -> MiniTrace:
         """
         Dispatch loading by GUI file type and return a MiniTrace.
+
+        Parameters
+        ----------
+        file_type : str
+            GUI file type label used to select the corresponding loader.
+        file_args : dict
+            Keyword arguments forwarded to the selected loader.
+
+        Returns
+        -------
+        MiniTrace
+            Loaded trace object.
+
+        Raises
+        ------
+        ValueError
+            If the requested file type is unsupported.
         """
         file_loader = {
             "HEKA DAT": TraceLoader.from_heka_file,
@@ -40,6 +57,29 @@ class TraceLoader:
     ) -> MiniTrace:
         """
         Load data from an HDF5 file and return a MiniTrace.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the HDF5 file.
+        tracename : str, default="mini_data"
+            Dataset name to search for inside the file.
+        scaling : float, default=1e12
+            Scaling factor applied to the loaded trace values.
+        sampling : float, default=2e-5
+            Sampling interval assigned to the returned trace.
+        unit : str, default="pA"
+            Signal unit assigned to the returned trace.
+
+        Returns
+        -------
+        MiniTrace
+            Trace built from the selected HDF5 dataset.
+
+        Raises
+        ------
+        FileNotFoundError
+            If no matching dataset is found in the file.
         """
         with h5py.File(filename, "r") as f:
             path = f.visit(
@@ -75,6 +115,40 @@ class TraceLoader:
     ) -> MiniTrace:
         """
         Load data from a HEKA DAT file and return a MiniTrace.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the HEKA DAT file.
+        rectype : str
+            Recording type label used to filter series.
+        group : int, default=0
+            Group index to load from the bundle.
+        load_series : list[int] | None, optional
+            Explicit series indices to include.
+        exclude_series : list[int] | None, optional
+            Series indices to skip.
+        exclude_sweeps : dict[int, list[int]] | None, optional
+            Mapping of series indices to sweep indices that should be skipped.
+        scaling : float, default=1
+            Scaling factor applied to the trace data.
+        unit : str, default=""
+            Override for the trace unit. If empty, the file metadata is used.
+        resample : bool, default=True
+            Whether to downsample faster series to the maximum sampling interval.
+
+        Returns
+        -------
+        MiniTrace
+            Trace assembled from the selected HEKA series.
+
+        Raises
+        ------
+        ValueError
+            If the file extension is not ``.dat`` or incompatible sampling rates are
+            encountered while resampling is disabled.
+        IndexError
+            If the requested group index is out of range.
         """
         if not Path(filename).suffix.lower() == ".dat":
             raise ValueError("Incompatible file type. Method only loads .dat files.")
@@ -167,6 +241,29 @@ class TraceLoader:
     ) -> MiniTrace:
         """
         Load data from an AXON ABF file and return a MiniTrace.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the AXON ABF file.
+        channel : int, default=0
+            Channel index to extract.
+        scaling : float, default=1.0
+            Scaling factor applied to the channel data.
+        unit : str, default=""
+            Override for the trace unit. If empty, the ABF metadata is used.
+
+        Returns
+        -------
+        MiniTrace
+            Trace built from the selected ABF channel.
+
+        Raises
+        ------
+        ValueError
+            If the file extension is not ``.abf``.
+        IndexError
+            If the requested channel does not exist.
         """
         if not Path(filename).suffix.lower() == ".abf":
             raise ValueError("Incompatible file type. Method only loads .abf files.")

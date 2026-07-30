@@ -13,7 +13,7 @@ mplstyle.use("fast")
 
 class miniML_plots:
     """
-    miniML plotting class. Allows calling multiple standard plots based on miniML EventDetection objection
+    miniML plotting class. Allows calling multiple standard plots based on miniML EventDetection object.
 
     Parameters
     ----------

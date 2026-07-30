@@ -28,7 +28,12 @@ def get_available_models() -> list[str]:
 @cache
 def get_resource_file_path(relpath: str) -> str:
     """
-    Returns the path to a resource file in the resources folder.
+    Return the path to a resource file in the resources folder.
+
+    Parameters
+    ----------
+    relpath : str
+        Relative path to the target file inside the resources package.
     """
     with resources.as_file(resources.files(str(__package__)).joinpath(relpath)) as path:
         return path.as_posix()
@@ -36,12 +41,17 @@ def get_resource_file_path(relpath: str) -> str:
 
 def get_icon_file_path(relpath: str) -> str:
     """
-    Returns the path to an icon file in the resources/icons folder.
+    Return the path to an icon file in the resources/icons folder.
+
+    Parameters
+    ----------
+    relpath : str
+        Relative icon path under the icons directory.
     """
     return get_resource_file_path(f"icons/{relpath}")
 
 
-def get_app_icon_file_path() -> str:
+def get_app_icon_file_path(best=False) -> str:
     """
     Return the path to the application icon file in the resources folder.
 

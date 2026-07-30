@@ -1,31 +1,38 @@
 import os
-from importlib import resources
 
-RESOURCES_DIR = "resources"
+from miniml.resources.util import get_resource_file_path
 
 
 class Settings:
     """
-    Class to store the analysis settings for miniML. The settings are:
-    - stride: int, default=20
-        The stride of the sliding window used to extract the features from the data.
-    - event_length: int, default=600
-        The length of the event window in samples.
-    - model: str, default='GC_lstm_model.h5'
-        The path of the model file to use for the prediction.
-    - event_threshold: float, default=0.5
-        The minimum peak height to use for the event detection.
-    - minimum_peak_width: int, default=5
-        The minimum width of the prediction peak to be considered an event.
-    - direction: str, default='negative'
-        The direction of the event to detect. Can be 'positive' or 'negative'.
-    - batch_size: int, default=512
-        The batch size to use for model inference.
-    - filter_factor: float, default=20
-        The filter factor used for low-pass filtering of the trace during peak finding.
-    - gradient_convolve_win: int, default=0
-        The Hann window size to use for filtering the first derivative of the
-        data trace (used for determining event location).
+    Store analysis settings used by miniML event detection.
+
+    Attributes
+    ----------
+    stride : int
+        Stride of the sliding window used during feature extraction.
+    event_window : int
+        Length of the event window in samples.
+    model_path : str
+        Resolved filesystem path to the selected model file.
+    model_name : str
+        Model filename as provided to the constructor.
+    event_threshold : float
+        Minimum prediction peak height used for event detection.
+    minimum_peak_width : int
+        Minimum prediction peak width to classify a detection as an event.
+    direction : str
+        Event polarity to detect, typically ``"positive"`` or ``"negative"``.
+    batch_size : int
+        Batch size used during model inference.
+    filter_factor : float
+        Low-pass filter factor used during peak finding.
+    gradient_convolve_win : int
+        Hann window size used to smooth the first derivative for event timing.
+    relative_prominence : float
+        Relative prominence threshold used during post-processing.
+    colors : list[str]
+        Default color palette used for plotting and UI elements.
     """
 
     def __init__(
@@ -85,13 +92,7 @@ class Settings:
             self._model_path = ""
             return
 
-        with resources.as_file(
-            resources.files(str(__package__)).joinpath(
-                f"{RESOURCES_DIR}/models/{value}"
-            )
-        ) as fspath:
-            self._model_path = str(fspath)
-
+        self._model_path = get_resource_file_path(f"models/{value}")
         if not os.path.exists(self._model_path):
             raise FileNotFoundError(f"Model file not found: {self._model_path}")
 
