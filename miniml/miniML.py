@@ -324,8 +324,9 @@ class MiniTrace():
                     y_unit=data_unit, filename=Path(filename).name)
 
 
-    def plot_trace(self) -> None:
+    def plot_trace(self, figsize: tuple[int, int]=(7, 4)) -> None:
         ''' Plots the trace '''
+        plt.figure(figsize=figsize)
         plt.plot(self.time_axis, self.data)
         plt.xlabel('Time [s]')
         plt.ylabel(f'[{self.y_unit}]')
