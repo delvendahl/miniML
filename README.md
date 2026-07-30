@@ -28,15 +28,17 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 💻 INSTALLATION
 
-To use miniML, clone the GitHub Repository and install, e.g. using pip. miniML has been tested with Python 3.9 and 3.10. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf, ruptures. 
-
-For the GUI, PyQt5, qt-material, and pyqtgraph are also required.
+To use miniML, clone the GitHub Repository and install, e.g. using pip. It is strongly recommended to install miniML into its own virtual environment! 
+miniML requires Python 3.11. The default Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf, ruptures. 
 
 >[!IMPORTANT]
 >The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
 
 > [!NOTE]
 >miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
+
+#### Installation with GUI
+For the GUI, additional dependencies are required (PyQt5, qt-material, and pyqtgraph). Install miniML with `pip install .[gui]` to include these dependencies and get full GUI support. An executable script `miniml-gui` will be created to start the application.
 
 ### 📚 DOCUMENTATION
 
@@ -46,7 +48,7 @@ Detailed documentation for miniML can be found [here](https://delvendahl.github.
 ### ⏱ RUNNING MINIML
 
 #### Analysis workflow in Python
-First, a miniML *MiniTrace* object needs to be created containing 1d timeseries data. Currently, miniML supports direct loading from HEKA .dat files, Axon .abf files as well as HDF .h5 files. The *Trace* object features discrete methods for loading from these file formats (e.g., **MiniTrace.from_h5_file()**). Data in other file formats need to be imported as Python objects.
+First, a miniML *MiniTrace* object needs to be created containing 1d timeseries data. Currently, miniML supports direct loading from HEKA .dat files, Axon .abf files as well as HDF .h5 files. The *miniml.fileio.TraceLoader* object features discrete methods for loading from these file formats (e.g., **TraceLoader.from_h5_file()**). Data in other file formats need to be imported as Python objects.
 
 Next, a miniML *EventDetection* object is initiated. Here, one needs to specify a miniML model file to use as well as the *Trace* object to operate on. 
 
@@ -54,12 +56,12 @@ miniML model inference can then be run using the **detect_events()** method. Thi
 
 Following event detection, the individual detected events are analyzed and descriptive statistics are calculated for the recording.
 
-miniML includes several plotting methods. They can be found in the **miniML_plots** class in `miniML_plot_functions.py`. A detection object has to be passed as data argument. 
+miniML includes several plotting methods. They can be found in the **Plotter** class in `plotting.py`. A detection object has to be passed as data argument. 
 
 Event data and statistics can be saved in different formats (.pickle, .h5, .csv).
 
 > [!TIP]
->miniML can also be used via a GUI. To use the GUI, execute the miniml_gui.py file (located in the "core/" folder). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspected and deleted, if desired. The GUI can also be used to save results to a PICKLE, CSV or HDF5 file.
+>miniML can also be used via a GUI (see *Installation with GUI*). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspected and deleted, if desired. The GUI can also be used to save results to a PICKLE, CSV or HDF5 file.
 
 
 ### 💡 EXAMPLE
