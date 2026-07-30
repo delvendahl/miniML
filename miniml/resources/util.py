@@ -1,3 +1,4 @@
+import sys
 from functools import cache
 from importlib import resources
 
@@ -25,21 +26,26 @@ def get_available_models() -> list[str]:
 
 
 @cache
-def get_icon_file_path(icon_name: str) -> str:
+def get_resource_file_path(relpath: str) -> str:
+    """
+    Returns the path to a resource file in the resources folder.
+    """
+    with resources.as_file(resources.files(str(__package__)).joinpath(relpath)) as path:
+        return path.as_posix()
+
+
+def get_icon_file_path(relpath: str) -> str:
     """
     Returns the path to an icon file in the resources/icons folder.
     """
-    with resources.as_file(
-        resources.files(str(__package__)).joinpath(f"icons/{icon_name}")
-    ) as icon_path:
-        return icon_path.as_posix()
+    return get_resource_file_path(f"icons/{relpath}")
 
 
 def get_app_icon_file_path() -> str:
     """
     Returns the path to the application icon file in the resources folder.
     """
-    with resources.as_file(
-        resources.files(str(__package__)).joinpath("minML_icon.png")
-    ) as icon_path:
-        return icon_path.as_posix()
+    if sys.platform == "win32":
+        return get_icon_file_path("app/app.ico")
+    else:
+        return get_icon_file_path("app/app_512px.png")
