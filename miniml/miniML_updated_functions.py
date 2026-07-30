@@ -8,6 +8,9 @@ from collections import namedtuple
 
 
 def get_segment_stats(breakpoints: list, data: np.ndarray):
+    '''
+    Calculate median, variance, and slope for each segment in the provided data.
+    '''
     values, slopes, variances = [], [], []
     for i, p2 in enumerate(breakpoints):
         p1 = breakpoints[i - 1] if i else 0
@@ -29,6 +32,9 @@ def get_segment_stats(breakpoints: list, data: np.ndarray):
 
 
 def get_steepest_rise_position(data: np.ndarray, filter_win: int=20):
+    '''
+    Calculate the position of the steepest rise in the given data.
+    '''
     win = sc.signal.windows.hann(filter_win)
     filtered_data = sc.signal.convolve(data, win, mode='same') / sum(win)
 
@@ -38,6 +44,16 @@ def get_steepest_rise_position(data: np.ndarray, filter_win: int=20):
 
 def baseline_score(positions: np.ndarray, median_values: np.ndarray, slope_values: np.ndarray, 
                    variance_values: np.ndarray, steepest_rise: int, weights: list=[0.5, 0.35, 0.1, 0.05], verbose: int=0) -> float:
+    '''
+    Calculate a weighted baseline score for the given data.
+    Four parameters are used:
+    1. Position relative to the steepest rise (penalizes positions after the steepest rise).
+    2. Median value of the segment (lower median values are preferred).
+    3. Slope of the segment (lower slopes are preferred).
+    4. Variance of the segment (lower variance is preferred).
+    The weights for each parameter can be adjusted using the 'weights' argument.
+
+    '''
     rank_median = np.array(median_values).argsort().argsort()
     rank_slope = np.abs(slope_values).argsort().argsort()
     rank_var = np.array(variance_values).argsort().argsort()
@@ -63,7 +79,9 @@ def baseline_score(positions: np.ndarray, median_values: np.ndarray, slope_value
 
 def get_event_baseline_v2(data: np.ndarray, bsl_duration: int, event_num: int, relative_event_position: int, positions: np.ndarray):
     """
-    Calculate the baseline and baseline variance for an event in the given data. Uses change point detection to find the baseline segment.
+    Calculate the baseline and baseline variance for an event in the given data.
+
+    Uses change point detection to find the baseline segment.
     """
     previous_peak_present = False
     previous_peak_position = int(positions[event_num]) - int(positions[event_num - 1])
@@ -127,11 +145,11 @@ def get_event_baseline_v2(data: np.ndarray, bsl_duration: int, event_num: int, r
         bsl_start = min_position - 3
         bsl_end = min_position + 3
 
-    # rpt.display(data, result)
-    # plt.plot(np.arange(bsl_start+1, bsl_end-1), data[bsl_start+1: bsl_end-1], c='darkorange')
-    # plt.axhline(baseline, linestyle='--', c= 'gray')
-    # plt.plot(relative_event_position, data[relative_event_position], 'ko')
-    # plt.show()
+    rpt.display(data, result)
+    plt.plot(np.arange(bsl_start+1, bsl_end-1), data[bsl_start+1: bsl_end-1], c='darkorange')
+    plt.axhline(np.median(data[bsl_start : bsl_end]), linestyle='--', c= 'gray')
+    plt.plot(relative_event_position, data[relative_event_position], 'ko')
+    plt.show()
 
     bsl_result = namedtuple('BaselineResult', ['value', 'var', 'start', 'end', 'duration'])
 
@@ -146,9 +164,12 @@ def get_event_baseline_v2(data: np.ndarray, bsl_duration: int, event_num: int, r
 def get_event_baseline_new(data: np.ndarray, bsl_duration: int, event_num: int, add_points,
                            peak_position: int, positions: np.ndarray, debug: bool=False):
     """
-    Calculate the baseline and baseline variance for an event in the given data.  Uses change point detection to find the baseline segment.
+    Calculate the baseline and baseline variance for an event in the given data.  
+    
+    Uses change point detection to find the baseline segment.
 
-    Parameters:
+    Parameters
+    ----------
     - data (np.ndarray): The input data (i.e. the event snippet).
     - bsl_duration (int): The duration (in points) to consider for baseline calculation.
     - event_num (int): The index of the event.
@@ -157,7 +178,9 @@ def get_event_baseline_new(data: np.ndarray, bsl_duration: int, event_num: int, 
     - positions (np.ndarray): The absolute positions of the events in the main trace.
     - debug (bool): If True, enables debug mode with additional plots.
 
-    Returns:
+    Returns
+    ----------
+
     BaselineResult: A named tuple containing the following fields:
     - baseline (float): The calculated baseline.
     - bsl_var (float): The calculated baseline variance.
