@@ -713,7 +713,7 @@ class EventDetection():
         '''
         Performs prediction on a data trace using a sliding window of size `window_size` with a stride size given by `stride`.
         The prediction is performed on the data using the miniML model.
-        Speed of prediction depends on batch size of model.predict(), but too high batch sizes will give low precision results.
+        Speed of prediction depends on batch size of model.predict(), but too high batch sizes may give low precision results.
 
         Raises  
         ------
@@ -764,8 +764,8 @@ class EventDetection():
 
     def _get_prediction_peaks(self, peak_w: int=10) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         '''
-        Find peaks in prediction trace and extracted start- and endpoints of event areas based on left 
-        and right ips respectively.
+        Find peaks in prediction trace and extract start- and endpoints of event areas based on left_ips
+        and right_ips respectively.
         '''
         filtered_prediction = maximum_filter1d(self.prediction, size=int(5*self.interpol_factor), origin=-2)
         
