@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "miniml"
-version = "1.0.0"
+version = "1.1.0"
 authors = [
   { name="Philipp O'Neill", email="philipp.oneill@physiologie.uni-freiburg.de" },
   { name="Martin Baccino Calace", email="martin.baccinocalace@uzh.ch" },
