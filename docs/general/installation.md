@@ -12,7 +12,6 @@ The Python dependencies for miniML are:
 - sklearn
 - matplotlib
 - h5py
-- pandas
 - numpy
 - scipy
 - tensorflow
