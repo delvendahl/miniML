@@ -8,23 +8,32 @@ from scipy import signal
 
 
 class MiniTrace:
-    """miniML class for a time series data trace containing synaptic events. Data are stored as float64 numpy ndarray.
+    """
+    Represent a synaptic time-series trace.
 
     Parameters
     ----------
-    data: np.ndarray | list, default=[]
-        The data to be analysed.
-    sampling_interval: float, default=1
-        The sampling interval of the data in seconds.
-    y_unit: str, default=''
-        The physical unit of the y-axis.
-    filename: str, default=''
-        The filename of the trace.
+    data : np.ndarray | list | None, optional
+        Trace samples. Values are stored internally as ``float64``.
+    sampling_interval : float, default=1
+        Sampling interval of the trace in seconds.
+    y_unit : str, default=""
+        Physical unit of the signal amplitude.
+    filename : str, default=""
+        Source filename associated with the trace.
 
     Attributes
     ----------
-    events: np.ndarray
-        Detected events as 2d array.
+    data : np.ndarray
+        Trace samples stored as a one-dimensional ``float64`` array.
+    sampling : float
+        Sampling interval in seconds.
+    events : list
+        Event snippets associated with the trace.
+    y_unit : str
+        Physical unit of the signal amplitude.
+    filename : str
+        Source filename associated with the trace.
     """
 
     excluded_sweeps: ClassVar[dict[int, list[int]]] = {}
@@ -71,182 +80,52 @@ class MiniTrace:
 
     @property
     def time_axis(self) -> np.ndarray:
-        """Returns time axis as numpy array"""
+        """
+        Return the trace time axis.
+
+        Returns
+        -------
+        np.ndarray
+            Time values in seconds for each sample in the trace.
+        """
         return np.arange(len(self.data)) * self.sampling
 
     @property
     def total_time(self) -> float:
-        """Returns the total duration of the recording"""
+        """
+        Return the total recording duration.
+
+        Returns
+        -------
+        float
+            Recording duration in seconds.
+        """
         return len(self.data) * self.sampling
 
-    @classmethod
-    def from_h5_file(
-        cls,
-        filename: str,
-        tracename: str = "mini_data",
-        scaling: float = 1e12,
-        sampling: float = 2e-5,
-        unit: str = "pA",
-    ) -> MiniTrace:
-        """Loads data from an hdf5 file. Name of the dataset needs to be specified.
-
-        Parameters
-        ----------
-        filename: str
-            Path of the .h5 file to load.
-        tracename: str, default='mini_data'
-            Name of the dataset in the file to be loaded.
-        scaling: float, default=1e12
-            Scaling factor applied to the data. Defaults to 1e12 (i.e. pA)
-        sampling: float, default=2e-5
-            The sampling interval of the data in seconds. Defaults to 20 microseconds (i.e. 50kHz sampling rate).
-        unit: string, default='pA'
-            Data unit string after scaling. Used for display purposes.
-
-        Returns
-        -------
-        MiniTrace
-            An initialized MiniTrace object.
-
-        Raises
-        ------
-        FileNotFoundError
-            When the specified file does not exist.
-        """
-        from miniml.fileio.trace_loader import TraceLoader
-
-        return TraceLoader.from_h5_file(
-            filename=filename,
-            tracename=tracename,
-            scaling=scaling,
-            sampling=sampling,
-            unit=unit,
-        )
-
-    @classmethod
-    def from_heka_file(
-        cls,
-        filename: str,
-        rectype: str,
-        group: int = 0,
-        load_series: list[int] | None = None,
-        exclude_series: list[int] | None = None,
-        exclude_sweeps: dict[int, list[int]] | None = None,
-        scaling: float = 1,
-        unit: str = "",
-        resample: bool = True,
-    ) -> MiniTrace:
-        """Loads data from a HEKA .dat file. Name of the PGF sequence needs to be specified.
-
-        Parameters
-        ----------
-        filename: string
-            Path of a .dat file.
-        rectype: string
-            Name of the PGF sequence in the file to be loaded.
-        group: int, default=1
-            HEKA group to load data from. Note that HEKA groups are numbered starting from 1, but Python idexes from zero.
-            Hence, group 1 in HEKA is group 0 in Python.
-        load_series: list, default=[]
-            List of HEKA series to load. Uses zero-indexing, i.e. HEKA series 1 is 0 in the list.
-        exclude_series: list, default=[].
-            List of HEKA series to exclude.
-        exclude_sweeps: dict, default={}.
-            Dictionary with sweeps to exclude from analysis. E.g. {2 : [4, 5]} excludes sweeps 4 & 5 from series 2.
-        scaling: float, default=1e12
-            Scaling factor applied to the data. Defaults to 1e12 (i.e. pA)
-        unit: str, default=''
-            Data unit, to be set when using scaling factor.
-        resample: boolean, default=rue
-            Resample data in case of sampling rate mismatch.
-
-        Returns
-        -------
-        MiniTrace
-            An initialized MiniTrace object.
-
-        Raises
-        ------
-        ValueError
-            If the file is not a valid .dat file.
-        IndexError
-            When the group index is out of range.
-        ValueError
-            When the sampling rates of different series mismatch and resampling is set to False.
-        """
-        from miniml.fileio.trace_loader import TraceLoader
-
-        return TraceLoader.from_heka_file(
-            filename=filename,
-            rectype=rectype,
-            group=group,
-            load_series=load_series,
-            exclude_series=exclude_series,
-            exclude_sweeps=exclude_sweeps,
-            scaling=scaling,
-            unit=unit,
-            resample=resample,
-        )
-
-    @classmethod
-    def from_axon_file(
-        cls, filename: str, channel: int = 0, scaling: float = 1.0, unit: str = ""
-    ) -> MiniTrace:
-        """Loads data from an AXON .abf file.
-
-        Parameters
-        ----------
-        filename: string
-            Path of a .abf file.
-        channel: int, default=0
-            The recording channel to load
-        scaling: float, default=1.0
-            Scaling factor applied to the data.
-        unit: str, default=''
-            Data unit, to be set when using scaling factor.
-
-        Returns
-        -------
-        MiniTrace
-            An initialized MiniTrace object.
-
-        Raises
-        ------
-        Exception
-            If the file is not a valid .abf file.
-        IndexError
-            When the selected channel does not exist in the file.
-        """
-        from miniml.fileio.trace_loader import TraceLoader
-
-        return TraceLoader.from_axon_file(
-            filename=filename,
-            channel=channel,
-            scaling=scaling,
-            unit=unit,
-        )
-
     def plot_trace(self) -> None:
-        """Plots the trace"""
+        """
+        Plot the trace using Matplotlib.
+        """
         plt.plot(self.time_axis, self.data)
         plt.xlabel("Time [s]")
         plt.ylabel(f"[{self.y_unit}]")
         plt.show()
 
     def detrend(self, detrend_type: str = "linear", num_segments: int = 0) -> MiniTrace:
-        """Detrend the data.
+        """
+        Remove linear or constant trends from the trace.
 
         Parameters
         ----------
-        detrend_type: str, default='linear'
-            Type of detrending. Options: 'linear', 'constant'
-        num_segments: int, default=0
-            Number of segments for detrending. Increase in case of non-linear trends in the data.
+        detrend_type : str, default="linear"
+            Detrending mode passed to ``scipy.signal.detrend``.
+        num_segments : int, default=0
+            Number of breakpoint segments used during detrending.
 
         Returns
         -------
         MiniTrace
-            The detrended MiniTrace object.
+            Detrended trace.
         """
         num_data = self.data.shape[0]
         breaks = (
@@ -275,30 +154,38 @@ class MiniTrace:
         savgol: float | None = None,
         hann: int | None = None,
     ) -> MiniTrace:
-        """Filters trace with a combination of line frequency, high- and lowpass filters.
-        If both lowpass and savgol arguments are passed, only the lowpass filter is applied.
+        """
+        Filter the trace with one or more smoothing operations.
+
+        If both ``lowpass`` and ``savgol`` are provided, only the low-pass
+        filter is applied.
 
         Parameters
         ----------
-        line_freq: float, default=None
-            Line noise filter frequency (Hz). Line noise is removed by spectrum interpolation.
-        width: float, default=None
+        line_freq : float | None, optional
+            Line-noise frequency in hertz.
+        width : float | None, optional
             Width of the line noise filter (Hz).
-        highpass: float, default=None
+        highpass : float | None, optional
             Highpass cutoff frequency (Hz).
-        lowpass: float, default=None
-            Lowpass cutoff frequency (Hz). Set to None to turn filtering off.
-        order: int, default=4
-            Order of the filter.
-        savgol: float, default=None
-            The time window for Savitzky-Golay smoothing (ms).
-        hann: int, default=None
-            The length of the Hann window (samples).
+        lowpass : float | None, optional
+            Low-pass cutoff frequency in hertz.
+        order : int, default=4
+            Filter order.
+        savgol : float | None, optional
+            Time window for Savitzky-Golay smoothing in milliseconds.
+        hann : int | None, optional
+            Hann window length in samples.
 
         Returns
         -------
         MiniTrace
-            A filtered MiniTrace object.
+            Filtered trace.
+
+        Raises
+        ------
+        ValueError
+            If ``line_freq`` is provided without ``width``.
         """
         filtered_data = self.data.copy()
         nyq = 0.5 * self.sampling_rate
@@ -353,13 +240,19 @@ class MiniTrace:
         )
 
     def resample(self, sampling_frequency: float | None = None) -> MiniTrace:
-        """Resamples the data trace to the given frequency
+        """
+        Resample the trace to a target sampling frequency.
 
-        sampling_frequency: float
-            Sampling frequency in Hz of the output data
+        Parameters
+        ----------
+        sampling_frequency : float | None, optional
+            Target sampling frequency in hertz.
 
-        returns: MiniTrace
-            A resampled MiniTrace object
+        Returns
+        -------
+        MiniTrace
+            Resampled trace. If ``sampling_frequency`` is None, the current
+            instance is returned unchanged.
         """
         if sampling_frequency is None:
             return self
@@ -381,27 +274,27 @@ class MiniTrace:
         self, positions: np.ndarray, before: int, after: int
     ) -> np.ndarray:
         """
-        Extracts events from trace
+        Extract event windows from the trace.
 
         Parameters
-        ------
-        positions: np.ndarray
-            The event positions.
-        before: int
-            Number of samples before event position for event extraction. Positions-before must be positive.
-        after: int
-            Number of samples after event positions for event extraction. Positions+after must be smaller
-            than the total number of samples in self.data.
+        ----------
+        positions : np.ndarray
+            Event positions in samples.
+        before : int
+            Number of samples to include before each event position.
+        after : int
+            Number of samples to include after each event position.
 
         Returns
-        ------
+        -------
         np.ndarray
-            2d array with events of shape (len(positions), before+after).
+            Array of extracted event windows with shape
+            ``(len(positions), before + after)``.
 
         Raises
         ------
         ValueError
-            When the indices are too close to self.data boundaries
+            If any requested extraction window exceeds the trace bounds.
         """
         if np.any(positions - before < 0) or np.any(
             positions + after >= self.data.shape[0]
