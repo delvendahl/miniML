@@ -1,4 +1,0 @@
-include miniml/resources/icons/*.svg
-include miniml/resources/miniml.css.template
-include miniml/resources/minML_icon.png
-recursive-include resources/models *.h5
