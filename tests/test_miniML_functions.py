@@ -195,5 +195,66 @@ class TestOtherMiniMLFunctions(unittest.TestCase):
         self.assertEqual(res.start, 0)
         self.assertEqual(res.end, 20)
 
+class TestEventDetectionDeleteEvents(unittest.TestCase):
+    def test_delete_events_dynamic(self):
+        from miniml.miniML import MiniTrace, EventDetection
+
+        # Create dummy trace and EventDetection
+        trace = MiniTrace(data=np.zeros(1000), sampling_interval=0.0001)
+        detection = EventDetection(data=trace, window_size=600)
+
+        # Manually populate attributes of length 3 (3 events)
+        detection.event_locations = np.array([100, 200, 300])
+        detection.event_peak_locations = np.array([105, 205, 305])
+        detection.event_peak_times = np.array([0.0105, 0.0205, 0.0305])
+        detection.event_peak_values = np.array([-10.0, -15.0, -12.0])
+        detection.event_start = np.array([95, 195, 295])
+        detection.decaytimes = np.array([0.005, 0.006, 0.004])
+        detection.risetimes = np.array([0.001, 0.002, 0.0015])
+        detection.charges = np.array([-1.0, -1.5, -1.2])
+        detection.event_bsls = np.array([0.1, 0.2, 0.15])
+        detection.bsl_starts = np.array([90, 190, 290])
+        detection.bsl_ends = np.array([100, 200, 300])
+        detection.min_positions_rise = np.array([96, 196, 296])
+        detection.max_positions_rise = np.array([104, 204, 304])
+        detection.half_decay = np.array([110, 210, 310])
+        detection.halfwidths = np.array([0.002, 0.003, 0.0025])
+        detection.events = np.zeros((3, 10))
+        detection.event_scores = np.array([0.9, 0.95, 0.88])
+        detection.slopes = np.array([-1.5, -2.0, -1.8])
+        detection.singular_event_indices = np.array([0, 1, 2])
+
+        # Let's mock event_stats to avoid full eval during delete_events
+        from unittest.mock import MagicMock
+        detection.event_stats = MagicMock()
+
+        # Let's delete the middle event (index 1)
+        # eval=False to skip re-evaluation during this basic check
+        detection.delete_events(event_indices=[1], eval=False)
+
+        # Assert length of updated arrays is 2
+        self.assertEqual(detection.event_locations.shape[0], 2)
+        np.testing.assert_array_equal(detection.event_locations, np.array([100, 300]))
+        np.testing.assert_array_equal(detection.event_peak_locations, np.array([105, 305]))
+        np.testing.assert_array_equal(detection.event_peak_times, np.array([0.0105, 0.0305]))
+        np.testing.assert_array_equal(detection.event_peak_values, np.array([-10.0, -12.0]))
+        np.testing.assert_array_equal(detection.event_start, np.array([95, 295]))
+        np.testing.assert_array_equal(detection.decaytimes, np.array([0.005, 0.004]))
+        np.testing.assert_array_equal(detection.risetimes, np.array([0.001, 0.0015]))
+        np.testing.assert_array_equal(detection.charges, np.array([-1.0, -1.2]))
+        np.testing.assert_array_equal(detection.event_bsls, np.array([0.1, 0.15]))
+        np.testing.assert_array_equal(detection.bsl_starts, np.array([90, 290]))
+        np.testing.assert_array_equal(detection.bsl_ends, np.array([100, 300]))
+        np.testing.assert_array_equal(detection.min_positions_rise, np.array([96, 296]))
+        np.testing.assert_array_equal(detection.max_positions_rise, np.array([104, 304]))
+        np.testing.assert_array_equal(detection.half_decay, np.array([110, 310]))
+        np.testing.assert_array_equal(detection.halfwidths, np.array([0.002, 0.0025]))
+        self.assertEqual(detection.events.shape[0], 2)
+        np.testing.assert_array_equal(detection.event_scores, np.array([0.9, 0.88]))
+        np.testing.assert_array_equal(detection.slopes, np.array([-1.5, -1.8]))
+
+        # Verify blacklisted attribute singular_event_indices was not deleted from
+        np.testing.assert_array_equal(detection.singular_event_indices, np.array([0, 1, 2]))
+
 if __name__ == '__main__':
     unittest.main()
