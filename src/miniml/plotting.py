@@ -11,7 +11,7 @@ from miniml.core.util import exp_fit
 mplstyle.use("fast")
 
 
-class miniML_plots:
+class Plotter:
     """
     miniML plotting class. Allows calling multiple standard plots based on miniML EventDetection object.
 
