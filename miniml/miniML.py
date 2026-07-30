@@ -1155,6 +1155,7 @@ class EventDetection():
         bsl_win: float, default = 0.33
             Baseline window size as fraction of window size.
         use_legacy_baseline_method: bool, default = True
+            Whether to use the legacy baseline method. If False, baseline is calculated using change point detection from the ruptures package.
         '''   
         self.peak_w = peak_w
         self.rel_prom_cutoff = rel_prom_cutoff
