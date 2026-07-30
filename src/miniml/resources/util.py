@@ -43,8 +43,17 @@ def get_icon_file_path(relpath: str) -> str:
 
 def get_app_icon_file_path() -> str:
     """
-    Returns the path to the application icon file in the resources folder.
+    Return the path to the application icon file in the resources folder.
+
+    Parameters
+    ----------
+    best : bool, optional
+        If True, always return the highest-resolution PNG icon.
+        If False, return a platform-specific default icon.
     """
+    if best:
+        return get_icon_file_path("app/app_512px.png")
+
     if sys.platform == "win32":
         return get_icon_file_path("app/app.ico")
     else:

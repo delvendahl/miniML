@@ -7,6 +7,10 @@ name = "miniml"
 version = "1.0.0"
 authors = [
   { name="Philipp O'Neill", email="philipp.oneill@physiologie.uni-freiburg.de" },
+  { name="Martin Baccino Calace", email="martin.baccinocalace@uzh.ch" },
+  { name="Igor Delvendahl", email="igor.delvendahl@physiologie.uni-freiburg.de" },
+]
+maintainers = [
   { name="Igor Delvendahl", email="igor.delvendahl@physiologie.uni-freiburg.de" },
 ]
 description = "A deep learning framework for synaptic event detection"
@@ -38,6 +42,13 @@ gui = [
 ]
 
 dev = ["ruff"]
+
+[project.urls]
+Homepage = "https://github.com/delvendahl/miniML"
+Repository = "https://github.com/delvendahl/miniML"
+Issues = "https://github.com/delvendahl/miniML/issues"
+Documentation = "https://delvendahl.github.io/miniML"
+Publication = "https://doi.org/10.7554/eLife.98485.3"
 
 [project.gui-scripts]
 miniml-gui = "miniml.gui.main:entry_point"

@@ -1,10 +1,59 @@
+from email.utils import getaddresses
+from importlib.metadata import PackageMetadata, PackageNotFoundError, metadata, version
+
 import numpy as np
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QDialog, QFormLayout, QLabel, QLineEdit
 
 from miniml.gui.dialogs.common import finalize_dialog_window
 from miniml.resources.util import get_app_icon_file_path
+
+
+def get_package_metadata(dist_name: str = "miniml") -> dict:
+    """
+    Retrieve package metadata for GUI display with robust fallbacks.
+    """
+    fallback = {
+        "version": "unknown",
+        "authors": [],
+        "urls": {},
+    }
+
+    try:
+        package_meta: PackageMetadata = metadata(dist_name)
+        package_version = version(dist_name)
+    except PackageNotFoundError:
+        return fallback
+
+    authors = []
+
+    for author in package_meta.get_all("Author", []) or []:
+        cleaned_author = author.strip()
+        if cleaned_author and cleaned_author not in authors:
+            authors.append(cleaned_author)
+
+    for author_email in package_meta.get_all("Author-email", []) or []:
+        for name, email in getaddresses([author_email]):
+            candidate = name.strip() if name and name.strip() else email.strip()
+            if candidate and candidate not in authors:
+                authors.append(candidate)
+
+    urls = {}
+    for project_url in package_meta.get_all("Project-URL", []) or []:
+        if "," not in project_url:
+            continue
+        label, url = project_url.split(",", 1)
+        label = label.strip()
+        url = url.strip()
+        if label and url:
+            urls[label] = url
+
+    return {
+        "version": package_version,
+        "authors": authors,
+        "urls": urls,
+    }
 
 
 class FileInfoPanel(QDialog):
@@ -69,33 +118,46 @@ class AboutPanel(QDialog):
         Build and populate the about panel layout.
         """
         super().__init__(parent)
+        package_meta = get_package_metadata("miniml")
 
         layout = QFormLayout(self)
 
-        logo_file_path = get_app_icon_file_path()
+        logo_file_path = get_app_icon_file_path(best=True)
         logo = QLabel()
-        logo.setPixmap(QPixmap(logo_file_path).scaled(QSize(100, 100)))
+        logo.setPixmap(
+            QPixmap(logo_file_path).scaled(
+                QSize(100, 100),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
         layout.addRow(logo)
 
-        self.version = QLabel("miniML version 1.0.0")
+        self.version = QLabel(f"miniML version {package_meta['version']}")
         layout.addRow(self.version)
 
-        self.author = QLabel(
-            "Authors: Philipp O'Neill, Martin Baccino Calace, Igor Delvendahl"
-        )
-        layout.addRow(self.author)
+        authors = ", ".join(package_meta["authors"]) or ""
+        if authors:
+            self.author = QLabel(f"Authors: {authors}")
+            layout.addRow(self.author)
 
-        self.website = QLabel(
-            'Website: <a href="https://github.com/delvendahl/miniML">miniML GitHub repository</a>'
-        )
-        self.website.setOpenExternalLinks(True)
-        layout.addRow(self.website)
+        urls = package_meta["urls"]
+        website_url = urls.get("Repository") or urls.get("Homepage")
+        if website_url:
+            website_text = "miniML GitHub repository"
+            self.website = QLabel(
+                f'Website: <a href="{website_url}">{website_text}</a>'
+            )
+            self.website.setOpenExternalLinks(True)
+            layout.addRow(self.website)
 
-        self.paper = QLabel(
-            'Publication: <a href="https://doi.org/10.7554/eLife.98485.3">miniML eLife paper 2025</a>'
-        )
-        self.paper.setOpenExternalLinks(True)
-        layout.addRow(self.paper)
+        publication_url = urls.get("Publication")
+        if publication_url:
+            self.paper = QLabel(
+                f'Publication: <a href="{publication_url}">{publication_url}</a>'
+            )
+            self.paper.setOpenExternalLinks(True)
+            layout.addRow(self.paper)
 
         self.setLayout(layout)
 
