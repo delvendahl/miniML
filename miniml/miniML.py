@@ -4,7 +4,6 @@ import h5py
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
-import pandas as pd
 import pickle as pkl
 from pathlib import Path
 from scipy import signal
@@ -1409,11 +1408,20 @@ class EventDetection():
         
         column_names = [f'event_{i}' for i in range(len(self.event_locations))]
 
-        individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime', 'halfwidth', 'interval'], columns=column_names)
-        avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'halfwidth mean', 'tau_avg', 'frequency', 'iei mean'], columns=['value'])
-        
-        individual.to_csv(f'{filename}_individual.csv')
-        avgs.to_csv(f'{filename}_avgs.csv', header=False)
+        import csv
+        row_labels_ind = ['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime', 'halfwidth', 'interval']
+        with open(f'{filename}_individual.csv', 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([''] + column_names)
+            for label, row_data in zip(row_labels_ind, individual):
+                writer.writerow([label] + list(row_data))
+
+        row_labels_avg = ['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'halfwidth mean', 'tau_avg', 'frequency', 'iei mean']
+        with open(f'{filename}_avgs.csv', 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            for label, val in zip(row_labels_avg, avgs):
+                writer.writerow([label, val])
+
         print(f'events saved to {filename}_avgs.csv and {filename}_individual.csv')
 
 

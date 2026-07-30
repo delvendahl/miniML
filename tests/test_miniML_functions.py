@@ -256,5 +256,81 @@ class TestEventDetectionDeleteEvents(unittest.TestCase):
         # Verify blacklisted attribute singular_event_indices was not deleted from
         np.testing.assert_array_equal(detection.singular_event_indices, np.array([0, 1, 2]))
 
+class TestEventDetectionSaveToCSV(unittest.TestCase):
+    def test_save_to_csv_correctness(self):
+        import tempfile
+        import csv
+        from miniml.miniML import MiniTrace, EventDetection
+        from unittest.mock import MagicMock
+
+        trace = MiniTrace(data=np.zeros(1000), sampling_interval=0.0001)
+        detection = EventDetection(data=trace, window_size=600)
+
+        detection.event_locations = np.array([100, 200])
+        detection.event_scores = np.array([0.9, 0.95])
+        detection.interevent_intervals = np.array([0.1, 0.15])
+
+        # Create a mock for event_stats
+        mock_stats = MagicMock()
+        mock_stats.amplitudes = np.array([-10.0, -12.0])
+        mock_stats.charges = np.array([-1.0, -1.2])
+        mock_stats.risetimes = np.array([0.001, 0.002])
+        mock_stats.halfdecays = np.array([0.005, 0.006])
+        mock_stats.halfwidths = np.array([0.002, 0.003])
+
+        # mock mean, std, median to return some fixed values
+        mock_stats.mean = lambda x: np.mean(x)
+        mock_stats.std = lambda x: np.std(x)
+        mock_stats.median = lambda x: np.median(x)
+        mock_stats.avg_tau_decay = 0.005
+        mock_stats.frequency = lambda: 2.0
+
+        detection.event_stats = mock_stats
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test_out")
+            detection.save_to_csv(filepath)
+
+            # Now verify individual csv exists and is correct
+            ind_path = f"{filepath}_individual.csv"
+            avg_path = f"{filepath}_avgs.csv"
+
+            self.assertTrue(os.path.exists(ind_path))
+            self.assertTrue(os.path.exists(avg_path))
+
+            # Read individual csv
+            with open(ind_path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                rows = list(reader)
+
+            self.assertEqual(rows[0], ['', 'event_0', 'event_1'])
+            self.assertEqual(rows[1], ['location', '100.0', '200.0'])
+            self.assertEqual(rows[2], ['score', '0.9', '0.95'])
+            self.assertEqual(rows[3], ['amplitude', '-10.0', '-12.0'])
+
+            # Read avgs csv
+            with open(avg_path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                avg_rows = list(reader)
+
+            # ['amplitude mean', '-11.0'] etc
+            expected_avg_rows = [
+                ['amplitude mean', '-11.0'],
+                ['amplitude std', '1.0'],
+                ['amplitude median', '-11.0'],
+                ['charge mean', '-1.1'],
+                ['risetime mean', '0.0015'],
+                ['decaytime mean', '0.0055'],
+                ['halfwidth mean', '0.0025'],
+                ['tau_avg', '0.005'],
+                ['frequency', '2.0'],
+                ['iei mean', '0.125']
+            ]
+
+            # Compare rows
+            for actual, expected in zip(avg_rows, expected_avg_rows):
+                self.assertEqual(actual[0], expected[0])
+                self.assertAlmostEqual(float(actual[1]), float(expected[1]), places=5)
+
 if __name__ == '__main__':
     unittest.main()
