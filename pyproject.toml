@@ -41,9 +41,5 @@ dev = ["ruff"]
 [project.gui-scripts]
 miniml-gui = "miniml.gui.main:entry_point"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["miniml*"]
-
 [tool.setuptools.package-data]
-miniml = ["icons/*.svg", "miniml.css.template", "minML_icon.png", "models/**/*.h5"]
+"miniml.resources" = ["**/*.*"]
