@@ -4,28 +4,30 @@
 # https://doi.org/10.1016/j.bpj.2012.08.039
 #
 
-import h5py
-import matplotlib.pyplot as plt
+from typing import NamedTuple
+
 import numpy as np
 from scipy.fft import fft, ifft
 from scipy.signal import butter, savgol_filter, sosfiltfilt
 from scipy.stats import norm
 
 
-class DeconvolutionResult:
+class DeconvolutionResult(NamedTuple):
     """
     Collection of results of deconvolution-based event detection.
     """
 
-    def __init__(self, indices, threshold, kernel, detection_trace):
-        self.indices = indices
-        """the indices of detected events, since zero padding is used for convolution, all indices need to get shifted by N/2 where N is the length of the kernel"""
-        self.threshold = threshold
-        """the threshold used for detection"""
-        self.kernel = kernel
-        """the kernel that was used for deconvolution"""
-        self.detection_trace = detection_trace
-        """the detection trace"""
+    indices: np.ndarray
+    """the indices of detected events, since zero padding is used for convolution, all indices need to get shifted by N/2 where N is the length of the kernel"""
+    threshold: float
+    """the threshold used for detection"""
+    kernel: np.ndarray
+    """the kernel that was used for deconvolution"""
+    detection_trace: np.ndarray
+    """the detection trace"""
+
+    def __repr__(self):
+        return f"DeconvolutionResult(indices={self.indices}, threshold={self.threshold}, kernel={self.kernel}, detection_trace={self.detection_trace})"
 
 
 def make_template(
@@ -80,36 +82,9 @@ def deconvolution(data, kernel, threshold, sampling):
     indices = pos[np.where(np.diff(pos, prepend=0) > 1)[0]]  # - N//2
     indices = indices[np.where(indices > 0)[0]]  # Handle negative indices
 
-    from collections import namedtuple
-
-    result = namedtuple(
-        "DeconvolutionResult", ["indices", "threshold", "kernel", "detection_trace"]
-    )
-
-    return result(
+    return DeconvolutionResult(
         indices=indices,
         threshold=detect_threshold,
         kernel=kernel,
         detection_trace=deconv_dat,
     )
-
-
-if __name__ == "__main__":
-    # load data
-    filename = "../example_data/gc_mini_trace.h5"
-    sampling = 2e-5
-
-    with h5py.File(filename, "r") as f:
-        data = f["mini_data"][:]
-    data *= 1e12
-    time = np.arange(0, len(data)) * sampling
-
-    matching = deconvolution(
-        data, make_template(sampling=sampling), threshold=5, sampling=sampling
-    )
-
-    print(len(matching.indices))
-
-    plt.plot(time, data)
-    plt.plot(time[matching.indices], data[matching.indices], "o")
-    plt.show()

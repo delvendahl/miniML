@@ -6,27 +6,29 @@
 # https://github.com/samuroi/SamuROI
 #
 
-import h5py
-import matplotlib.pyplot as plt
+from typing import NamedTuple
+
 import numpy as np
 
 
-class TemplateMatchResult:
+class TemplateMatchResult(NamedTuple):
     """Collection of results of least squares optimization for template matching."""
 
-    def __init__(self, indices, detection_trace, s, c, threshold, kernel):
-        self.indices = indices
-        """the indices of detected events, since zero padding is used for convolution, all indices need to get shifted by N/2 where N is the length of the kernel"""
-        self.detection_trace = detection_trace
-        """the criterion vector used for comparison with the threshold"""
-        self.s = s
-        """the vector of optimal scaling parameters"""
-        self.c = c
-        """the vector of optimal offset parameters"""
-        self.threshold = threshold
-        """the threshold used for detection"""
-        self.kernel = kernel
-        """the kernel that was used for matching"""
+    indices: np.ndarray
+    """the indices of detected events, since zero padding is used for convolution, all indices need to get shifted by N/2 where N is the length of the kernel"""
+    detection_trace: np.ndarray
+    """the criterion vector used for comparison with the threshold"""
+    s: np.ndarray
+    """the vector of optimal scaling parameters"""
+    c: np.ndarray
+    """the vector of optimal offset parameters"""
+    threshold: float
+    """the threshold used for detection"""
+    kernel: np.ndarray
+    """the kernel that was used for matching"""
+
+    def __repr__(self):
+        return f"TemplateMatchResult(indices={self.indices}, detection_trace={self.detection_trace}, s={self.s}, c={self.c}, threshold={self.threshold}, kernel={self.kernel})"
 
 
 def make_template(
@@ -118,14 +120,7 @@ def template_matching(data, kernel, threshold):
     indices = pos[np.where(np.diff(pos, prepend=0) > 1)[0]] - N // 2
     indices = indices[np.where(indices > 0)[0]]  # Handle negative indices
 
-    from collections import namedtuple
-
-    result = namedtuple(
-        "TemplateMatchResult",
-        ["indices", "detection_trace", "s", "c", "threshold", "kernel"],
-    )
-
-    return result(
+    return TemplateMatchResult(
         indices=indices,
         detection_trace=crit,
         s=s_n,
@@ -133,25 +128,3 @@ def template_matching(data, kernel, threshold):
         threshold=threshold,
         kernel=kernel,
     )
-
-
-if __name__ == "__main__":
-    # load data
-    filename = "../example_data/gc_mini_trace.h5"
-    sampling = 2e-5
-
-    with h5py.File(filename, "r") as f:
-        data = f["mini_data"][:]
-    data *= 1e12
-    time = np.arange(0, len(data)) * sampling
-
-    matching = template_matching(data, make_template(sampling=sampling), threshold=-4)
-
-    print(len(matching.indices))
-
-    plt.plot(time, data)
-    plt.plot(time[matching.indices], data[matching.indices], "o")
-    plt.show()
-
-    plt.plot(time, matching.detection_trace)
-    plt.show()
