@@ -1350,32 +1350,20 @@ class EventDetection:
             if event < 0 or event >= self.event_locations.shape[0]:
                 raise ValueError(f"Event {event} does not exist.")
 
-        self.event_locations = np.delete(self.event_locations, event_indices, axis=0)
-        self.event_peak_locations = np.delete(
-            self.event_peak_locations, event_indices, axis=0
-        )
-        self.event_peak_times = np.delete(self.event_peak_times, event_indices, axis=0)
-        self.event_peak_values = np.delete(
-            self.event_peak_values, event_indices, axis=0
-        )
-        self.event_start = np.delete(self.event_start, event_indices, axis=0)
-        self.decaytimes = np.delete(self.decaytimes, event_indices, axis=0)
-        self.risetimes = np.delete(self.risetimes, event_indices, axis=0)
-        self.charges = np.delete(self.charges, event_indices, axis=0)
-        self.event_bsls = np.delete(self.event_bsls, event_indices, axis=0)
-        self.bsl_starts = np.delete(self.bsl_starts, event_indices, axis=0)
-        self.bsl_ends = np.delete(self.bsl_ends, event_indices, axis=0)
-        self.min_positions_rise = np.delete(
-            self.min_positions_rise, event_indices, axis=0
-        )
-        self.max_positions_rise = np.delete(
-            self.max_positions_rise, event_indices, axis=0
-        )
-        self.half_decay = np.delete(self.half_decay, event_indices, axis=0)
-        self.halfwidths = np.delete(self.halfwidths, event_indices, axis=0)
-        self.events = np.delete(self.events, event_indices, axis=0)
-        self.event_scores = np.delete(self.event_scores, event_indices, axis=0)
-        self.slopes = np.delete(self.slopes, event_indices, axis=0)
+        num_events = self.event_locations.shape[0]
+        blacklist = {"singular_event_indices", "start_pnts", "end_pnts"}
+
+        attrs_to_delete = []
+        for attr_name, attr_val in self.__dict__.items():
+            if attr_name in blacklist:
+                continue
+            if isinstance(attr_val, np.ndarray) and attr_val.shape[0] == num_events:
+                attrs_to_delete.append(attr_name)
+
+        for attr_name in attrs_to_delete:
+            arr = getattr(self, attr_name)
+            setattr(self, attr_name, np.delete(arr, event_indices, axis=0))
+
         self.deleted_events += len(event_indices)
 
         if eval:
