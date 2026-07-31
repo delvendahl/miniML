@@ -1351,7 +1351,7 @@ class EventDetection:
                 raise ValueError(f"Event {event} does not exist.")
 
         num_events = self.event_locations.shape[0]
-        blacklist = {"singular_event_indices", "start_pnts", "end_pnts"}
+        blacklist = {}
 
         attrs_to_delete = []
         for attr_name, attr_val in self.__dict__.items():
