@@ -1,16 +1,22 @@
 """
-Heka Patchmaster .dat file browser 
+Heka Patchmaster .dat file browser
 Adapted from https://github.com/campagnola/heka_reader
-
 """
 
-import os, sys
-import pyqtgraph as pg
+import os
+import sys
+
 import numpy as np
-import HekaReader
+import pyqtgraph as pg
+
+from miniml.fileio import heka_reader
+from miniml.fileio.heka_reader import Bundle
 
 app = 0
 app = pg.mkQApp()
+
+# Globals
+bundle: Bundle
 
 # Configure Qt GUI:
 
@@ -18,9 +24,9 @@ app = pg.mkQApp()
 win = pg.QtWidgets.QWidget()
 layout = pg.QtWidgets.QGridLayout()
 win.setLayout(layout)
-hsplit = pg.QtWidgets.QSplitter(pg.QtCore.Qt.Horizontal)
+hsplit = pg.QtWidgets.QSplitter(pg.QtCore.Qt.Orientation.Horizontal)
 layout.addWidget(hsplit, 0, 0)
-vsplit = pg.QtWidgets.QSplitter(pg.QtCore.Qt.Vertical)
+vsplit = pg.QtWidgets.QSplitter(pg.QtCore.Qt.Orientation.Vertical)
 hsplit.addWidget(vsplit)
 w1 = pg.QtWidgets.QWidget()
 w1l = pg.QtWidgets.QGridLayout()
@@ -33,7 +39,7 @@ w1l.addWidget(load_btn, 0, 0)
 
 # Tree for displaying .pul structure
 tree = pg.QtWidgets.QTreeWidget()
-tree.setHeaderLabels(['Node', 'Label'])
+tree.setHeaderLabels(["Node", "Label"])
 tree.setColumnWidth(0, 200)
 w1l.addWidget(tree, 1, 0)
 
@@ -55,21 +61,20 @@ win.show()
 def load_clicked():
     # Display a file dialog to select a .dat file
     file_name = pg.QtWidgets.QFileDialog.getOpenFileName()
-    if file_name == '':
+    if file_name == "":
         return
     load(file_name[0])
 
-load_btn.clicked.connect(load_clicked)
-
 
 def load(file_name):
-    """Load a new .dat file into the browser.
     """
-    global bundle, tree_items
+    Load a new .dat file into the browser.
+    """
+    global bundle
 
     # Read the bundle header
     # (no data is read at this time)
-    bundle = HekaReader.Bundle(file_name)
+    bundle = heka_reader.Bundle(file_name)
 
     # Clear the tree and update to show the structure provided in the embedded
     # .pul file
@@ -79,25 +84,20 @@ def load(file_name):
 
 
 def update_tree(root_item, index):
-    """Recursively read tree information from the bundle's embedded .pul file
+    """
+    Recursively read tree information from the bundle's embedded .pul file
     and add items into the GUI tree to allow browsing.
     """
-    global bundle
     root = bundle.pul
     node = root
     for i in index:
         node = node[i]
-    node_type = node.__class__.__name__
-    if node_type.endswith('Record'):
-        node_type = node_type[:-6]
+    node_type = node.__class__.__name__.removesuffix("Record")
     try:
-        node_type += str(getattr(node, node_type + 'Count'))
+        node_type += str(getattr(node, node_type + "Count"))
     except AttributeError:
         pass
-    try:
-        node_label = node.Label
-    except AttributeError:
-        node_label = ''
+    node_label = getattr(node, "Label", "")
     item = pg.QtWidgets.QTreeWidgetItem([node_type, node_label])
     root_item.addChild(item)
     item.node = node
@@ -109,7 +109,8 @@ def update_tree(root_item, index):
 
 
 def replot():
-    """Show data associated with the selected tree node.
+    """
+    Show data associated with the selected tree node.
 
     For all nodes, the meta-data is updated in the bottom tree.
     For trace nodes, the data is plotted.
@@ -133,17 +134,21 @@ def replot():
             return
 
         trace = sel.node
-        plot.setLabels(bottom=('Time', trace.XUnit), left=(trace.Label, trace.YUnit))
+        plot.setLabels(bottom=("Time", trace.XUnit), left=(trace.Label, trace.YUnit))
         data = bundle.data[index]
-        time = np.linspace(trace.XStart, trace.XStart + trace.XInterval * (len(data)-1), len(data))
+        time = np.linspace(
+            trace.XStart, trace.XStart + trace.XInterval * (len(data) - 1), len(data)
+        )
         plot.plot(time, data)
 
+
+load_btn.clicked.connect(load_clicked)
 
 # replot when ever the user selects a new item
 tree.itemSelectionChanged.connect(replot)
 
 # load Heka's demo bundle if it is present
-demo = 'B_2020-12-04_011.dat'
+demo = "B_2020-12-04_011.dat"
 if os.path.isfile(demo):
     load(demo)
 

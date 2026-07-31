@@ -1,15 +1,15 @@
 import unittest
-import numpy as np
-import sys
-import os
 
-from miniml.miniML_updated_functions import (
+import numpy as np
+
+from miniml.core.updated_functions import (
+    baseline_score,
+    get_event_baseline_new,
+    get_event_baseline_v2,
     get_segment_stats,
     get_steepest_rise_position,
-    baseline_score,
-    get_event_baseline_v2,
-    get_event_baseline_new
 )
+
 
 class TestMiniMLUpdatedFunctions(unittest.TestCase):
     def test_get_segment_stats(self):
@@ -26,7 +26,7 @@ class TestMiniMLUpdatedFunctions(unittest.TestCase):
 
     def test_get_steepest_rise_position(self):
         data = np.zeros(100)
-        data[50:] = np.arange(50) # Linear rise starting at 50
+        data[50:] = np.arange(50)  # Linear rise starting at 50
         # steepest rise should be around 50
         pos = get_steepest_rise_position(data, filter_win=5)
         self.assertAlmostEqual(pos, 50, delta=5)
@@ -37,7 +37,9 @@ class TestMiniMLUpdatedFunctions(unittest.TestCase):
         slope_values = [0, 1, 2]
         variance_values = [0, 1, 2]
         steepest_rise = 40
-        score = baseline_score(positions, median_values, slope_values, variance_values, steepest_rise)
+        score = baseline_score(
+            positions, median_values, slope_values, variance_values, steepest_rise
+        )
         self.assertEqual(len(score), 3)
 
     def test_get_event_baseline_v2(self):
@@ -47,11 +49,13 @@ class TestMiniMLUpdatedFunctions(unittest.TestCase):
         bsl_duration = 20
         event_num = 0
         relative_event_position = 100
-        positions = np.array([500]) # Absolute position in trace
+        positions = np.array([500])  # Absolute position in trace
 
         # This might fail due to the np.trace bug if it hits that branch
         try:
-            res = get_event_baseline_v2(data, bsl_duration, event_num, relative_event_position, positions)
+            res = get_event_baseline_v2(
+                data, bsl_duration, event_num, relative_event_position, positions
+            )
             self.assertIsNotNone(res.value)
         except Exception as e:
             self.fail(f"get_event_baseline_v2 raised {type(e).__name__}: {e}")
@@ -66,10 +70,13 @@ class TestMiniMLUpdatedFunctions(unittest.TestCase):
         positions = np.array([500])
 
         try:
-            res = get_event_baseline_new(data, bsl_duration, event_num, add_points, peak_position, positions)
+            res = get_event_baseline_new(
+                data, bsl_duration, event_num, add_points, peak_position, positions
+            )
             self.assertIsNotNone(res.value)
         except Exception as e:
             self.fail(f"get_event_baseline_new raised {type(e).__name__}: {e}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

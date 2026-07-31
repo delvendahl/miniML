@@ -4,25 +4,31 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "miniml"
-version = "1.0.0"
+version = "1.1.0"
 authors = [
   { name="Philipp O'Neill", email="philipp.oneill@physiologie.uni-freiburg.de" },
+  { name="Martin Baccino Calace", email="martin.baccinocalace@uzh.ch" },
+  { name="Igor Delvendahl", email="igor.delvendahl@physiologie.uni-freiburg.de" },
+]
+maintainers = [
   { name="Igor Delvendahl", email="igor.delvendahl@physiologie.uni-freiburg.de" },
 ]
 description = "A deep learning framework for synaptic event detection"
 readme = "README.md"
-requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11,<3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "scikit-learn==1.5.1",
+    "scikit-learn==1.5.2",
     "matplotlib==3.6.3",
     "h5py==3.11.0",
+    "pandas==1.5.3",
     "numpy<2.0.0",
-    "scipy==1.11.1",
+    "scipy==1.11.4",
     "tensorflow>=2.14.0,<2.16.0",
     "pyabf==2.3.8",
     "ruptures==1.1.10",
@@ -35,12 +41,17 @@ gui = [
     "pyqtgraph==0.13.7",
 ]
 
-[project.scripts]
-miniml-gui = "miniml.miniML_gui:main"
+dev = ["ruff"]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["miniml*"]
+[project.urls]
+Homepage = "https://github.com/delvendahl/miniML"
+Repository = "https://github.com/delvendahl/miniML"
+Issues = "https://github.com/delvendahl/miniML/issues"
+Documentation = "https://delvendahl.github.io/miniML"
+Publication = "https://doi.org/10.7554/eLife.98485.3"
+
+[project.gui-scripts]
+miniml-gui = "miniml.gui.main:entry_point"
 
 [tool.setuptools.package-data]
-miniml = ["icons/*.svg", "miniml.css.template", "minML_icon.png", "models/**/*.h5"]
+"miniml.resources" = ["**/*.*"]
