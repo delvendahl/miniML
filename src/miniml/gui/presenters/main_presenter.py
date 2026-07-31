@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
@@ -378,13 +379,18 @@ class MainWindowPresenter(QObject):
         )
 
     @pyqtSlot(object)
-    def on_delete_events_requested(self, rows_obj: object) -> None:
+    def on_delete_events_requested(self, rows_obj: Sequence[int] | object) -> None:
         """
         Apply event deletions and update dependent analysis views.
         """
         rows: list[int] = []
-        if isinstance(rows_obj, list):
-            rows = [row for row in rows_obj if isinstance(row, int)]
+        if isinstance(rows_obj, np.ndarray) and rows_obj.ndim == 1:
+            rows = rows_obj.tolist()
+        elif isinstance(rows_obj, Sequence) and not isinstance(rows_obj, (str, bytes)):
+            rows = [int(row) for row in rows_obj]
+
+        if not rows:
+            return
 
         if (
             self.state.detection is None
