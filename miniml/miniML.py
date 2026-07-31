@@ -4,14 +4,15 @@ import h5py
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import os
+import pandas as pd
 import pickle as pkl
 from pathlib import Path
 from scipy import signal
 from scipy.optimize import curve_fit
 from scipy.ndimage import maximum_filter1d
-from miniml.miniML_functions import (get_event_peak, get_event_baseline, get_event_onset, get_event_risetime,
+from .miniML_functions import (get_event_peak, get_event_baseline, get_event_onset, get_event_risetime,
                                get_event_halfdecay_time, get_event_charge, get_event_halfwidth)
-from miniml.miniML_updated_functions import get_event_baseline_v2
+from .miniML_updated_functions import get_event_baseline_v2
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -1281,25 +1282,29 @@ class EventDetection():
             if event < 0 or event >= self.event_locations.shape[0]:
                 raise ValueError(f'Event {event} does not exist.')
 
-        num_events = self.event_locations.shape[0]
-        blacklist = {'singular_event_indices', 'start_pnts', 'end_pnts'}
-
-        attrs_to_delete = []
-        for attr_name, attr_val in self.__dict__.items():
-            if attr_name in blacklist:
-                continue
-            if isinstance(attr_val, np.ndarray) and attr_val.shape[0] == num_events:
-                attrs_to_delete.append(attr_name)
-
-        for attr_name in attrs_to_delete:
-            arr = getattr(self, attr_name)
-            setattr(self, attr_name, np.delete(arr, event_indices, axis=0))
+        self.event_locations = np.delete(self.event_locations, event_indices, axis=0)
+        self.event_peak_locations = np.delete(self.event_peak_locations, event_indices, axis=0)
+        self.event_peak_times = np.delete(self.event_peak_times, event_indices, axis=0)
+        self.event_peak_values = np.delete(self.event_peak_values, event_indices, axis=0)
+        self.event_start = np.delete(self.event_start, event_indices, axis=0)
+        self.decaytimes = np.delete(self.decaytimes, event_indices, axis=0)
+        self.risetimes = np.delete(self.risetimes, event_indices, axis=0)
+        self.charges = np.delete(self.charges, event_indices, axis=0)
+        self.event_bsls = np.delete(self.event_bsls, event_indices, axis=0)
+        self.bsl_starts = np.delete(self.bsl_starts, event_indices, axis=0)
+        self.bsl_ends = np.delete(self.bsl_ends, event_indices, axis=0)
+        self.min_positions_rise = np.delete(self.min_positions_rise, event_indices, axis=0)
+        self.max_positions_rise = np.delete(self.max_positions_rise, event_indices, axis=0)
+        self.half_decay = np.delete(self.half_decay, event_indices, axis=0)
+        self.halfwidths = np.delete(self.halfwidths, event_indices, axis=0)
+        self.events = np.delete(self.events, event_indices, axis=0)
+        self.event_scores = np.delete(self.event_scores, event_indices, axis=0)
         
         self.deleted_events += len(event_indices)
 
         if eval:
-            self._get_singular_event_indices()
-            self._eval_events()
+            self.detection._get_singular_event_indices()
+            self.detection._eval_events()
 
 
     def save_to_h5(self, filename: str, include_prediction: bool=False) -> None:
@@ -1408,20 +1413,11 @@ class EventDetection():
         
         column_names = [f'event_{i}' for i in range(len(self.event_locations))]
 
-        import csv
-        row_labels_ind = ['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime', 'halfwidth', 'interval']
-        with open(f'{filename}_individual.csv', 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            writer.writerow([''] + column_names)
-            for label, row_data in zip(row_labels_ind, individual):
-                writer.writerow([label] + list(row_data))
-
-        row_labels_avg = ['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'halfwidth mean', 'tau_avg', 'frequency', 'iei mean']
-        with open(f'{filename}_avgs.csv', 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            for label, val in zip(row_labels_avg, avgs):
-                writer.writerow([label, val])
-
+        individual = pd.DataFrame(individual, index=['location', 'score', 'amplitude', 'charge', 'risetime', 'decaytime', 'halfwidth', 'interval'], columns=column_names)
+        avgs = pd.DataFrame(avgs, index=['amplitude mean', 'amplitude std', 'amplitude median', 'charge mean', 'risetime mean', 'decaytime mean', 'halfwidth mean', 'tau_avg', 'frequency', 'iei mean'], columns=['value'])
+        
+        individual.to_csv(f'{filename}_individual.csv')
+        avgs.to_csv(f'{filename}_avgs.csv', header=False)
         print(f'events saved to {filename}_avgs.csv and {filename}_individual.csv')
 
 

@@ -28,7 +28,7 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 💻 INSTALLATION
 
-To use miniML, clone the GitHub Repository and install, e.g. using pip. miniML has been tested with Python 3.9 and 3.10. The Python dependencies are: sklearn, matplotlib, h5py, numpy, scipy, tensorflow, pyabf, ruptures.
+To use miniML, clone the GitHub Repository and install, e.g. using pip. miniML has been tested with Python 3.9 and 3.10. The Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf, ruptures. 
 
 For the GUI, PyQt5, qt-material, and pyqtgraph are also required.
 
