@@ -29,7 +29,7 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 ### 💻 INSTALLATION
 
 To use miniML, clone the GitHub Repository and install, e.g. using pip. It is strongly recommended to install miniML into its own virtual environment! 
-miniML requires Python 3.11. The default Python dependencies are: sklearn, matplotlib, h5py, pandas, numpy, scipy, tensorflow, pyabf, ruptures. 
+miniML requires Python 3.11. The default Python dependencies are: sklearn, matplotlib, h5py, numpy, scipy, tensorflow, pyabf, ruptures. 
 
 >[!IMPORTANT]
 >The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.

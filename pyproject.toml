@@ -26,7 +26,6 @@ dependencies = [
     "scikit-learn==1.5.2",
     "matplotlib==3.6.3",
     "h5py==3.11.0",
-    "pandas==1.5.3",
     "numpy<2.0.0",
     "scipy==1.11.4",
     "tensorflow>=2.14.0,<2.16.0",

@@ -3,7 +3,6 @@ import pickle as pkl
 import h5py
 import keras
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 from scipy import signal
 from scipy.ndimage import maximum_filter1d
@@ -1559,39 +1558,41 @@ class EventDetection:
 
         column_names = [f"event_{i}" for i in range(len(self.event_locations))]
 
-        individual = pd.DataFrame(
-            individual,
-            index=[
-                "location",
-                "score",
-                "amplitude",
-                "charge",
-                "risetime",
-                "decaytime",
-                "halfwidth",
-                "interval",
-            ],
-            columns=column_names,
-        )
-        avgs = pd.DataFrame(
-            avgs,
-            index=[
-                "amplitude mean",
-                "amplitude std",
-                "amplitude median",
-                "charge mean",
-                "risetime mean",
-                "decaytime mean",
-                "halfwidth mean",
-                "tau_avg",
-                "frequency",
-                "iei mean",
-            ],
-            columns=["value"],
-        )
+        import csv
 
-        individual.to_csv(f"{filename}_individual.csv")
-        avgs.to_csv(f"{filename}_avgs.csv", header=False)
+        row_labels_ind = [
+            "location",
+            "score",
+            "amplitude",
+            "charge",
+            "risetime",
+            "decaytime",
+            "halfwidth",
+            "interval",
+        ]
+        with open(f"{filename}_individual.csv", "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow([""] + column_names)
+            for label, row_data in zip(row_labels_ind, individual):
+                writer.writerow([label] + list(row_data))
+
+        row_labels_avg = [
+            "amplitude mean",
+            "amplitude std",
+            "amplitude median",
+            "charge mean",
+            "risetime mean",
+            "decaytime mean",
+            "halfwidth mean",
+            "tau_avg",
+            "frequency",
+            "iei mean",
+        ]
+        with open(f"{filename}_avgs.csv", "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            for label, val in zip(row_labels_avg, avgs):
+                writer.writerow([label, val])
+
         print(f"events saved to {filename}_avgs.csv and {filename}_individual.csv")
 
     def save_to_pickle(
