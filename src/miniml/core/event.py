@@ -11,6 +11,7 @@ from scipy.optimize import curve_fit
 
 from miniml.core.functions import (
     get_event_baseline,
+    legacy_get_event_baseline,
     get_event_charge,
     get_event_halfdecay_time,
     get_event_halfwidth,
@@ -19,7 +20,6 @@ from miniml.core.functions import (
     get_event_risetime,
 )
 from miniml.core.trace import MiniTrace
-from miniml.core.updated_functions import get_event_baseline_v2
 from miniml.core.util import exp_fit, minmax_scaling
 from miniml.fileio.util import is_keras_model
 
@@ -782,7 +782,7 @@ class EventDetection:
             )
 
             if use_legacy_baseline_method:
-                baseline = get_event_baseline(
+                baseline = legacy_get_event_baseline(
                     data=data,
                     duration=baseline_duration,
                     event_num=ix,
@@ -792,7 +792,7 @@ class EventDetection:
                     positions=positions,
                 )
             else:
-                baseline = get_event_baseline_v2(
+                baseline = get_event_baseline(
                     data=data,
                     bsl_duration=baseline_duration,
                     event_num=ix,
@@ -1071,7 +1071,7 @@ class EventDetection:
         )
         event_peak_value = data[event_peak]
         if use_legacy_baseline_method:
-            baseline = get_event_baseline(
+            baseline = legacy_get_event_baseline(
                 data=data,
                 duration=int(self.window_size * 0.1),
                 event_num=0,
@@ -1081,7 +1081,7 @@ class EventDetection:
                 positions=[self.add_points],
             )
         else:
-            baseline = get_event_baseline_v2(
+            baseline = get_event_baseline(
                 data=data,
                 bsl_duration=int(self.window_size * 0.1),
                 event_num=0,
