@@ -52,6 +52,9 @@ def minmax_scaling(x: tf.Tensor) -> tf.Tensor:
     x_min = tf.expand_dims(tf.math.reduce_min(x), axis=-1)
     x_max = tf.expand_dims(tf.math.reduce_max(x), axis=-1)
 
+    if tf.math.equal(x_max, x_min):
+        return tf.zeros_like(x)
+
     return tf.math.divide(tf.math.subtract(x, x_min), tf.math.subtract(x_max, x_min))
 
 
