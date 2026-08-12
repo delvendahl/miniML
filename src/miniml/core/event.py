@@ -19,7 +19,7 @@ from miniml.core.functions import (
     get_event_risetime,
 )
 from miniml.core.trace import MiniTrace
-from miniml.core.util import exp_fit, minmax_scaling
+from miniml.core.util import exp_fit, minmax_scaling, robust_noise_mad
 from miniml.fileio.util import is_keras_model
 
 
@@ -573,19 +573,25 @@ class EventDetection:
         return gradient, smth_gradient
 
     def _get_grad_threshold(
-        self, grad: np.ndarray, start_pnts: np.ndarray, end_pnts: np.ndarray
+        self,
+        gradient: np.ndarray,
+        start_pnts: np.ndarray,
+        end_pnts: np.ndarray,
+        multiplier: float = 4.0,
     ) -> int:
         """
         Estimate a derivative threshold from event-free trace segments.
 
         Parameters
         ----------
-        grad : np.ndarray
+        gradient : np.ndarray
             Gradient trace.
         start_pnts : np.ndarray
             Candidate event start indices.
         end_pnts : np.ndarray
             Candidate event end indices.
+        multiplier : float, default=4.0
+            Multiplier for calculating the threshold based on MAD.
 
         Returns
         -------
@@ -593,9 +599,10 @@ class EventDetection:
             Gradient threshold derived from the standard deviation of event-free
             segments.
         """
-        split_data = np.split(grad, np.vstack((start_pnts, end_pnts)).ravel("F"))
+        split_data = np.split(gradient, np.vstack((start_pnts, end_pnts)).ravel("F"))
         event_free_data = np.concatenate(split_data[::2]).ravel()
-        grad_threshold = int(4 * np.std(event_free_data))
+
+        grad_threshold = robust_noise_mad(event_free_data, multiplier=multiplier)[0]
 
         return grad_threshold
 

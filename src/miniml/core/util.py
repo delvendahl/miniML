@@ -92,3 +92,35 @@ def mEPSC_template(
     y[x < x0] = 0
 
     return y
+
+
+def robust_noise_mad(
+    gradient: FloatArray, multiplier: float = 4.0
+) -> tuple[float, float]:
+    """
+    Calculates a robust noise threshold using the Median Absolute Deviation.
+
+    Parameters
+    ----------
+    gradient : np.ndarray
+        The gradient trace from which to calculate the noise threshold.
+    multiplier : float, optional
+        The multiplier for the robust standard deviation to set the threshold.
+        Default is 4.0.
+
+    Returns
+    -------
+    tuple
+        A tuple containing the noise threshold and the robust standard deviation.
+    """
+    median_grad = np.median(gradient)
+    abs_dev = np.abs(gradient - median_grad)
+    mad = np.median(abs_dev)
+
+    # Convert MAD to an equivalent Standard Deviation (sigma)
+    robust_sigma = 1.4826 * mad
+
+    # Set threshold (e.g., 4 * sigma above/below median)
+    threshold = median_grad + (multiplier * robust_sigma)
+
+    return threshold, robust_sigma
