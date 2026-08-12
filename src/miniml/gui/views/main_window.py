@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
 )
 from scipy.interpolate import interp1d
 
-from miniml.core.event import EventDetection
+from miniml.core.detection import EventDetection
 from miniml.gui.controllers.layout_controller import SplitterLayoutController
 from miniml.gui.dialogs import (
     AboutPanel,

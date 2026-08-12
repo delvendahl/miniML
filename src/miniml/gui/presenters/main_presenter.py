@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from miniml.core.event import EventDetection
+from miniml.core.detection import EventDetection
 from miniml.core.trace import MiniTrace
 from miniml.gui.services import AppServices
 from miniml.gui.state import AppState

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from miniml.core.event import EventDetection
+from miniml.core.detection import EventDetection
 from miniml.core.trace import MiniTrace
 from miniml.fileio.trace_loader import TraceLoader
 from miniml.settings import Settings

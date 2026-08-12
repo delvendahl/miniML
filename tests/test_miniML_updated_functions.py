@@ -2,10 +2,9 @@ import unittest
 
 import numpy as np
 
-from miniml.core.updated_functions import (
+from miniml.core.functions import (
     baseline_score,
-    get_event_baseline_new,
-    get_event_baseline_v2,
+    get_event_baseline,
     get_segment_stats,
     get_steepest_rise_position,
 )
@@ -42,25 +41,7 @@ class TestMiniMLUpdatedFunctions(unittest.TestCase):
         )
         self.assertEqual(len(score), 3)
 
-    def test_get_event_baseline_v2(self):
-        # We need enough data for rpt.KernelCPD
-        data = np.zeros(200)
-        data[100:] = 10
-        bsl_duration = 20
-        event_num = 0
-        relative_event_position = 100
-        positions = np.array([500])  # Absolute position in trace
-
-        # This might fail due to the np.trace bug if it hits that branch
-        try:
-            res = get_event_baseline_v2(
-                data, bsl_duration, event_num, relative_event_position, positions
-            )
-            self.assertIsNotNone(res.value)
-        except Exception as e:
-            self.fail(f"get_event_baseline_v2 raised {type(e).__name__}: {e}")
-
-    def test_get_event_baseline_new(self):
+    def test_get_event_baseline(self):
         data = np.zeros(500)
         data[300:] = 10
         bsl_duration = 20
@@ -70,12 +51,17 @@ class TestMiniMLUpdatedFunctions(unittest.TestCase):
         positions = np.array([500])
 
         try:
-            res = get_event_baseline_new(
-                data, bsl_duration, event_num, add_points, peak_position, positions
+            res = get_event_baseline(
+                data=data,
+                bsl_duration=bsl_duration,
+                event_num=event_num,
+                add_points=add_points,
+                peak_position=peak_position,
+                positions=positions,
             )
             self.assertIsNotNone(res.value)
         except Exception as e:
-            self.fail(f"get_event_baseline_new raised {type(e).__name__}: {e}")
+            self.fail(f"get_event_baseline raised {type(e).__name__}: {e}")
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import matplotlib.style as mplstyle
 import numpy as np
 from scipy.ndimage import maximum_filter1d
 
-from miniml.core.event import EventDetection
+from miniml.core.detection import EventDetection
 from miniml.core.util import exp_fit
 
 mplstyle.use("fast")

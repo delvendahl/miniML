@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 
 from miniml.core.functions import (
-    get_event_baseline,
+    legacy_get_event_baseline,
     get_event_charge,
     get_event_halfdecay_time,
     get_event_halfwidth,
@@ -221,8 +221,14 @@ class TestOtherMiniMLFunctions(unittest.TestCase):
         # bsl_end = (50 - (60-50)*3) = 50 - 30 = 20.
         # bsl_start = 20 - 20 = 0.
         # bsl from 0 to 20. All zeros.
-        res = get_event_baseline(
-            data, duration, event_num, add_points, diffs, peak_positions, positions
+        res = legacy_get_event_baseline(
+            data=data,
+            duration=duration,
+            event_num=event_num,
+            add_points=add_points,
+            diffs=diffs,
+            peak_positions=peak_positions,
+            positions=positions,
         )
         self.assertEqual(res.value, 0.0)
         self.assertEqual(res.start, 0)
