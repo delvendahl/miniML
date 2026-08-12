@@ -173,6 +173,8 @@ class EventStats:
         float
             Absolute ratio of standard deviation to mean.
         """
+        if self.mean(values) == 0:
+            return float("nan")
         return float(abs(self.std(values) / self.mean(values)))
 
     def frequency(self) -> float:
