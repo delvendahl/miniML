@@ -821,24 +821,18 @@ class EventDetection:
             )
             self.event_start[ix] = onset_position
 
-            (
-                risetime,
-                min_position_rise,
-                min_value_rise,
-                max_position_rise,
-                max_value_rise,
-            ) = get_event_risetime(
+            risetime = get_event_risetime(
                 data=data[baseline.start : int(event_peak_pos)],
                 sampling_rate=self.trace.sampling_rate,
                 baseline=baseline.value,
                 amplitude=self.event_peak_values[ix] - baseline.value,
             )
-            self.risetimes[ix] = risetime
-            self.min_positions_rise[ix] = min_position_rise
-            self.min_values_rise[ix] = min_value_rise
+            self.risetimes[ix] = risetime.duration
+            self.min_positions_rise[ix] = risetime.start_time
+            self.min_values_rise[ix] = risetime.start_value
 
-            self.max_positions_rise[ix] = max_position_rise
-            self.max_values_rise[ix] = max_value_rise
+            self.max_positions_rise[ix] = risetime.end_time
+            self.max_values_rise[ix] = risetime.end_value
 
             half_amplitude_level = (
                 baseline.value + (data[event_peak_pos] - baseline.value) / 2
