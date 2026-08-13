@@ -19,7 +19,7 @@ from miniml.core.functions import (
     get_event_risetime,
 )
 from miniml.core.trace import MiniTrace
-from miniml.core.util import exp_fit, minmax_scaling, robust_noise_mad
+from miniml.core.util import exp_fit, minmax_scaling, robust_noise_mad, parse_model_info
 from miniml.fileio.util import is_keras_model
 
 
@@ -227,10 +227,8 @@ class EventDetection:
         Verbosity level for prediction and reporting.
     batch_size : int, default=128
         Batch size used by ``model.predict``.
-    model : keras.Model | None, optional
-        Model instance to use for event detection.
-    model_path : str, default=""
-        Path to a saved Keras model.
+    model : keras.Model | str | None, default=None
+        Model instance to use for event detection, or path to a saved Keras model file.
     model_threshold : float, default=0.5
         Minimum model prediction peak height required for event detection.
     compile_model : bool, default=True
@@ -266,8 +264,7 @@ class EventDetection:
         training_direction: str = "negative",
         verbose: int = 1,
         batch_size: int = 128,
-        model: keras.Model | None = None,
-        model_path: str = "",
+        model: keras.Model | str | None = None,
         model_threshold: float = 0.5,
         compile_model: bool = True,
         callbacks: list | None = None,
@@ -282,19 +279,18 @@ class EventDetection:
         self.event_scores = np.array([])
         self.events = np.array([])
         self.batch_size = batch_size
-        self.model_path = model_path
-        self.model: keras.Model
-        self.model_threshold = None
+        self.model = None
+        self.model_path = ""
+        self.model_threshold = model_threshold
         if model is not None:
-            self.model = model
-            self.model_threshold = model_threshold
-            self.callbacks = callbacks or []
-        elif model_path:
-            self.load_model(
-                filepath=model_path,
-                threshold=model_threshold,
-                compile=compile_model,
-            )
+            if isinstance(model, str):
+                self.load_model(
+                    filepath=model,
+                    compile=compile_model,
+                )
+                self.model_path = model
+            else:
+                self.model = model
             self.callbacks = callbacks or []
         self.deleted_events = 0
 
@@ -329,9 +325,7 @@ class EventDetection:
 
         return num_events != 0
 
-    def load_model(
-        self, filepath: str, threshold: float = 0.5, compile: bool = True
-    ) -> None:
+    def load_model(self, filepath: str, compile: bool = True) -> None:
         """
         Load a trained miniML model from an HDF5 file.
 
@@ -339,8 +333,6 @@ class EventDetection:
         ----------
         filepath : str
             Path to the saved Keras model.
-        threshold : float, default=0.5
-            Prediction threshold used during peak detection.
         compile : bool, default=True
             Whether to compile the loaded model.
 
@@ -352,7 +344,6 @@ class EventDetection:
         if not is_keras_model(filepath):
             raise ValueError("Model file is not a valid Keras model")
         self.model: keras.Model = keras.models.load_model(filepath, compile=compile)
-        self.model_threshold = threshold
         if self.verbose:
             print(f"Model loaded from {filepath}")
 
@@ -566,11 +557,15 @@ class EventDetection:
         # gradient[:int(self.convolve_win * 1.5)] = 0
         # gradient[-int(self.convolve_win * 1.5):] = 0
 
-        smth_gradient = self.hann_filter(
-            data=gradient, filter_size=self.gradient_convolve_win
-        )
-        smth_gradient[: self.gradient_convolve_win] = 0
-        smth_gradient[-self.gradient_convolve_win :] = 0
+        if self.gradient_convolve_win > 0:
+            smth_gradient = self.hann_filter(
+                data=gradient, filter_size=self.gradient_convolve_win
+            )
+
+            smth_gradient[: self.gradient_convolve_win] = 0
+            smth_gradient[-self.gradient_convolve_win :] = 0
+        else:
+            smth_gradient = gradient
 
         return gradient, smth_gradient
 
@@ -1207,6 +1202,7 @@ class EventDetection:
             peak_w=peak_w
         )
         self.gradient, self.smth_gradient = self._make_smth_gradient()
+
         self.grad_threshold = self._get_grad_threshold(
             gradient=self.smth_gradient,
             start_pnts=self.start_pnts,
@@ -1478,7 +1474,11 @@ class EventDetection:
             f.attrs["amplitude_unit"] = self.trace.y_unit
             f.attrs["recording_time"] = self.trace.data.shape[0] * self.trace.sampling
             f.attrs["source_filename"] = self.trace.filename
-            f.attrs["miniml_model"] = self.model_path
+            f.attrs["miniml_model"] = (
+                self.model_path
+                if len(self.model_path) > 0
+                else f"{parse_model_info(self.model)}"
+            )
             f.attrs["miniml_model_threshold"] = self.model_threshold
             f.attrs["minimum_peak"] = self.peak_w
             f.attrs["stride"] = self.stride_length
@@ -1656,7 +1656,9 @@ class EventDetection:
                 "sampling": self.trace.sampling,
                 "sampling_rate": self.trace.sampling_rate,
                 ### miniML information
-                "miniml_model": self.model_path,
+                "miniml_model": self.model_path
+                if len(self.model_path) > 0
+                else f"{parse_model_info(self.model)}",
                 "miniml_model_threshold": self.model_threshold,
                 ### event detection params:
                 "window_size": self.window_size,

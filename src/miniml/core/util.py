@@ -1,3 +1,4 @@
+import json
 import os
 from typing import TypeAlias
 
@@ -124,3 +125,26 @@ def robust_noise_mad(
     threshold = median_grad + (multiplier * robust_sigma)
 
     return threshold, robust_sigma
+
+
+def parse_model_info(model: tf.keras.Model) -> dict:
+    """
+    Parse the model information from a Keras model.
+
+    Parameters
+    ----------
+    model : tf.keras.Model
+        The Keras model to parse.
+
+    Returns
+    -------
+    dict
+        A dictionary containing the model information.
+
+    """
+    model_info = json.loads(model.to_json())
+    model_name = model_info.get("config", {}).get("name", "unknown")
+    model_backend = model_info.get("backend", "unknown")
+    version = model_info.get("keras_version", "unknown")
+
+    return {"name": model_name, "backend": model_backend, "version": version}
