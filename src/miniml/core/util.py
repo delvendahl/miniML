@@ -142,6 +142,9 @@ def parse_model_info(model: tf.keras.Model) -> dict:
         A dictionary containing the model information.
 
     """
+    if not isinstance(model, tf.keras.Model):
+        return {"name": "unknown", "backend": "unknown", "version": "unknown"}
+
     model_info = json.loads(model.to_json())
     model_name = model_info.get("config", {}).get("name", "unknown")
     model_backend = model_info.get("backend", "unknown")

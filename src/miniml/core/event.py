@@ -1,5 +1,3 @@
-import pickle as pkl
-
 import h5py
 import keras
 import numpy as np
@@ -293,6 +291,12 @@ class EventDetection:
                 self.model = model
             self.callbacks = callbacks or []
         self.deleted_events = 0
+
+        # Define peak spacer, i.e. number of points left / right of detected event peaks to use for amplitude calculation.
+        if int(self.window_size / 300) < 1:
+            self.peak_spacer = 1
+        else:
+            self.peak_spacer = int(self.window_size / 300)
 
     @property
     def event_direction(self):
@@ -1188,12 +1192,6 @@ class EventDetection:
         self.gradient_convolve_win = gradient_convolve_win
         self.resampling_factor = 600 / self.window_size if resample_to_600 else 1
 
-        # Define peak spacer, i.e. number of points left / right of detected event peaks to use for amplitude calculation.
-        if int(self.window_size / 300) < 1:
-            self.peak_spacer = 1
-        else:
-            self.peak_spacer = int(self.window_size / 300)
-
         self.__predict()
 
         # Linear interpolation of prediction trace to match the original data.
@@ -1484,7 +1482,7 @@ class EventDetection:
             f.attrs["stride"] = self.stride_length
             f.attrs["window"] = self.window_size
             f.attrs["event_direction"] = self.event_direction
-            if self.convolve_win > 0:
+            if hasattr(self, "convolve_win") and self.convolve_win > 0:
                 f.attrs["convolve_win"] = self.convolve_win
             else:
                 f.attrs["filter_factor"] = self.filter_factor
@@ -1581,111 +1579,6 @@ class EventDetection:
                 writer.writerow([label, val])
 
         print(f"events saved to {filename}_avgs.csv and {filename}_individual.csv")
-
-    def save_to_pickle(
-        self,
-        filename: str = "",
-        include_prediction: bool = True,
-        include_data: bool = True,
-    ) -> None:
-        """
-        Save detection results to a pickle file.
-
-        Parameters
-        ----------
-        filename : str, default=""
-            Output filename, optionally including a directory.
-        include_prediction : bool, default=True
-            Include the prediction trace.
-        include_data : bool, default=True
-            Include the source trace data together with the analysis results.
-        """
-        if not hasattr(self, "event_stats"):
-            self._eval_events()
-            if not hasattr(self, "event_stats"):
-                print("Save error: No events found")
-                return
-
-        if not filename.endswith("pickle"):
-            filename += ".pickle"
-
-        results = {
-            "event_location_parameters": {
-                "event_locations": np.array(self.event_locations),
-                "event_scores": np.array(self.event_scores),
-                "event_peak_locations": self.event_peak_locations,
-                "event_baselines": self.event_bsls,
-                "event_onset_locations": self.event_start,
-                "min_positions_rise": self.min_positions_rise,
-                "max_positions_rise": self.max_positions_rise,
-                "min_values_rise": self.min_values_rise,
-                "max_values_rise": self.max_values_rise,
-                "half_decay_positions": self.half_decay,
-            },
-            "individual_values": {
-                "amplitudes": self.event_stats.amplitudes,
-                "charges": self.event_stats.charges,
-                "risetimes": self.event_stats.risetimes,
-                "half_decaytimes": self.event_stats.halfdecays,
-                "event_intervals": self.interevent_intervals,
-                "halfwidths": self.event_stats.halfwidths,
-            },
-            "average_values": {
-                "amplitude mean": self.event_stats.mean(self.event_stats.amplitudes),
-                "amplitude std": self.event_stats.std(self.event_stats.amplitudes),
-                "amplitude median": self.event_stats.median(
-                    self.event_stats.amplitudes
-                ),
-                "charge mean": self.event_stats.mean(self.event_stats.charges),
-                "risetime mean": self.event_stats.mean(self.event_stats.risetimes),
-                "half_decaytime mean": self.event_stats.mean(
-                    self.event_stats.halfdecays
-                ),
-                "halfwidth mean": self.event_stats.mean(self.event_stats.halfwidths),
-                "decay_tau": self.event_stats.avg_tau_decay * 1000,
-                "frequency": self.event_stats.frequency(),
-                "iei_mean": self.event_stats.mean(self.interevent_intervals),
-                "iei_median": self.event_stats.median(self.interevent_intervals),
-            },
-            "average_event_properties": self.average_event_properties,
-            "metadata": {
-                ### trace information:
-                "source_filename": self.trace.filename,
-                "y_unit": self.trace.y_unit,
-                "recording_time": self.trace.data.shape[0] * self.trace.sampling,
-                "sampling": self.trace.sampling,
-                "sampling_rate": self.trace.sampling_rate,
-                ### miniML information
-                "miniml_model": self.model_path
-                if len(self.model_path) > 0
-                else f"{parse_model_info(self.model)}",
-                "miniml_model_threshold": self.model_threshold,
-                ### event detection params:
-                "window_size": self.window_size,
-                "stride": self.stride_length,
-                "add_points": self.add_points,
-                "resampling_factor": self.resampling_factor,
-                ### event analysis params:
-                "convolve_win": self.convolve_win,
-                "filter_factor": self.filter_factor,
-                "gradient_convolve_win": self.gradient_convolve_win,
-                "min_peak_w": self.peak_w,
-                "rel_prom_cutoff": self.rel_prom_cutoff,
-                "event_direction": self.event_direction,
-                "deleted_events": self.deleted_events,
-            },
-            "events": self.events,
-        }
-
-        if include_prediction:
-            results["prediction"] = self.prediction  # Save prediction as numpy array
-
-        if include_data:
-            results["mini_trace"] = self.trace.data
-
-        with open(filename, "wb") as handle:
-            pkl.dump(results, handle)
-        print(f"events saved to {filename}")
 
 
 class EventAnalysis(EventDetection):
