@@ -1214,7 +1214,9 @@ class EventDetection:
         )
         self.gradient, self.smth_gradient = self._make_smth_gradient()
         self.grad_threshold = self._get_grad_threshold(
-            grad=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts
+            gradient=self.smth_gradient,
+            start_pnts=self.start_pnts,
+            end_pnts=self.end_pnts,
         )
         self.event_locations, self.event_scores = self._find_event_locations(
             limit=self.window_size + self.add_points,
@@ -1765,6 +1767,10 @@ class EventAnalysis(EventDetection):
             If True, derive event properties from filtered trace data.
         """
         if self.event_locations.shape[0] > 0:
+            self.gradient, self.smth_gradient = self._make_smth_gradient()
+            self.slopes = self.smth_gradient[self.event_locations]
+            self._get_singular_event_indices()
             super()._get_event_properties(filter=filter)
             self.events = self.events - self.event_bsls[:, None]
+            self.average_event_properties = self._get_average_event_properties()
             super()._eval_events()
