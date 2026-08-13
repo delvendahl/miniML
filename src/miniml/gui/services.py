@@ -100,7 +100,7 @@ class AnalysisService:
         """
         detection = EventDetection(
             data=trace,
-            model_path=settings.model_path,
+            model=settings.model_path,
             model_threshold=settings.event_threshold,
             window_size=int(settings.event_window),
             batch_size=settings.batch_size,
@@ -142,8 +142,6 @@ class ResultsService:
         """
         if selected_filter == "CSV (*.csv)":
             detection.save_to_csv(filename=filename)
-        elif selected_filter == "Pickle (*.pickle)":
-            detection.save_to_pickle(filename=filename)
         elif selected_filter == "HDF (*.h5 *.hdf *.hdf5)":
             detection.save_to_h5(filename=filename)
 
