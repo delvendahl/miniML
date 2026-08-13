@@ -284,10 +284,13 @@ class EventDetection:
         self.batch_size = batch_size
         self.model_path = model_path
         self.model: keras.Model
-        self.model_threshold = None
+        self.model_threshold = model_threshold
+        if int(self.window_size / 300) < 1:
+            self.peak_spacer = 1
+        else:
+            self.peak_spacer = int(self.window_size / 300)
         if model is not None:
             self.model = model
-            self.model_threshold = model_threshold
             self.callbacks = callbacks or []
         elif model_path:
             self.load_model(
@@ -297,6 +300,39 @@ class EventDetection:
             )
             self.callbacks = callbacks or []
         self.deleted_events = 0
+
+        # Initialize default values for analysis parameters
+        self.convolve_win = 0
+        self.filter_factor = 20.0
+        self.gradient_convolve_win = 0
+        self.peak_w = 5
+        self.rel_prom_cutoff = 0.25
+        self.stride_length = round(self.window_size / 30)
+        self.add_points = int(self.window_size / 3)
+
+        # Initialize properties to prevent AttributeErrors on empty detections or serialization
+        self.event_peak_locations = np.array([], dtype=np.int64)
+        self.event_peak_values = np.array([], dtype=np.float64)
+        self.event_peak_times = np.array([], dtype=np.float64)
+        self.bsl_starts = np.array([], dtype=np.int64)
+        self.bsl_ends = np.array([], dtype=np.int64)
+        self.event_start = np.array([], dtype=np.int64)
+        self.event_start_times = np.array([], dtype=np.float64)
+        self.event_bsls = np.array([], dtype=np.float64)
+        self.event_bsl_durations = np.array([], dtype=np.float64)
+        self.decaytimes = np.array([], dtype=np.float64)
+        self.charges = np.array([], dtype=np.float64)
+        self.risetimes = np.array([], dtype=np.float64)
+        self.half_decay = np.array([], dtype=np.float64)
+        self.half_decay_times = np.array([], dtype=np.float64)
+        self.halfwidths = np.array([], dtype=np.float64)
+        self.rise_half_amp_times = np.array([], dtype=np.float64)
+        self.decay_half_amp_times = np.array([], dtype=np.float64)
+        self.min_positions_rise = np.array([], dtype=np.float64)
+        self.max_positions_rise = np.array([], dtype=np.float64)
+        self.min_values_rise = np.array([], dtype=np.float64)
+        self.max_values_rise = np.array([], dtype=np.float64)
+        self.interevent_intervals = np.array([], dtype=np.float64)
 
     @property
     def event_direction(self):
@@ -804,7 +840,8 @@ class EventDetection:
                     data=data,
                     bsl_duration=baseline_duration,
                     event_num=ix,
-                    relative_event_position=self.add_points,
+                    add_points=self.add_points,
+                    peak_position=self.event_peak_locations[ix],
                     positions=positions,
                 )
 
@@ -1093,7 +1130,8 @@ class EventDetection:
                 data=data,
                 bsl_duration=int(self.window_size * 0.1),
                 event_num=0,
-                relative_event_position=self.add_points,
+                add_points=self.add_points,
+                peak_position=event_peak,
                 positions=[self.add_points],
             )
         onset_position = get_event_onset(
@@ -1220,7 +1258,7 @@ class EventDetection:
         )
         self.gradient, self.smth_gradient = self._make_smth_gradient()
         self.grad_threshold = self._get_grad_threshold(
-            grad=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts
+            gradient=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts
         )
         self.event_locations, self.event_scores = self._find_event_locations(
             limit=self.window_size + self.add_points,
@@ -1771,6 +1809,10 @@ class EventAnalysis(EventDetection):
             If True, derive event properties from filtered trace data.
         """
         if self.event_locations.shape[0] > 0:
+            self.gradient, self.smth_gradient = self._make_smth_gradient()
+            self.slopes = self.smth_gradient[self.event_locations]
+            self._get_singular_event_indices()
             super()._get_event_properties(filter=filter)
             self.events = self.events - self.event_bsls[:, None]
+            self.average_event_properties = self._get_average_event_properties()
             super()._eval_events()
