@@ -31,6 +31,35 @@ class BaselineResult(NamedTuple):
     duration: int
 
 
+class RisetimeResult(NamedTuple):
+    """
+    Risetime statistics extracted for an event window.
+
+    Attributes
+    ----------
+    duration : float
+        Duration of the risetime window.
+    start_time : float
+        Time of the start of the risetime window.
+    start_value : float
+        Value at the start of the risetime window.
+    end_time : float
+        Time of the end of the risetime window.
+    end_value : float
+        Value at the end of the risetime window.
+    percentage : tuple
+        Tuple containing the lower and upper percentage thresholds used for
+        risetime calculation.
+    """
+
+    duration: float
+    start_time: float
+    start_value: float
+    end_time: float
+    end_value: float
+    percentage: tuple
+
+
 def get_event_peak(
     data: np.ndarray,
     event_num: int,
@@ -438,7 +467,7 @@ def get_event_risetime(
     min_percentage: float = 10,
     max_percentage: float = 90,
     amplitude: float | None = None,
-) -> tuple[float, float, float, float, float]:
+) -> RisetimeResult:
     """
     Measure the event rise time over a configurable amplitude range.
 
@@ -460,9 +489,9 @@ def get_event_risetime(
 
     Returns
     -------
-    tuple[float, float, float, float, float]
+    RisetimeResult
         Rise time, lower threshold crossing time, lower threshold value, upper
-        threshold crossing time, and upper threshold value.
+        threshold crossing time, upper threshold value, and rise-time percentage.
 
     Raises
     ------
@@ -522,12 +551,13 @@ def get_event_risetime(
     max_value_rise = rise_data[max_position_rise]
     max_position_rise *= 1 / target_sampling_rate
 
-    return (
-        risetime,
-        min_position_rise,
-        min_value_rise,
-        max_position_rise,
-        max_value_rise,
+    return RisetimeResult(
+        duration=risetime,
+        start_time=min_position_rise,
+        start_value=min_value_rise,
+        end_time=max_position_rise,
+        end_value=max_value_rise,
+        percentage=(min_percentage, max_percentage),
     )
 
 

@@ -1103,13 +1103,7 @@ class EventDetection:
             baseline_var=baseline.var,
         )
 
-        (
-            risetime,
-            min_position_rise,
-            min_value_rise,
-            max_position_rise,
-            max_value_rise,
-        ) = get_event_risetime(
+        risetime = get_event_risetime(
             data=data[baseline.start : int(event_peak)],
             sampling_rate=self.trace.sampling_rate,
             baseline=baseline.value,
@@ -1131,15 +1125,15 @@ class EventDetection:
         results = {
             "amplitude": event_peak_value - baseline.value,
             "baseline": baseline.value * self.event_direction,
-            "risetime": risetime * self.trace.sampling,
+            "risetime": risetime.duration * self.trace.sampling,
             "halfdecay_time": halfdecay_time * self.trace.sampling,
             "charge": charge * self.event_direction,
             "event_peak": event_peak,
             "onset_position": onset_position,
-            "min_position_rise": min_position_rise,
-            "min_value_rise": min_value_rise * self.event_direction,
-            "max_position_rise": max_position_rise,
-            "max_value_rise": max_value_rise * self.event_direction,
+            "min_position_rise": risetime.start_time,
+            "min_value_rise": risetime.start_value * self.event_direction,
+            "max_position_rise": risetime.end_time,
+            "max_value_rise": risetime.end_value * self.event_direction,
             "halfdecay_position": halfdecay_position,
             "endpoint_charge": endpoint,
         }
