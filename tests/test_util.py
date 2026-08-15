@@ -1,7 +1,9 @@
 import unittest
+
 import numpy as np
 import tensorflow as tf
-from miniml.core.util import exp_fit, minmax_scaling, mEPSC_template, robust_noise_mad
+
+from miniml.core.util import exp_fit, mEPSC_template, minmax_scaling, robust_noise_mad
 
 
 class TestUtils(unittest.TestCase):
@@ -42,7 +44,11 @@ class TestUtils(unittest.TestCase):
         # for x < x0, value is 0.0
         expected = np.zeros_like(x)
         mask = x >= x0
-        expected[mask] = amplitude * (1 - np.exp(-(x[mask] - x0) / t_rise)) * np.exp(-(x[mask] - x0) / t_decay)
+        expected[mask] = (
+            amplitude
+            * (1 - np.exp(-(x[mask] - x0) / t_rise))
+            * np.exp(-(x[mask] - x0) / t_decay)
+        )
 
         res = mEPSC_template(x, amplitude, t_rise, t_decay, x0)
         np.testing.assert_allclose(res, expected)

@@ -1,15 +1,18 @@
 import unittest
+
 import numpy as np
 
-from miniml.threshold_detection import threshold_detection, DetectionResult
-from miniml.deconvolution import deconvolution, make_template as deconv_make_template, DeconvolutionResult
-from miniml.template_matching import template_matching, make_template as tm_make_template, TemplateMatchResult
+from miniml.deconvolution import DeconvolutionResult, deconvolution
+from miniml.deconvolution import make_template as deconv_make_template
+from miniml.template_matching import TemplateMatchResult, template_matching
+from miniml.template_matching import make_template as tm_make_template
+from miniml.threshold_detection import DetectionResult, threshold_detection
 
 
 class TestDetectionMethods(unittest.TestCase):
     def setUp(self):
         # Sampling rate of 20,000 Hz, 1000 samples (0.05 seconds of data)
-        self.sampling = 5e-5 # 2e-5 is 50 kHz, 5e-5 is 20 kHz
+        self.sampling = 5e-5  # 2e-5 is 50 kHz, 5e-5 is 20 kHz
         self.data = np.zeros(2000, dtype=float)
 
         # Add a simulated negative event at index 1000
@@ -41,7 +44,7 @@ class TestDetectionMethods(unittest.TestCase):
             duration=0.005,
             sampling=self.sampling,
         )
-        self.assertEqual(len(kernel), 100) # 0.005 / 5e-5 = 100 samples
+        self.assertEqual(len(kernel), 100)  # 0.005 / 5e-5 = 100 samples
 
         # Run deconvolution
         result = deconvolution(

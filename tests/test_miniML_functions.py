@@ -3,8 +3,8 @@ import unittest
 import numpy as np
 
 from miniml.core.functions import (
+    baseline_score,
     get_event_baseline,
-    legacy_get_event_baseline,
     get_event_charge,
     get_event_halfdecay_time,
     get_event_halfwidth,
@@ -13,7 +13,7 @@ from miniml.core.functions import (
     get_event_risetime,
     get_segment_stats,
     get_steepest_rise_position,
-    baseline_score,
+    legacy_get_event_baseline,
 )
 
 

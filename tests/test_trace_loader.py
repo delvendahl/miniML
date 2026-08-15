@@ -1,9 +1,10 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import numpy as np
-import tempfile
 import os
+import tempfile
+import unittest
+from unittest.mock import MagicMock, patch
+
 import h5py
+import numpy as np
 
 from miniml.fileio.trace_loader import TraceLoader
 
@@ -109,7 +110,7 @@ class TestTraceLoader(unittest.TestCase):
         # Mock sweeps in pul[0][0]
         mock_sweep_record = MagicMock()
         mock_channel_record = MagicMock()
-        mock_channel_record.GSeries = 1e6 # 1 MOhm series resistance => 1e-6 Siemens
+        mock_channel_record.GSeries = 1e6  # 1 MOhm series resistance => 1e-6 Siemens
         mock_channel_record.YUnit = "A"
         mock_sweep_record.__getitem__.return_value = mock_channel_record
         mock_pul_group.__getitem__.return_value = [mock_sweep_record]
@@ -134,7 +135,7 @@ class TestTraceLoader(unittest.TestCase):
             filename="test.dat",
             rectype="mEPSC",
             group=0,
-            scaling=1e12, # Scale from A to pA
+            scaling=1e12,  # Scale from A to pA
             unit="pA",
             resample=True,
         )
@@ -147,7 +148,7 @@ class TestTraceLoader(unittest.TestCase):
     def test_from_heka_file_group_out_of_range(self, mock_bundle_class):
         """Test that from_heka_file raises IndexError for out-of-range group."""
         mock_bundle = MagicMock()
-        mock_bundle.pul.children = [] # No groups
+        mock_bundle.pul.children = []  # No groups
         mock_bundle_class.return_value = mock_bundle
 
         with self.assertRaises(IndexError):

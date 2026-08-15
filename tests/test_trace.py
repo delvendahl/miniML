@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import patch
+
 import numpy as np
+
 from miniml.core.trace import MiniTrace
 
 
@@ -86,7 +88,7 @@ class TestMiniTrace(unittest.TestCase):
     def test_filter_savgol_and_hann(self):
         """Test Savitzky-Golay and Hann window filters."""
         # Savgol filtering
-        savgol_filtered = self.trace.filter(savgol=10.0) # 10 ms
+        savgol_filtered = self.trace.filter(savgol=10.0)  # 10 ms
         self.assertEqual(savgol_filtered.data.shape, self.data.shape)
 
         # Hann window

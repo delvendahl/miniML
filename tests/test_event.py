@@ -1,14 +1,13 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import numpy as np
-import tempfile
 import os
-import h5py
-import pickle as pkl
-import keras
+import tempfile
+import unittest
+from unittest.mock import patch
 
+import h5py
+import numpy as np
+
+from miniml.core.event import EventAnalysis, EventDetection, EventStats
 from miniml.core.trace import MiniTrace
-from miniml.core.event import EventStats, EventDetection, EventAnalysis
 
 
 class TestEventStats(unittest.TestCase):
