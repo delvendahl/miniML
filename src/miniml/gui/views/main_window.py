@@ -1113,7 +1113,7 @@ class MainWindow(QMainWindow):
             if self.state.filename
             else Path("")
         )
-        file_types = "CSV (*.csv);;Pickle (*.pickle);;HDF (*.h5 *.hdf *.hdf5)"
+        file_types = "CSV (*.csv);;HDF (*.h5 *.hdf *.hdf5)"
         save_filename, selected_filter = self.open_save_results_dialog(
             default_filename=str(default_filename),
             file_types=file_types,
