@@ -23,11 +23,11 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "scikit-learn==1.5.2",
-    "matplotlib==3.6.3",
-    "h5py==3.11.0",
+    "scikit-learn==1.6.1",
+    "matplotlib==3.9.0",
+    "h5py==3.15.0",
     "numpy<2.0.0",
-    "scipy==1.11.4",
+    "scipy==1.16.3",
     "tensorflow>=2.14.0,<2.16.0",
     "pyabf==2.3.8",
     "ruptures==1.1.10",
@@ -37,7 +37,7 @@ dependencies = [
 gui = [
     "PyQt5==5.15.11",
     "qt-material==2.14",
-    "pyqtgraph==0.13.7",
+    "pyqtgraph==0.14.0",
 ]
 
 dev = ["ruff"]
