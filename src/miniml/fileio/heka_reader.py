@@ -1070,10 +1070,13 @@ class Data:
             "IsLittleEndian"
         ]:  #  for big endian data, we need to swap
             dtype = dtype.newbyteorder(">")
-        data = np.fromfile(fh, count=trace.DataPoints, dtype=dtype)
-        # Do not close fh here
+        data = np.fromfile(
+            fh,
+            dtype=dtype,
+            count=trace.DataPoints,
+        )
 
-        return (data * trace.DataScaler).astype(np.float64)
+        return data * trace.DataScaler
 
 
 class Amplifier(TreeNode):
