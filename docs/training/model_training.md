@@ -7,7 +7,7 @@ Training a new miniML model generally requires the following steps:
 - Model training (either full training or re-training via transfer learning)
 - Use the new model: List of the parameters that may need to be adjusted
 
-All the files and links to train your own model are provided in the GitHub repository. This documentation will show you how to use them and guide you through the process of training your own model, and apply it to your data, step by step. For the steps that have a corresponding file on GitHub, the directory and filename are indicated.
+All the files and links to train your own model are provided in the miniML GitHub repository or the accompanying training data repository (see [miniML-training-data](https://github.com/delvendahl/miniML-training-data)). This documentation will show you how to use them and guide you through the process of training your own model, and apply it to your data, step by step. For the steps that have a corresponding file on GitHub, the directory and filename are indicated.
 
 
 ## Selecting a window size
