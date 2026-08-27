@@ -2,6 +2,7 @@ import h5py
 import keras
 import numpy as np
 import tensorflow as tf
+from dataclasses import dataclass
 from scipy import signal
 from scipy.ndimage import maximum_filter1d
 from scipy.optimize import curve_fit
@@ -21,11 +22,12 @@ from miniml.core.util import exp_fit, minmax_scaling, robust_noise_mad, parse_mo
 from miniml.fileio.util import is_keras_model
 
 
+@dataclass
 class EventStats:
     """
     Store summary statistics for detected events.
 
-    Parameters
+    Attributes
     ----------
     amplitudes : np.ndarray
         Amplitudes of individual events.
@@ -37,36 +39,13 @@ class EventStats:
         10-90 percent rise times of individual events.
     slopes : np.ndarray
         Rise slopes of individual events.
-    decaytimes : np.ndarray
-        Half decay times of individual events.
-    halfwidths : np.ndarray
-        Half-width of individual events (seconds).
-    tau : float
-        Average decay time constant (seconds).
-    time : float
-        Total recording duration (seconds).
-    unit : str
-        Data unit.
-
-    Attributes
-    ----------
-    amplitudes : np.ndarray
-        Amplitudes of individual events.
-    event_scores : np.ndarray
-        Prediction scores of individual events.
-    charges : np.ndarray
-        Charge transfer of individual events.
-    risetimes : np.ndarray
-        10-90 percent rise times of individual events.
-    slopes : np.ndarray
-        Rise slopes of individual events.
     halfdecays : np.ndarray
         Half decay times of individual events.
     halfwidths : np.ndarray
         Half-widths of individual events.
-    avg_tau_decay : float
+    tau : float
         Average decay time constant.
-    rec_time : float
+    time : float
         Total recording duration.
     y_unit : str
         Signal unit.
@@ -74,30 +53,28 @@ class EventStats:
         Number of detected events.
     """
 
-    def __init__(
-        self,
-        amplitudes: np.ndarray,
-        scores: np.ndarray,
-        charges: np.ndarray,
-        risetimes: np.ndarray,
-        slopes: np.ndarray,
-        decaytimes: np.ndarray,
-        halfwidths: np.ndarray,
-        tau,
-        time,
-        unit: str,
-    ) -> None:
-        self.amplitudes = amplitudes
-        self.event_scores = scores
-        self.charges = charges
-        self.risetimes = risetimes
-        self.slopes = slopes
-        self.halfdecays = decaytimes
-        self.halfwidths = halfwidths
-        self.avg_tau_decay = tau
-        self.rec_time = time
-        self.y_unit = unit
-        self.event_count = len(self.amplitudes)
+    amplitudes: np.ndarray
+    scores: np.ndarray
+    charges: np.ndarray
+    risetimes: np.ndarray
+    slopes: np.ndarray
+    halfdecays: np.ndarray
+    halfwidths: np.ndarray
+    tau: float
+    time: float
+    y_unit: str
+
+    @property
+    def event_count(self) -> int:
+        """
+        Return the number of detected events.
+
+        Returns
+        -------
+        int
+            Number of detected events.
+        """
+        return len(self.amplitudes)
 
     def mean(self, values: np.ndarray) -> float:
         """
@@ -175,6 +152,7 @@ class EventStats:
             return float("nan")
         return float(abs(self.std(values) / self.mean(values)))
 
+    @property
     def frequency(self) -> float:
         """
         Return the detected event frequency.
@@ -184,7 +162,7 @@ class EventStats:
         float
             Event frequency in hertz.
         """
-        return float(len(self.amplitudes) / self.rec_time)
+        return float(len(self.amplitudes) / self.time)
 
     def print(self) -> None:
         """
@@ -192,8 +170,8 @@ class EventStats:
         """
         print("\nEvent statistics:\n-------------------------")
         print(f"    Number of events: {self.event_count}")
-        print(f"    Average score: {self.mean(self.event_scores):.3f}")
-        print(f"    Event frequency: {self.frequency():.4f} Hz")
+        print(f"    Average score: {self.mean(self.scores):.3f}")
+        print(f"    Event frequency: {self.frequency:.4f} Hz")
         print(f"    Mean amplitude: {self.mean(self.amplitudes):.4f} {self.y_unit}")
         print(f"    Median amplitude: {self.median(self.amplitudes):.4f} {self.y_unit}")
         print(f"    Std amplitude: {self.std(self.amplitudes):.4f} {self.y_unit}")
@@ -203,7 +181,7 @@ class EventStats:
         print(f"    Mean 10-90 risetime: {self.mean(self.risetimes) * 1000:.3f} ms")
         print(f"    Mean half decay time: {self.mean(self.halfdecays) * 1000:.3f} ms")
         print(f"    Mean half-width: {self.mean(self.halfwidths) * 1000:.3f} ms")
-        print(f"    Tau decay: {self.avg_tau_decay * 1000:.3f} ms")
+        print(f"    Tau decay: {self.tau * 1000:.3f} ms")
         print("-------------------------")
 
 
@@ -1296,14 +1274,14 @@ class EventDetection:
         self.event_stats = EventStats(
             amplitudes=self.event_peak_values - self.event_bsls,
             scores=self.event_scores,
-            tau=self.avg_decay_fit[1],
             charges=self.charges,
             risetimes=self.risetimes,
             slopes=self.slopes,
-            decaytimes=self.decaytimes,
+            halfdecays=self.decaytimes,
             halfwidths=self.halfwidths,
+            tau=self.avg_decay_fit[1],
             time=self.trace.total_time,
-            unit=self.trace.y_unit,
+            y_unit=self.trace.y_unit,
         )
 
         self.event_peak_times = self.event_peak_locations * self.trace.sampling
@@ -1455,10 +1433,10 @@ class EventDetection:
                 data=self.event_stats.median(self.event_stats.halfwidths),
             )
             f.create_dataset(
-                "event_statistics/decay_from_fit", data=self.event_stats.avg_tau_decay
+                "event_statistics/decay_from_fit", data=self.event_stats.tau
             )
             f.create_dataset(
-                "event_statistics/frequency", data=self.event_stats.frequency()
+                "event_statistics/frequency", data=self.event_stats.frequency
             )
             f.create_dataset(
                 "event_statistics/iei_mean",
@@ -1535,8 +1513,8 @@ class EventDetection:
                 self.event_stats.mean(self.event_stats.risetimes),
                 self.event_stats.mean(self.event_stats.halfdecays),
                 self.event_stats.mean(self.event_stats.halfwidths),
-                self.event_stats.avg_tau_decay,
-                self.event_stats.frequency(),
+                self.event_stats.tau,
+                self.event_stats.frequency,
                 self.event_stats.mean(self.interevent_intervals),
             )
         )
