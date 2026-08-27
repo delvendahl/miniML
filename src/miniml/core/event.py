@@ -1558,6 +1558,18 @@ class EventDetection:
 
         print(f"events saved to {filename}_avgs.csv and {filename}_individual.csv")
 
+    def __repr__(self):
+        # print a meaningful summary of the event analysis object
+        was_analyzed = "analyzed" if hasattr(self, "event_stats") else "not analyzed"
+        data_length = self.trace.data.shape[0]
+        event_count = (
+            self.event_locations.shape[0]
+            if hasattr(self, "event_locations")
+            else np.nan
+        )
+
+        return f"miniML EventAnalysis containing data with {data_length} samples. Data was {was_analyzed} and {event_count} events were detected."
+
 
 class EventAnalysis(EventDetection):
     """
