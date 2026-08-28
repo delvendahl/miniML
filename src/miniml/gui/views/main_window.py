@@ -1008,9 +1008,11 @@ class MainWindow(QMainWindow):
                 else 5
             ),
             "direction": str(settings_win.direction.currentText()),
-            "batch_size": int(settings_win.batchsize.text()),
-            "filter_factor": int(settings_win.filter_factor.text()),
-            "gradient_convolve_win": int(settings_win.gradient_convolve_window.text()),
+            "batch_size": int(settings_win.batchsize.text() or 128.0),
+            "filter_factor": float(settings_win.filter_factor.text() or 1.0),
+            "gradient_convolve_win": int(
+                settings_win.gradient_convolve_window.text() or 0.0
+            ),
         }
 
     def _apply_auto_settings(
