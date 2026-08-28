@@ -1,8 +1,8 @@
 import pyabf
+import pyheka
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QFormLayout, QLineEdit
 
-import pyheka
 from miniml.fileio.util import get_hdf_keys
 from miniml.gui.dialogs.common import finalize_dialog_window
 
