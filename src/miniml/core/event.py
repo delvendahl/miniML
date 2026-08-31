@@ -376,7 +376,8 @@ class EventDetection:
         if filter_size == 0:
             return data
         win = signal.windows.hann(filter_size)
-        filtered_data = signal.convolve(data, win, mode="same") / sum(win)
+        win /= sum(win)
+        filtered_data = signal.convolve(data, win, mode="same")
         filtered_data[:filter_size] = data[:filter_size]
         filtered_data[-filter_size:] = data[-filter_size:]
 
