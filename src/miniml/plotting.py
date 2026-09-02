@@ -93,7 +93,7 @@ class Plotter:
             c=self.green_color,
             zorder=2,
         )
-        axs[1].legend(loc="upper right")
+        axs[1].legend(loc="lower right")
 
         axs[2].plot(self.detection.gradient, c="k", alpha=0.4, label="gradient")
         axs[2].plot(
@@ -105,7 +105,7 @@ class Plotter:
             self.detection.grad_threshold,
             c=self.orange_color,
             ls="--",
-            label="threshold (4x std of noise)",
+            label="threshold (4x SD of noise)",
         )
         axs[2].legend(loc="upper right")
         plt.show()
