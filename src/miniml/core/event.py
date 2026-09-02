@@ -526,7 +526,8 @@ class EventDetection:
         # filter raw data trace, calculate gradient and filter first derivative trace
         if self.convolve_win > 0:
             trace_convolved = self.hann_filter(
-                data=self.trace.data, filter_size=self.convolve_win * 2
+                data=self.trace.data.astype(np.float32),
+                filter_size=self.convolve_win * 2,
             )
         else:
             trace_convolved = self.lowpass_filter(
@@ -536,9 +537,7 @@ class EventDetection:
             )
         trace_convolved *= self.event_direction  # (-1 = 'negative', 1 else)
 
-        gradient = np.gradient(trace_convolved, self.trace.sampling)
-        # gradient[:int(self.convolve_win * 1.5)] = 0
-        # gradient[-int(self.convolve_win * 1.5):] = 0
+        gradient = np.gradient(trace_convolved, self.trace.sampling).astype(np.float32)
 
         if self.gradient_convolve_win > 0:
             smth_gradient = self.hann_filter(
@@ -1142,11 +1141,11 @@ class EventDetection:
         rel_prom_cutoff : float, default=0.25
             Relative prominence cutoff used when separating overlapping events.
         filter_factor : float, default=20.0
-            Low-pass filter factor expressed as a fraction of the sampling rate.
+            Low-pass filter factor expressed as a fraction of the sampling rate. Only used if ``convolve_win`` is set to 0.
         convolve_win : int, default=0
             Hann window size used for event-analysis filtering.
         gradient_convolve_win : int, default=0
-            Hann window size used to smooth the derivative.
+            Hann window size used to smooth the derivative for exact event localization.
         bsl_win : float, default=0.33
             Baseline window size as fraction of window size.
         use_legacy_baseline_method : bool, default=True
