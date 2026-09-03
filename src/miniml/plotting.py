@@ -29,11 +29,11 @@ class Plotter:
         self.red_color = "#a90308"
         self.cyan_color = "#17becf"
 
-    def plot_gradient_search(self):
+    def plot_gradient_search(self, figsize: tuple[int, int] = (7, 4)):
         """
         plot the filtered data trace, the gradient and the filtered gradient with event locations
         """
-        fig, axs = plt.subplots(3, sharex=True, num="gradient search")
+        fig, axs = plt.subplots(3, sharex=True, figsize=figsize, num="gradient search")
 
         mini_trace = self.detection.trace.data
         if self.detection.convolve_win > 0:
@@ -110,10 +110,19 @@ class Plotter:
         axs[2].legend(loc="upper right")
         plt.show()
 
-    def plot_event_overlay(self, save_fig: str = "") -> None:
+    def plot_event_overlay(
+        self, figsize: tuple[int, int] = (7, 4), save_fig: str = ""
+    ) -> None:
         """
-        plot the average event waveform overlayed on top of the individual events
+        Plot the average event waveform overlayed on top of the individual events
         plus the fitted event.
+
+        Parameters
+        ----------
+        figsize : tuple[int, int], default=(7, 4)
+            Figure size in inches.
+        save_fig : str, default=""
+            Filename to save the figure to.
         """
         if not self.detection.events_present():
             return
@@ -126,7 +135,7 @@ class Plotter:
         )
         event_average = np.mean(events, axis=0)
 
-        fig = plt.figure("Event average and fit")
+        fig = plt.figure("Event average and fit", figsize=figsize)
         plt.plot(event_x, events.T, c=self.main_trace_color, alpha=0.3)
         plt.plot(
             event_x,
@@ -154,7 +163,7 @@ class Plotter:
 
         plt.ylabel(f"{self.detection.trace.y_unit}")
         plt.xlabel("time (s)")
-        plt.legend(loc="upper right")
+        plt.legend(loc="lower right")
         if save_fig:
             if not save_fig.endswith((".png", ".jpg", ".jpeg", ".svg", ".pdf")):
                 save_fig = save_fig + ".pdf"
@@ -165,10 +174,12 @@ class Plotter:
         else:
             plt.show()
 
-    def plot_singular_event_average(self, save_fig: str = "") -> None:
+    def plot_singular_event_average(
+        self, figsize: tuple[int, int] = (7, 4), save_fig: str = ""
+    ) -> None:
         """Plot event overlay + avg for events that have no overlapping events"""
         events = self.detection.events[self.detection.singular_event_indices]
-        fig = plt.figure("singular_events")
+        fig = plt.figure("singular_events", figsize=figsize)
         plt.plot(events.T, c=self.main_trace_color, alpha=0.3)
         plt.plot(
             np.mean(events.T, axis=1),
@@ -187,7 +198,11 @@ class Plotter:
             plt.show()
 
     def plot_event_histogram(
-        self, plot: str = "amplitude", cumulative: bool = False, save_fig: str = ""
+        self,
+        plot: str = "amplitude",
+        cumulative: bool = False,
+        figsize: tuple[int, int] = (7, 4),
+        save_fig: str = "",
     ) -> None:
         """Plot event amplitude or frequency histogram"""
         if not self.detection.events_present():
@@ -208,7 +223,7 @@ class Plotter:
         histtype = "step" if cumulative else "bar"
         ylab_str = "cumulative frequency" if cumulative else "count"
 
-        fig = plt.figure(f"{plot}_histogram")
+        fig = plt.figure(f"{plot}_histogram", figsize=figsize)
         plt.hist(
             data,
             bins="auto",
@@ -394,12 +409,11 @@ class Plotter:
                     color="k",
                     lw=1.5,
                 )
-
+                plt.legend(loc="upper right")
             plt.tick_params("x")
             plt.ylabel(f"{self.detection.trace.y_unit}")
-
         plt.xlabel("time (s)")
-        plt.legend(loc="upper right")
+
         if save_fig:
             if not save_fig.endswith((".png", ".jpg", ".jpeg", ".svg", ".pdf")):
                 save_fig = save_fig + ".pdf"
