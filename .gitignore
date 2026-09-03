@@ -166,3 +166,6 @@ cython_debug/
 docs/_build
 docs/_data
 docs/results
+
+# build folders
+_build/
