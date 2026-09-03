@@ -1,24 +1,25 @@
+from dataclasses import dataclass
+
 import h5py
 import keras
 import numpy as np
 import tensorflow as tf
-from dataclasses import dataclass
 from scipy import signal
 from scipy.ndimage import maximum_filter1d
 from scipy.optimize import curve_fit
 
 from miniml.core.functions import (
     get_event_baseline,
-    legacy_get_event_baseline,
     get_event_charge,
     get_event_halfdecay_time,
     get_event_halfwidth,
     get_event_onset,
     get_event_peak,
     get_event_risetime,
+    legacy_get_event_baseline,
 )
 from miniml.core.trace import MiniTrace
-from miniml.core.util import exp_fit, minmax_scaling, robust_noise_mad, parse_model_info
+from miniml.core.util import exp_fit, minmax_scaling, parse_model_info, robust_noise_mad
 from miniml.fileio.util import is_keras_model
 
 
@@ -357,7 +358,9 @@ class EventDetection:
 
         return signal.sosfiltfilt(sos, data)
 
-    def hann_filter(self, data: np.ndarray, filter_size: int) -> np.ndarray:
+    def hann_filter(
+        self, data: np.ndarray, filter_size: int, pad: str = "raw"
+    ) -> np.ndarray:
         """
         Apply a Hann-window smoothing filter.
 
@@ -367,19 +370,29 @@ class EventDetection:
             Input trace to filter.
         filter_size : int
             Hann window size.
+        pad : str, default="raw"
+            Padding method. Options: 'raw', 'zero', 'none'.
 
         Returns
         -------
         np.ndarray
             Smoothed trace with unfiltered edges preserved to reduce padding artifacts.
         """
-        if filter_size == 0:
+        if filter_size <= 1:
             return data
         win = signal.windows.hann(filter_size)
         win /= sum(win)
         filtered_data = signal.convolve(data, win, mode="same")
-        filtered_data[:filter_size] = data[:filter_size]
-        filtered_data[-filter_size:] = data[-filter_size:]
+        if pad == "raw":
+            filtered_data[:filter_size] = data[:filter_size]
+            filtered_data[-filter_size:] = data[-filter_size:]
+        elif pad == "zero":
+            filtered_data[:filter_size] = 0
+            filtered_data[-filter_size:] = 0
+        elif pad == "none":
+            pass
+        else:
+            raise ValueError("Invalid padding method")
 
         return filtered_data
 
@@ -531,23 +544,14 @@ class EventDetection:
             )
         else:
             trace_convolved = self.lowpass_filter(
-                data=self.trace.data,
+                data=self.trace.data.astype(np.float32),
                 cutoff=self.trace.sampling_rate / (self.filter_factor * 1.5),
-                order=4,
             )
         trace_convolved *= self.event_direction  # (-1 = 'negative', 1 else)
-
-        gradient = np.gradient(trace_convolved, self.trace.sampling).astype(np.float32)
-
-        if self.gradient_convolve_win > 0:
-            smth_gradient = self.hann_filter(
-                data=gradient, filter_size=self.gradient_convolve_win
-            )
-
-            smth_gradient[: self.gradient_convolve_win] = 0
-            smth_gradient[-self.gradient_convolve_win :] = 0
-        else:
-            smth_gradient = gradient
+        gradient = np.gradient(trace_convolved, self.trace.sampling)
+        smth_gradient = self.hann_filter(
+            data=gradient, filter_size=self.gradient_convolve_win
+        )
 
         return gradient, smth_gradient
 
@@ -711,13 +715,13 @@ class EventDetection:
         if filter:
             if self.convolve_win > 0:
                 mini_trace = self.hann_filter(
-                    data=self.trace.data, filter_size=self.convolve_win
+                    data=self.trace.data.astype(np.float32),
+                    filter_size=self.convolve_win,
                 )
             else:
                 mini_trace = self.lowpass_filter(
-                    data=self.trace.data,
+                    data=self.trace.data.astype(np.float32),
                     cutoff=self.trace.sampling_rate / self.filter_factor,
-                    order=4,
                 )
         else:
             mini_trace = self.trace.data.copy()
