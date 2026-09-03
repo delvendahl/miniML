@@ -235,6 +235,7 @@ class Plotter:
         plot_event_params: bool = False,
         plot_filtered_prediction: bool = False,
         plot_filtered_trace: bool = False,
+        figsize: tuple[int, int] = (7, 4),
         save_fig: str = "",
     ) -> None:
         """
@@ -249,11 +250,15 @@ class Plotter:
         plot_filtered_trace: bool
             Boolean whether to plot filtered prediction trace (hann window). If
             True, the first and last 100 points remain unchanged, to mask edge artifacts.
+        figsize: tuple[int, int]
+            The size of the figure in inches.
         save_fig: str
             Filename to save the figure to (in SVG format). If provided, plot will not be shown.
         """
+        if figsize is None:
+            figsize = (7, 4)
 
-        fig = plt.figure("prediction")
+        fig = plt.figure("prediction", figsize=figsize)
         if include_data:
             ax1 = plt.subplot(211)
         prediction_x = (
