@@ -5,8 +5,15 @@ miniML can be run in a graphical user interface (GUI). The GUI provides a user-f
 ## Installation
 
 To use the graphical user interface of miniML, install miniML with the GUI option. This can be done by running (navigate to the miniML folder first):
+
 ```bash
 pip install ".[gui]"
+```
+
+or from PyPI:
+
+```bash
+pip install miniml-detect[gui]
 ```
 
 ## Starting the GUI
