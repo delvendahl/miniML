@@ -211,10 +211,10 @@ class SummaryPanel(QDialog):
         self.event_count.setReadOnly(True)
         self.deleted_event_count = QLineEdit(str(detection.deleted_events))
         self.deleted_event_count.setReadOnly(True)
-        self.event_frequency = QLineEdit(f"{detection.event_stats.frequency():.5f}")
+        self.event_frequency = QLineEdit(f"{detection.event_stats.frequency:.5f}")
         self.event_frequency.setReadOnly(True)
         self.average_score = QLineEdit(
-            f"{detection.event_stats.mean(detection.event_stats.event_scores):.5f}"
+            f"{detection.event_stats.mean(detection.event_stats.scores):.5f}"
         )
         self.average_score.setReadOnly(True)
         self.average_amplitude = QLineEdit(
@@ -250,6 +250,6 @@ class SummaryPanel(QDialog):
         )
         self.average_halfwidth.setReadOnly(True)
         self.decay_tau = QLineEdit(
-            f"{detection.event_stats.mean(detection.event_stats.avg_tau_decay) * 1e3:.5f}"
+            f"{detection.event_stats.mean(detection.event_stats.tau) * 1e3:.5f}"
         )
         self.decay_tau.setReadOnly(True)

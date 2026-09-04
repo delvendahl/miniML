@@ -5,6 +5,7 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pyabf
+import pyheka
 
 from miniml.core.trace import MiniTrace
 
@@ -153,9 +154,7 @@ class TraceLoader:
         if not Path(filename).suffix.lower() == ".dat":
             raise ValueError("Incompatible file type. Method only loads .dat files.")
 
-        from miniml.fileio import heka_reader as heka
-
-        bundle = heka.Bundle(filename)
+        bundle = pyheka.Bundle(filename)
 
         if group < 0 or group > len(bundle.pul.children) - 1:
             raise IndexError("Group index out of range")

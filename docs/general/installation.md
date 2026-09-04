@@ -5,18 +5,18 @@ miniML is written in Python. To use miniML, clone the project's GitHub Repositor
 `git clone https://github.com/delvendahl/miniML.git`
 
 ```{hint} 
-We recommend creating a virtual environment for miniML using Python version 3.9 or 3.10
+We recommend creating a virtual environment for miniML using Python version 3.11.
 ```
 
 The Python dependencies for miniML are: 
 - sklearn
 - matplotlib
 - h5py
-- pandas
 - numpy
 - scipy
 - tensorflow
 - pyabf
+- pyheka
 - ruptures
 
 

@@ -268,17 +268,21 @@ class MainWindow(QMainWindow):
             return
 
         toolbar.addAction(self.openAction)
-        toolbar.addAction(self.filterAction)
         toolbar.addAction(self.infoAction)
-        toolbar.addAction(self.cutAction)
         toolbar.addAction(self.resetAction)
-        toolbar.addAction(self.analyseAction)
+        toolbar.addSeparator()
+        toolbar.addAction(self.filterAction)
+        toolbar.addAction(self.cutAction)
+        toolbar.addSeparator()
         toolbar.addAction(self.predictionAction)
-        toolbar.addAction(self.summaryAction)
         toolbar.addAction(self.plotAction)
         toolbar.addAction(self.tableAction)
+        toolbar.addSeparator()
+        toolbar.addAction(self.analyseAction)
+        toolbar.addAction(self.summaryAction)
         toolbar.addAction(self.eventViewerAction)
         toolbar.addAction(self.saveAction)
+        toolbar.addSeparator()
         toolbar.addAction(self.helperAction)
         toolbar.addAction(self.settingsAction)
 
@@ -1004,9 +1008,11 @@ class MainWindow(QMainWindow):
                 else 5
             ),
             "direction": str(settings_win.direction.currentText()),
-            "batch_size": int(settings_win.batchsize.text()),
-            "filter_factor": int(settings_win.filter_factor.text()),
-            "gradient_convolve_win": int(settings_win.gradient_convolve_window.text()),
+            "batch_size": int(settings_win.batchsize.text() or 128.0),
+            "filter_factor": float(settings_win.filter_factor.text() or 1.0),
+            "gradient_convolve_win": int(
+                settings_win.gradient_convolve_window.text() or 0.0
+            ),
         }
 
     def _apply_auto_settings(
@@ -1109,7 +1115,7 @@ class MainWindow(QMainWindow):
             if self.state.filename
             else Path("")
         )
-        file_types = "CSV (*.csv);;Pickle (*.pickle);;HDF (*.h5 *.hdf *.hdf5)"
+        file_types = "CSV (*.csv);;HDF (*.h5 *.hdf *.hdf5)"
         save_filename, selected_filter = self.open_save_results_dialog(
             default_filename=str(default_filename),
             file_types=file_types,

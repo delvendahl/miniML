@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 
 from miniml.core.functions import (
+    baseline_score,
     get_event_baseline,
     get_event_charge,
     get_event_halfdecay_time,
@@ -10,6 +11,9 @@ from miniml.core.functions import (
     get_event_onset,
     get_event_peak,
     get_event_risetime,
+    get_segment_stats,
+    get_steepest_rise_position,
+    legacy_get_event_baseline,
 )
 
 
@@ -176,12 +180,10 @@ class TestOtherMiniMLFunctions(unittest.TestCase):
         data = np.linspace(0, 10, 11)
         sampling_rate = 10000
         baseline = 0.0
-        risetime, min_pos, min_val, max_pos, max_val = get_event_risetime(
-            data, sampling_rate, baseline
-        )
-        self.assertGreater(risetime, 0)
-        self.assertAlmostEqual(min_val, 1.0, delta=0.5)
-        self.assertAlmostEqual(max_val, 9.0, delta=0.5)
+        risetime = get_event_risetime(data, sampling_rate, baseline)
+        self.assertGreater(risetime.duration, 0)
+        self.assertAlmostEqual(risetime.start_value, 1.0, delta=0.5)
+        self.assertAlmostEqual(risetime.end_value, 9.0, delta=0.5)
 
     def test_get_event_halfdecay_time(self):
         data = np.array([0, 10, 8, 6, 5, 4, 2, 0], dtype=float)
@@ -204,7 +206,7 @@ class TestOtherMiniMLFunctions(unittest.TestCase):
         charge = get_event_charge(data, start_point, end_point, baseline, sampling)
         self.assertEqual(charge, 2.0)
 
-    def test_get_event_baseline(self):
+    def test_legacy_get_event_baseline(self):
         data = np.zeros(100)
         data[50:] = 10  # event starts at 50
         duration = 20
@@ -221,12 +223,58 @@ class TestOtherMiniMLFunctions(unittest.TestCase):
         # bsl_end = (50 - (60-50)*3) = 50 - 30 = 20.
         # bsl_start = 20 - 20 = 0.
         # bsl from 0 to 20. All zeros.
-        res = get_event_baseline(
+        res = legacy_get_event_baseline(
             data, duration, event_num, add_points, diffs, peak_positions, positions
         )
         self.assertEqual(res.value, 0.0)
         self.assertEqual(res.start, 0)
         self.assertEqual(res.end, 20)
+
+    def test_get_event_baseline(self):
+        data = np.zeros(500)
+        data[300:] = 10
+        bsl_duration = 20
+        event_num = 0
+        add_points = 200
+        positions = np.array([500])
+
+        try:
+            res = get_event_baseline(
+                data, bsl_duration, event_num, add_points, positions
+            )
+            self.assertIsNotNone(res.value)
+        except Exception as e:
+            self.fail(f"get_event_baseline raised {type(e).__name__}: {e}")
+
+    def test_get_segment_stats(self):
+        data = np.array([1, 1, 1, 2, 2, 2, 4, 6, 8], dtype=float)
+        breakpoints = [3, 6, 9]
+        values, variances, slopes = get_segment_stats(breakpoints, data)
+        # Segment 1: data[1:2] = [1] -> median=1, var=0, slope=0
+        # Segment 2: data[4:5] = [2] -> median=2, var=0, slope=0
+        # Segment 3: data[7:8] = [6] -> median=6, var=0, slope=2 (actually Polynomial.fit on [7,8] with [6,8])
+        self.assertEqual(len(values), 3)
+        self.assertEqual(values[0], 1.0)
+        self.assertEqual(values[1], 2.0)
+        self.assertEqual(values[2], 6.0)
+
+    def test_get_steepest_rise_position(self):
+        data = np.zeros(100)
+        data[50:] = np.arange(50)  # Linear rise starting at 50
+        # steepest rise should be around 50
+        pos = get_steepest_rise_position(data, filter_win=5)
+        self.assertAlmostEqual(pos, 50, delta=5)
+
+    def test_baseline_score(self):
+        positions = [10, 20, 30]
+        median_values = [0, 5, 10]
+        slope_values = [0, 1, 2]
+        variance_values = [0, 1, 2]
+        steepest_rise = 40
+        score = baseline_score(
+            positions, median_values, slope_values, variance_values, steepest_rise
+        )
+        self.assertEqual(len(score), 3)
 
 
 if __name__ == "__main__":

@@ -102,11 +102,17 @@ class MiniTrace:
         """
         return len(self.data) * self.sampling
 
-    def plot_trace(self) -> None:
+    def plot_trace(self, figsize: tuple[int, int] = (7, 4)) -> None:
         """
         Plot the trace using Matplotlib.
+
+        Parameters
+        ----------
+        figsize : tuple[int, int], default=(7, 4)
+            Figure size in inches.
         """
-        plt.plot(self.time_axis, self.data)
+        plt.figure(figsize=figsize)
+        plt.plot(self.time_axis, self.data, c="#014182")
         plt.xlabel("Time [s]")
         plt.ylabel(f"[{self.y_unit}]")
         plt.show()

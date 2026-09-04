@@ -1,8 +1,8 @@
 import pyabf
+import pyheka
 from PyQt5.QtCore import pyqtSlot
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QDialog, QFormLayout, QLineEdit
 
-from miniml.fileio import heka_reader as heka
 from miniml.fileio.util import get_hdf_keys
 from miniml.gui.dialogs.common import finalize_dialog_window
 
@@ -93,7 +93,7 @@ class LoadDatPanel(QDialog):
         """
         super().__init__(parent)
 
-        self.bundle = heka.Bundle(filename)
+        self.bundle = pyheka.Bundle(filename)
 
         group_series = []
         for i, GroupRecord in enumerate(self.bundle.pul.children):

@@ -1,9 +1,8 @@
-import pickle as pkl
+from dataclasses import dataclass
 
 import h5py
 import keras
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 from scipy import signal
 from scipy.ndimage import maximum_filter1d
@@ -17,18 +16,19 @@ from miniml.core.functions import (
     get_event_onset,
     get_event_peak,
     get_event_risetime,
+    legacy_get_event_baseline,
 )
 from miniml.core.trace import MiniTrace
-from miniml.core.updated_functions import get_event_baseline_v2
-from miniml.core.util import exp_fit, minmax_scaling
+from miniml.core.util import exp_fit, minmax_scaling, parse_model_info, robust_noise_mad
 from miniml.fileio.util import is_keras_model
 
 
+@dataclass
 class EventStats:
     """
     Store summary statistics for detected events.
 
-    Parameters
+    Attributes
     ----------
     amplitudes : np.ndarray
         Amplitudes of individual events.
@@ -40,36 +40,13 @@ class EventStats:
         10-90 percent rise times of individual events.
     slopes : np.ndarray
         Rise slopes of individual events.
-    decaytimes : np.ndarray
-        Half decay times of individual events.
-    halfwidths : np.ndarray
-        Half-width of individual events (seconds).
-    tau : float
-        Average decay time constant (seconds).
-    time : float
-        Total recording duration (seconds).
-    unit : str
-        Data unit.
-
-    Attributes
-    ----------
-    amplitudes : np.ndarray
-        Amplitudes of individual events.
-    event_scores : np.ndarray
-        Prediction scores of individual events.
-    charges : np.ndarray
-        Charge transfer of individual events.
-    risetimes : np.ndarray
-        10-90 percent rise times of individual events.
-    slopes : np.ndarray
-        Rise slopes of individual events.
     halfdecays : np.ndarray
         Half decay times of individual events.
     halfwidths : np.ndarray
         Half-widths of individual events.
-    avg_tau_decay : float
+    tau : float
         Average decay time constant.
-    rec_time : float
+    time : float
         Total recording duration.
     y_unit : str
         Signal unit.
@@ -77,30 +54,28 @@ class EventStats:
         Number of detected events.
     """
 
-    def __init__(
-        self,
-        amplitudes: np.ndarray,
-        scores: np.ndarray,
-        charges: np.ndarray,
-        risetimes: np.ndarray,
-        slopes: np.ndarray,
-        decaytimes: np.ndarray,
-        halfwidths: np.ndarray,
-        tau,
-        time,
-        unit: str,
-    ) -> None:
-        self.amplitudes = amplitudes
-        self.event_scores = scores
-        self.charges = charges
-        self.risetimes = risetimes
-        self.slopes = slopes
-        self.halfdecays = decaytimes
-        self.halfwidths = halfwidths
-        self.avg_tau_decay = tau
-        self.rec_time = time
-        self.y_unit = unit
-        self.event_count = len(self.amplitudes)
+    amplitudes: np.ndarray
+    scores: np.ndarray
+    charges: np.ndarray
+    risetimes: np.ndarray
+    slopes: np.ndarray
+    halfdecays: np.ndarray
+    halfwidths: np.ndarray
+    tau: float
+    time: float
+    y_unit: str
+
+    @property
+    def event_count(self) -> int:
+        """
+        Return the number of detected events.
+
+        Returns
+        -------
+        int
+            Number of detected events.
+        """
+        return len(self.amplitudes)
 
     def mean(self, values: np.ndarray) -> float:
         """
@@ -174,8 +149,11 @@ class EventStats:
         float
             Absolute ratio of standard deviation to mean.
         """
+        if self.mean(values) == 0:
+            return float("nan")
         return float(abs(self.std(values) / self.mean(values)))
 
+    @property
     def frequency(self) -> float:
         """
         Return the detected event frequency.
@@ -185,7 +163,7 @@ class EventStats:
         float
             Event frequency in hertz.
         """
-        return float(len(self.amplitudes) / self.rec_time)
+        return float(len(self.amplitudes) / self.time)
 
     def print(self) -> None:
         """
@@ -193,8 +171,8 @@ class EventStats:
         """
         print("\nEvent statistics:\n-------------------------")
         print(f"    Number of events: {self.event_count}")
-        print(f"    Average score: {self.mean(self.event_scores):.3f}")
-        print(f"    Event frequency: {self.frequency():.4f} Hz")
+        print(f"    Average score: {self.mean(self.scores):.3f}")
+        print(f"    Event frequency: {self.frequency:.4f} Hz")
         print(f"    Mean amplitude: {self.mean(self.amplitudes):.4f} {self.y_unit}")
         print(f"    Median amplitude: {self.median(self.amplitudes):.4f} {self.y_unit}")
         print(f"    Std amplitude: {self.std(self.amplitudes):.4f} {self.y_unit}")
@@ -204,7 +182,7 @@ class EventStats:
         print(f"    Mean 10-90 risetime: {self.mean(self.risetimes) * 1000:.3f} ms")
         print(f"    Mean half decay time: {self.mean(self.halfdecays) * 1000:.3f} ms")
         print(f"    Mean half-width: {self.mean(self.halfwidths) * 1000:.3f} ms")
-        print(f"    Tau decay: {self.avg_tau_decay * 1000:.3f} ms")
+        print(f"    Tau decay: {self.tau * 1000:.3f} ms")
         print("-------------------------")
 
 
@@ -226,10 +204,8 @@ class EventDetection:
         Verbosity level for prediction and reporting.
     batch_size : int, default=128
         Batch size used by ``model.predict``.
-    model : keras.Model | None, optional
-        Model instance to use for event detection.
-    model_path : str, default=""
-        Path to a saved Keras model.
+    model : keras.Model | str | None, default=None
+        Model instance to use for event detection, or path to a saved Keras model file.
     model_threshold : float, default=0.5
         Minimum model prediction peak height required for event detection.
     compile_model : bool, default=True
@@ -265,8 +241,7 @@ class EventDetection:
         training_direction: str = "negative",
         verbose: int = 1,
         batch_size: int = 128,
-        model: keras.Model | None = None,
-        model_path: str = "",
+        model: keras.Model | str | None = None,
         model_threshold: float = 0.5,
         compile_model: bool = True,
         callbacks: list | None = None,
@@ -281,21 +256,26 @@ class EventDetection:
         self.event_scores = np.array([])
         self.events = np.array([])
         self.batch_size = batch_size
-        self.model_path = model_path
-        self.model: keras.Model
-        self.model_threshold = None
+        self.model = None
+        self.model_path = ""
+        self.model_threshold = model_threshold
         if model is not None:
-            self.model = model
-            self.model_threshold = model_threshold
-            self.callbacks = callbacks or []
-        elif model_path:
-            self.load_model(
-                filepath=model_path,
-                threshold=model_threshold,
-                compile=compile_model,
-            )
+            if isinstance(model, str):
+                self.load_model(
+                    filepath=model,
+                    compile=compile_model,
+                )
+                self.model_path = model
+            else:
+                self.model = model
             self.callbacks = callbacks or []
         self.deleted_events = 0
+
+        # Define peak spacer, i.e. number of points left / right of detected event peaks to use for amplitude calculation.
+        if int(self.window_size / 300) < 1:
+            self.peak_spacer = 1
+        else:
+            self.peak_spacer = int(self.window_size / 300)
 
     @property
     def event_direction(self):
@@ -328,9 +308,7 @@ class EventDetection:
 
         return num_events != 0
 
-    def load_model(
-        self, filepath: str, threshold: float = 0.5, compile: bool = True
-    ) -> None:
+    def load_model(self, filepath: str, compile: bool = True) -> None:
         """
         Load a trained miniML model from an HDF5 file.
 
@@ -338,8 +316,6 @@ class EventDetection:
         ----------
         filepath : str
             Path to the saved Keras model.
-        threshold : float, default=0.5
-            Prediction threshold used during peak detection.
         compile : bool, default=True
             Whether to compile the loaded model.
 
@@ -351,7 +327,6 @@ class EventDetection:
         if not is_keras_model(filepath):
             raise ValueError("Model file is not a valid Keras model")
         self.model: keras.Model = keras.models.load_model(filepath, compile=compile)
-        self.model_threshold = threshold
         if self.verbose:
             print(f"Model loaded from {filepath}")
 
@@ -383,7 +358,9 @@ class EventDetection:
 
         return signal.sosfiltfilt(sos, data)
 
-    def hann_filter(self, data: np.ndarray, filter_size: int) -> np.ndarray:
+    def hann_filter(
+        self, data: np.ndarray, filter_size: int, pad: str = "raw"
+    ) -> np.ndarray:
         """
         Apply a Hann-window smoothing filter.
 
@@ -393,18 +370,29 @@ class EventDetection:
             Input trace to filter.
         filter_size : int
             Hann window size.
+        pad : str, default="raw"
+            Padding method. Options: 'raw', 'zero', 'none'.
 
         Returns
         -------
         np.ndarray
             Smoothed trace with unfiltered edges preserved to reduce padding artifacts.
         """
-        if filter_size == 0:
+        if filter_size <= 1:
             return data
         win = signal.windows.hann(filter_size)
-        filtered_data = signal.convolve(data, win, mode="same") / sum(win)
-        filtered_data[:filter_size] = data[:filter_size]
-        filtered_data[-filter_size:] = data[-filter_size:]
+        win /= sum(win)
+        filtered_data = signal.convolve(data, win, mode="same")
+        if pad == "raw":
+            filtered_data[:filter_size] = data[:filter_size]
+            filtered_data[-filter_size:] = data[-filter_size:]
+        elif pad == "zero":
+            filtered_data[:filter_size] = 0
+            filtered_data[-filter_size:] = 0
+        elif pad == "none":
+            pass
+        else:
+            raise ValueError("Invalid padding method")
 
         return filtered_data
 
@@ -551,42 +539,42 @@ class EventDetection:
         # filter raw data trace, calculate gradient and filter first derivative trace
         if self.convolve_win > 0:
             trace_convolved = self.hann_filter(
-                data=self.trace.data, filter_size=self.convolve_win * 2
+                data=self.trace.data.astype(np.float32),
+                filter_size=self.convolve_win * 2,
             )
         else:
             trace_convolved = self.lowpass_filter(
-                data=self.trace.data,
+                data=self.trace.data.astype(np.float32),
                 cutoff=self.trace.sampling_rate / (self.filter_factor * 1.5),
-                order=4,
             )
         trace_convolved *= self.event_direction  # (-1 = 'negative', 1 else)
-
         gradient = np.gradient(trace_convolved, self.trace.sampling)
-        # gradient[:int(self.convolve_win * 1.5)] = 0
-        # gradient[-int(self.convolve_win * 1.5):] = 0
-
         smth_gradient = self.hann_filter(
             data=gradient, filter_size=self.gradient_convolve_win
         )
-        smth_gradient[: self.gradient_convolve_win] = 0
-        smth_gradient[-self.gradient_convolve_win :] = 0
 
         return gradient, smth_gradient
 
     def _get_grad_threshold(
-        self, grad: np.ndarray, start_pnts: np.ndarray, end_pnts: np.ndarray
+        self,
+        gradient: np.ndarray,
+        start_pnts: np.ndarray,
+        end_pnts: np.ndarray,
+        multiplier: float = 4.0,
     ) -> int:
         """
         Estimate a derivative threshold from event-free trace segments.
 
         Parameters
         ----------
-        grad : np.ndarray
+        gradient : np.ndarray
             Gradient trace.
         start_pnts : np.ndarray
             Candidate event start indices.
         end_pnts : np.ndarray
             Candidate event end indices.
+        multiplier : float, default=4.0
+            Multiplier for calculating the threshold based on MAD.
 
         Returns
         -------
@@ -594,9 +582,10 @@ class EventDetection:
             Gradient threshold derived from the standard deviation of event-free
             segments.
         """
-        split_data = np.split(grad, np.vstack((start_pnts, end_pnts)).ravel("F"))
+        split_data = np.split(gradient, np.vstack((start_pnts, end_pnts)).ravel("F"))
         event_free_data = np.concatenate(split_data[::2]).ravel()
-        grad_threshold = int(4 * np.std(event_free_data))
+
+        grad_threshold = robust_noise_mad(event_free_data, multiplier=multiplier)[0]
 
         return grad_threshold
 
@@ -726,13 +715,13 @@ class EventDetection:
         if filter:
             if self.convolve_win > 0:
                 mini_trace = self.hann_filter(
-                    data=self.trace.data, filter_size=self.convolve_win
+                    data=self.trace.data.astype(np.float32),
+                    filter_size=self.convolve_win,
                 )
             else:
                 mini_trace = self.lowpass_filter(
-                    data=self.trace.data,
+                    data=self.trace.data.astype(np.float32),
                     cutoff=self.trace.sampling_rate / self.filter_factor,
-                    order=4,
                 )
         else:
             mini_trace = self.trace.data.copy()
@@ -782,7 +771,7 @@ class EventDetection:
             )
 
             if use_legacy_baseline_method:
-                baseline = get_event_baseline(
+                baseline = legacy_get_event_baseline(
                     data=data,
                     duration=baseline_duration,
                     event_num=ix,
@@ -792,7 +781,7 @@ class EventDetection:
                     positions=positions,
                 )
             else:
-                baseline = get_event_baseline_v2(
+                baseline = get_event_baseline(
                     data=data,
                     bsl_duration=baseline_duration,
                     event_num=ix,
@@ -813,24 +802,18 @@ class EventDetection:
             )
             self.event_start[ix] = onset_position
 
-            (
-                risetime,
-                min_position_rise,
-                min_value_rise,
-                max_position_rise,
-                max_value_rise,
-            ) = get_event_risetime(
+            risetime = get_event_risetime(
                 data=data[baseline.start : int(event_peak_pos)],
                 sampling_rate=self.trace.sampling_rate,
                 baseline=baseline.value,
                 amplitude=self.event_peak_values[ix] - baseline.value,
             )
-            self.risetimes[ix] = risetime
-            self.min_positions_rise[ix] = min_position_rise
-            self.min_values_rise[ix] = min_value_rise
+            self.risetimes[ix] = risetime.duration
+            self.min_positions_rise[ix] = risetime.start_time
+            self.min_values_rise[ix] = risetime.start_value
 
-            self.max_positions_rise[ix] = max_position_rise
-            self.max_values_rise[ix] = max_value_rise
+            self.max_positions_rise[ix] = risetime.end_time
+            self.max_values_rise[ix] = risetime.end_value
 
             half_amplitude_level = (
                 baseline.value + (data[event_peak_pos] - baseline.value) / 2
@@ -1071,7 +1054,7 @@ class EventDetection:
         )
         event_peak_value = data[event_peak]
         if use_legacy_baseline_method:
-            baseline = get_event_baseline(
+            baseline = legacy_get_event_baseline(
                 data=data,
                 duration=int(self.window_size * 0.1),
                 event_num=0,
@@ -1081,7 +1064,7 @@ class EventDetection:
                 positions=[self.add_points],
             )
         else:
-            baseline = get_event_baseline_v2(
+            baseline = get_event_baseline(
                 data=data,
                 bsl_duration=int(self.window_size * 0.1),
                 event_num=0,
@@ -1095,13 +1078,7 @@ class EventDetection:
             baseline_var=baseline.var,
         )
 
-        (
-            risetime,
-            min_position_rise,
-            min_value_rise,
-            max_position_rise,
-            max_value_rise,
-        ) = get_event_risetime(
+        risetime = get_event_risetime(
             data=data[baseline.start : int(event_peak)],
             sampling_rate=self.trace.sampling_rate,
             baseline=baseline.value,
@@ -1123,15 +1100,15 @@ class EventDetection:
         results = {
             "amplitude": event_peak_value - baseline.value,
             "baseline": baseline.value * self.event_direction,
-            "risetime": risetime * self.trace.sampling,
+            "risetime": risetime.duration * self.trace.sampling,
             "halfdecay_time": halfdecay_time * self.trace.sampling,
             "charge": charge * self.event_direction,
             "event_peak": event_peak,
             "onset_position": onset_position,
-            "min_position_rise": min_position_rise,
-            "min_value_rise": min_value_rise * self.event_direction,
-            "max_position_rise": max_position_rise,
-            "max_value_rise": max_value_rise * self.event_direction,
+            "min_position_rise": risetime.start_time,
+            "min_value_rise": risetime.start_value * self.event_direction,
+            "max_position_rise": risetime.end_time,
+            "max_value_rise": risetime.end_value * self.event_direction,
             "halfdecay_position": halfdecay_position,
             "endpoint_charge": endpoint,
         }
@@ -1168,11 +1145,11 @@ class EventDetection:
         rel_prom_cutoff : float, default=0.25
             Relative prominence cutoff used when separating overlapping events.
         filter_factor : float, default=20.0
-            Low-pass filter factor expressed as a fraction of the sampling rate.
+            Low-pass filter factor expressed as a fraction of the sampling rate. Only used if ``convolve_win`` is set to 0.
         convolve_win : int, default=0
             Hann window size used for event-analysis filtering.
         gradient_convolve_win : int, default=0
-            Hann window size used to smooth the derivative.
+            Hann window size used to smooth the derivative for exact event localization.
         bsl_win : float, default=0.33
             Baseline window size as fraction of window size.
         use_legacy_baseline_method : bool, default=True
@@ -1197,12 +1174,6 @@ class EventDetection:
         self.gradient_convolve_win = gradient_convolve_win
         self.resampling_factor = 600 / self.window_size if resample_to_600 else 1
 
-        # Define peak spacer, i.e. number of points left / right of detected event peaks to use for amplitude calculation.
-        if int(self.window_size / 300) < 1:
-            self.peak_spacer = 1
-        else:
-            self.peak_spacer = int(self.window_size / 300)
-
         self.__predict()
 
         # Linear interpolation of prediction trace to match the original data.
@@ -1211,8 +1182,11 @@ class EventDetection:
             peak_w=peak_w
         )
         self.gradient, self.smth_gradient = self._make_smth_gradient()
+
         self.grad_threshold = self._get_grad_threshold(
-            grad=self.smth_gradient, start_pnts=self.start_pnts, end_pnts=self.end_pnts
+            gradient=self.smth_gradient,
+            start_pnts=self.start_pnts,
+            end_pnts=self.end_pnts,
         )
         self.event_locations, self.event_scores = self._find_event_locations(
             limit=self.window_size + self.add_points,
@@ -1304,14 +1278,14 @@ class EventDetection:
         self.event_stats = EventStats(
             amplitudes=self.event_peak_values - self.event_bsls,
             scores=self.event_scores,
-            tau=self.avg_decay_fit[1],
             charges=self.charges,
             risetimes=self.risetimes,
             slopes=self.slopes,
-            decaytimes=self.decaytimes,
+            halfdecays=self.decaytimes,
             halfwidths=self.halfwidths,
+            tau=self.avg_decay_fit[1],
             time=self.trace.total_time,
-            unit=self.trace.y_unit,
+            y_unit=self.trace.y_unit,
         )
 
         self.event_peak_times = self.event_peak_locations * self.trace.sampling
@@ -1351,37 +1325,25 @@ class EventDetection:
             if event < 0 or event >= self.event_locations.shape[0]:
                 raise ValueError(f"Event {event} does not exist.")
 
-        self.event_locations = np.delete(self.event_locations, event_indices, axis=0)
-        self.event_peak_locations = np.delete(
-            self.event_peak_locations, event_indices, axis=0
-        )
-        self.event_peak_times = np.delete(self.event_peak_times, event_indices, axis=0)
-        self.event_peak_values = np.delete(
-            self.event_peak_values, event_indices, axis=0
-        )
-        self.event_start = np.delete(self.event_start, event_indices, axis=0)
-        self.decaytimes = np.delete(self.decaytimes, event_indices, axis=0)
-        self.risetimes = np.delete(self.risetimes, event_indices, axis=0)
-        self.charges = np.delete(self.charges, event_indices, axis=0)
-        self.event_bsls = np.delete(self.event_bsls, event_indices, axis=0)
-        self.bsl_starts = np.delete(self.bsl_starts, event_indices, axis=0)
-        self.bsl_ends = np.delete(self.bsl_ends, event_indices, axis=0)
-        self.min_positions_rise = np.delete(
-            self.min_positions_rise, event_indices, axis=0
-        )
-        self.max_positions_rise = np.delete(
-            self.max_positions_rise, event_indices, axis=0
-        )
-        self.half_decay = np.delete(self.half_decay, event_indices, axis=0)
-        self.halfwidths = np.delete(self.halfwidths, event_indices, axis=0)
-        self.events = np.delete(self.events, event_indices, axis=0)
-        self.event_scores = np.delete(self.event_scores, event_indices, axis=0)
+        num_events = self.event_locations.shape[0]
+        blacklist = {}
+
+        attrs_to_delete = []
+        for attr_name, attr_val in self.__dict__.items():
+            if attr_name in blacklist:
+                continue
+            if isinstance(attr_val, np.ndarray) and attr_val.shape[0] == num_events:
+                attrs_to_delete.append(attr_name)
+
+        for attr_name in attrs_to_delete:
+            arr = getattr(self, attr_name)
+            setattr(self, attr_name, np.delete(arr, event_indices, axis=0))
 
         self.deleted_events += len(event_indices)
 
         if eval:
-            self.detection._get_singular_event_indices()
-            self.detection._eval_events()
+            self._get_singular_event_indices()
+            self._eval_events()
 
     def save_to_h5(self, filename: str, include_prediction: bool = False) -> None:
         """
@@ -1475,10 +1437,10 @@ class EventDetection:
                 data=self.event_stats.median(self.event_stats.halfwidths),
             )
             f.create_dataset(
-                "event_statistics/decay_from_fit", data=self.event_stats.avg_tau_decay
+                "event_statistics/decay_from_fit", data=self.event_stats.tau
             )
             f.create_dataset(
-                "event_statistics/frequency", data=self.event_stats.frequency()
+                "event_statistics/frequency", data=self.event_stats.frequency
             )
             f.create_dataset(
                 "event_statistics/iei_mean",
@@ -1492,13 +1454,17 @@ class EventDetection:
             f.attrs["amplitude_unit"] = self.trace.y_unit
             f.attrs["recording_time"] = self.trace.data.shape[0] * self.trace.sampling
             f.attrs["source_filename"] = self.trace.filename
-            f.attrs["miniml_model"] = self.model_path
+            f.attrs["miniml_model"] = (
+                self.model_path
+                if len(self.model_path) > 0
+                else f"{parse_model_info(self.model)}"
+            )
             f.attrs["miniml_model_threshold"] = self.model_threshold
             f.attrs["minimum_peak"] = self.peak_w
             f.attrs["stride"] = self.stride_length
             f.attrs["window"] = self.window_size
             f.attrs["event_direction"] = self.event_direction
-            if self.convolve_win > 0:
+            if hasattr(self, "convolve_win") and self.convolve_win > 0:
                 f.attrs["convolve_win"] = self.convolve_win
             else:
                 f.attrs["filter_factor"] = self.filter_factor
@@ -1551,151 +1517,62 @@ class EventDetection:
                 self.event_stats.mean(self.event_stats.risetimes),
                 self.event_stats.mean(self.event_stats.halfdecays),
                 self.event_stats.mean(self.event_stats.halfwidths),
-                self.event_stats.avg_tau_decay,
-                self.event_stats.frequency(),
+                self.event_stats.tau,
+                self.event_stats.frequency,
                 self.event_stats.mean(self.interevent_intervals),
             )
         )
 
         column_names = [f"event_{i}" for i in range(len(self.event_locations))]
 
-        individual = pd.DataFrame(
-            individual,
-            index=[
-                "location",
-                "score",
-                "amplitude",
-                "charge",
-                "risetime",
-                "decaytime",
-                "halfwidth",
-                "interval",
-            ],
-            columns=column_names,
-        )
-        avgs = pd.DataFrame(
-            avgs,
-            index=[
-                "amplitude mean",
-                "amplitude std",
-                "amplitude median",
-                "charge mean",
-                "risetime mean",
-                "decaytime mean",
-                "halfwidth mean",
-                "tau_avg",
-                "frequency",
-                "iei mean",
-            ],
-            columns=["value"],
-        )
+        import csv
 
-        individual.to_csv(f"{filename}_individual.csv")
-        avgs.to_csv(f"{filename}_avgs.csv", header=False)
+        row_labels_ind = [
+            "location",
+            "score",
+            "amplitude",
+            "charge",
+            "risetime",
+            "decaytime",
+            "halfwidth",
+            "interval",
+        ]
+        with open(f"{filename}_individual.csv", "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow([""] + column_names)
+            for label, row_data in zip(row_labels_ind, individual):
+                writer.writerow([label] + list(row_data))
+
+        row_labels_avg = [
+            "amplitude mean",
+            "amplitude std",
+            "amplitude median",
+            "charge mean",
+            "risetime mean",
+            "decaytime mean",
+            "halfwidth mean",
+            "tau_avg",
+            "frequency",
+            "iei mean",
+        ]
+        with open(f"{filename}_avgs.csv", "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            for label, val in zip(row_labels_avg, avgs):
+                writer.writerow([label, val])
+
         print(f"events saved to {filename}_avgs.csv and {filename}_individual.csv")
 
-    def save_to_pickle(
-        self,
-        filename: str = "",
-        include_prediction: bool = True,
-        include_data: bool = True,
-    ) -> None:
-        """
-        Save detection results to a pickle file.
+    def __repr__(self):
+        # print a meaningful summary of the event analysis object
+        was_analyzed = "analyzed" if hasattr(self, "event_stats") else "not analyzed"
+        data_length = self.trace.data.shape[0]
+        event_count = (
+            self.event_locations.shape[0]
+            if hasattr(self, "event_locations")
+            else np.nan
+        )
 
-        Parameters
-        ----------
-        filename : str, default=""
-            Output filename, optionally including a directory.
-        include_prediction : bool, default=True
-            Include the prediction trace.
-        include_data : bool, default=True
-            Include the source trace data together with the analysis results.
-        """
-        if not hasattr(self, "event_stats"):
-            self._eval_events()
-            if not hasattr(self, "event_stats"):
-                print("Save error: No events found")
-                return
-
-        if not filename.endswith("pickle"):
-            filename += ".pickle"
-
-        results = {
-            "event_location_parameters": {
-                "event_locations": np.array(self.event_locations),
-                "event_scores": np.array(self.event_scores),
-                "event_peak_locations": self.event_peak_locations,
-                "event_baselines": self.event_bsls,
-                "event_onset_locations": self.event_start,
-                "min_positions_rise": self.min_positions_rise,
-                "max_positions_rise": self.max_positions_rise,
-                "min_values_rise": self.min_values_rise,
-                "max_values_rise": self.max_values_rise,
-                "half_decay_positions": self.half_decay,
-            },
-            "individual_values": {
-                "amplitudes": self.event_stats.amplitudes,
-                "charges": self.event_stats.charges,
-                "risetimes": self.event_stats.risetimes,
-                "half_decaytimes": self.event_stats.halfdecays,
-                "event_intervals": self.interevent_intervals,
-                "halfwidths": self.event_stats.halfwidths,
-            },
-            "average_values": {
-                "amplitude mean": self.event_stats.mean(self.event_stats.amplitudes),
-                "amplitude std": self.event_stats.std(self.event_stats.amplitudes),
-                "amplitude median": self.event_stats.median(
-                    self.event_stats.amplitudes
-                ),
-                "charge mean": self.event_stats.mean(self.event_stats.charges),
-                "risetime mean": self.event_stats.mean(self.event_stats.risetimes),
-                "half_decaytime mean": self.event_stats.mean(
-                    self.event_stats.halfdecays
-                ),
-                "halfwidth mean": self.event_stats.mean(self.event_stats.halfwidths),
-                "decay_tau": self.event_stats.avg_tau_decay * 1000,
-                "frequency": self.event_stats.frequency(),
-                "iei_mean": self.event_stats.mean(self.interevent_intervals),
-                "iei_median": self.event_stats.median(self.interevent_intervals),
-            },
-            "average_event_properties": self.average_event_properties,
-            "metadata": {
-                ### trace information:
-                "source_filename": self.trace.filename,
-                "y_unit": self.trace.y_unit,
-                "recording_time": self.trace.data.shape[0] * self.trace.sampling,
-                "sampling": self.trace.sampling,
-                "sampling_rate": self.trace.sampling_rate,
-                ### miniML information
-                "miniml_model": self.model_path,
-                "miniml_model_threshold": self.model_threshold,
-                ### event detection params:
-                "window_size": self.window_size,
-                "stride": self.stride_length,
-                "add_points": self.add_points,
-                "resampling_factor": self.resampling_factor,
-                ### event analysis params:
-                "convolve_win": self.convolve_win,
-                "filter_factor": self.filter_factor,
-                "gradient_convolve_win": self.gradient_convolve_win,
-                "min_peak_w": self.peak_w,
-                "rel_prom_cutoff": self.rel_prom_cutoff,
-                "event_direction": self.event_direction,
-                "deleted_events": self.deleted_events,
-            },
-            "events": self.events,
-        }
-
-        if include_prediction:
-            results["prediction"] = self.prediction  # Save prediction as numpy array
-
-        if include_data:
-            results["mini_trace"] = self.trace.data
-
-        with open(filename, "wb") as handle:
-            pkl.dump(results, handle)
-        print(f"events saved to {filename}")
+        return f"miniML EventAnalysis containing data with {data_length} samples. Data was {was_analyzed} and {event_count} events were detected."
 
 
 class EventAnalysis(EventDetection):
@@ -1773,6 +1650,10 @@ class EventAnalysis(EventDetection):
             If True, derive event properties from filtered trace data.
         """
         if self.event_locations.shape[0] > 0:
+            self.gradient, self.smth_gradient = self._make_smth_gradient()
+            self.slopes = self.smth_gradient[self.event_locations]
+            self._get_singular_event_indices()
             super()._get_event_properties(filter=filter)
             self.events = self.events - self.event_bsls[:, None]
+            self.average_event_properties = self._get_average_event_properties()
             super()._eval_events()

@@ -4,29 +4,30 @@
 # https://doi.org/10.1016/S0956-5663(02)00053-2
 # simplified numpy implementation
 #
+from typing import NamedTuple
 
-import h5py
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import butter, sosfiltfilt
 
 
-class DetectionResult:
+class DetectionResult(NamedTuple):
     """Collection of results of threshold-based event detection."""
 
-    def __init__(self, indices, avg, dt, peak_win, threshold, detection_trace):
-        self.indices = indices
-        """the indices of detected events"""
-        self.avg = avg
-        """the baseline window"""
-        self.dt = dt
-        """event detection window"""
-        self.peak_win = peak_win
-        """the peak window"""
-        self.threshold = threshold
-        """the threshold used for detection"""
-        self.detection_trace = detection_trace
-        """the detection trace"""
+    indices: np.ndarray
+    """the indices of detected events"""
+    avg: np.ndarray
+    """the baseline window"""
+    dt: float
+    """event detection window"""
+    peak_win: float
+    """the peak window"""
+    threshold: float
+    """the threshold used for detection"""
+    detection_trace: np.ndarray
+    """the detection trace"""
+
+    def __repr__(self):
+        return f"DetectionResult(indices={self.indices}, avg={self.avg}, dt={self.dt}, peak_win={self.peak_win}, threshold={self.threshold}, detection_trace={self.detection_trace})"
 
 
 def threshold_detection(data, sampling, threshold, baseline, dt, peak_win):
@@ -55,25 +56,11 @@ def threshold_detection(data, sampling, threshold, baseline, dt, peak_win):
     pos = np.where(thresholded_data < threshold)[0]
     indices = pos[np.where(np.diff(pos, prepend=0) > pk_win)[0]]
 
-    return DetectionResult(indices, baseline, dt, peak_win, threshold, thresholded_data)
-
-
-if __name__ == "__main__":
-    # load data
-    filename = "../example_data/gc_mini_trace.h5"
-    sampling = 2e-5
-
-    with h5py.File(filename, "r") as f:
-        data = f["mini_data"][:]
-    data *= 1e12
-    time = np.arange(0, len(data)) * sampling
-
-    matching = threshold_detection(
-        data, sampling, threshold=-5, baseline=0.0008, dt=0.0008, peak_win=0.0015
+    return DetectionResult(
+        indices,
+        baseline,
+        dt,
+        peak_win,
+        threshold,
+        thresholded_data,
     )
-
-    print(len(matching.indices))
-
-    plt.plot(time, data)
-    plt.plot(time[matching.indices], data[matching.indices], "o")
-    plt.show()
