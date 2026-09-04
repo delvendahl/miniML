@@ -21,14 +21,41 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 📢 RELEASES
 
+#### v.1.1.0 - 04 September 2026
+
+- package installable from PyPI ("miniml-detect")
+- major updates to GUI implementation and the code base
+- several small bug fixes
+- updated documentation
+- switch to using pyheka package for .dat file import
+
 #### v.1.0.0 - 24 July 2026
 
 - Initial release as package
 
 
+### 📈 ROADMAP
+
+Next versions of miniML will move to Keras3 and/or pyTorch backends, in order to support newer pacjkage and Python versions.
+
+
 ### 💻 INSTALLATION
 
-To use miniML, clone the GitHub Repository and install, e.g. using pip. It is strongly recommended to install miniML into its own virtual environment! 
+To use miniML, either clone the repository and install it locally, or install it directly from PyPI using pip:
+
+```bash
+pip install miniml-detect
+```
+
+Local installation:
+
+```bash
+git clone https://github.com/delvendahl/miniML.git
+cd miniML
+pip install .
+```
+
+It is strongly recommended to install miniML into its own virtual environment! 
 miniML requires Python 3.11. The default Python dependencies are: sklearn, matplotlib, h5py, numpy, scipy, tensorflow, pyabf, ruptures. 
 
 >[!IMPORTANT]
