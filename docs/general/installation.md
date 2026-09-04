@@ -1,8 +1,10 @@
 # Installation
 
-miniML is written in Python. To use miniML, clone the project's GitHub Repository and install the requirements. 
+miniML is written in Python and is distrubuted as a Python package. It can be installed from PyPI using pip (recommendend for most users), or locally by cloning the GitHub repository and installing it with, e.g., pip.
 
-`git clone https://github.com/delvendahl/miniML.git`
+```bash
+pip install miniml-detect[gui]
+```
 
 ```{hint} 
 We recommend creating a virtual environment for miniML using Python version 3.11.
@@ -18,18 +20,39 @@ The Python dependencies for miniML are:
 - pyabf
 - pyheka
 - ruptures
+- pyQT5 (gui only)
+- qt-material (gui only)
+- pyqtgraph (gui only)
 
 
-To install miniML using pip, cd to the miniML folder and run the following command in your Python environment:
+To install miniML locally using pip, clone the project's GitHub Repository, cd to the miniML folder, and run the following command in your Python environment:
+
 ```bash
-pip install .
+git clone https://github.com/delvendahl/miniML.git
+cd miniML
+pip install ".[gui]"
 ```
+
+You can also install miniML in editable mode, which allows you to make changes to the code and have them reflected immediately without needing to reinstall the package. To do this, run:
+
+```bash
+pip install -e ".[gui]"
+```
+
+
 
 This will install everything you need to run miniML as a python package.
 
-To install miniML with the GUI option, run:
+To install miniML without the GUI option, run:
+
 ```bash
-pip install ".[gui]"
+pip install miniml-detect
+```
+
+or locally:
+
+```bash
+pip install .
 ```
 
 ```{important}

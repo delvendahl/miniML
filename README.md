@@ -1,4 +1,4 @@
-<img align="left" width="100" height="100" src="src/miniml/resources/icons/app/app_512px.png">
+<img align="left" width="100" height="100" src="https://raw.githubusercontent.com/delvendahl/miniML/refs/heads/main/src/miniml/resources/icons/app/app_512px.png">
 
 # miniML: A deep learning framework for synaptic event detection
 
@@ -36,7 +36,7 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 📈 ROADMAP
 
-Next versions of miniML will move to Keras3 and/or pyTorch backends, in order to support newer pacjkage and Python versions.
+Next versions of miniML will move to Keras3 and/or pyTorch backends, in order to support newer package and Python versions.
 
 
 ### 💻 INSTALLATION
@@ -44,7 +44,7 @@ Next versions of miniML will move to Keras3 and/or pyTorch backends, in order to
 To use miniML, either clone the repository and install it locally, or install it directly from PyPI using pip:
 
 ```bash
-pip install miniml-detect
+pip install miniml-detect[gui]
 ```
 
 Local installation:
@@ -52,11 +52,17 @@ Local installation:
 ```bash
 git clone https://github.com/delvendahl/miniML.git
 cd miniML
-pip install .
+pip install .[gui]
 ```
 
 It is strongly recommended to install miniML into its own virtual environment! 
-miniML requires Python 3.11. The default Python dependencies are: sklearn, matplotlib, h5py, numpy, scipy, tensorflow, pyabf, ruptures. 
+miniML requires Python 3.11. The default Python dependencies are: sklearn, matplotlib, h5py, numpy, scipy, tensorflow, pyabf, pyheka, ruptures, pyQT5, qt-material, pyqtgraph. 
+
+An executable script `miniml-gui` will be created to start the application's GUI:
+
+```bash
+miniml-gui
+```
 
 >[!IMPORTANT]
 >The release of TensorFlow 2.16 and Keras 3 introduced breaking changes that raise an error when loading models trained with earlier TensorFlow versions. To avoid this, it is recommended to use TensorFlow 2.14 or 2.15.
@@ -64,8 +70,9 @@ miniML requires Python 3.11. The default Python dependencies are: sklearn, matpl
 > [!NOTE]
 >miniML can be run on a GPU to speed model inference. Either CUDA or tensorflow-metal are required for GPU use. Installation instructions for these requirements may depend on the specific hardware and OS and can be found online.
 
-#### Installation with GUI
-For the GUI, additional dependencies are required (PyQt5, qt-material, and pyqtgraph). Install miniML with `pip install .[gui]` to include these dependencies and get full GUI support. An executable script `miniml-gui` will be created to start the application.
+#### Installation without GUI
+For the GUI, additional dependencies are required (PyQt5, qt-material, and pyqtgraph). Install miniML without the GUI using `pip install .` (local) or `pip install miniml-detect` (PyPI). 
+
 
 ### 📚 DOCUMENTATION
 
@@ -85,10 +92,15 @@ Following event detection, the individual detected events are analyzed and descr
 
 miniML includes several plotting methods. They can be found in the **Plotter** class in `plotting.py`. A detection object has to be passed as data argument. 
 
-Event data and statistics can be saved in different formats (.pickle, .h5, .csv).
+Event data and statistics can be saved in different formats (.h5, .csv).
 
 > [!TIP]
->miniML can also be used via a GUI (see *Installation with GUI*). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspected and deleted, if desired. The GUI can also be used to save results to a PICKLE, CSV or HDF5 file.
+>miniML can also be used via a GUI (see *Installation with GUI*). The GUI allows easy loading of data, pre-processing (filtering, detrending etc.) and model inference. Found events can be inspected and deleted, if desired. The GUI can also be used to save results to a PCSV or HDF5 file.
+
+To start the application's GUI, run the following command in a terminal or command prompt:
+```bash
+miniml-gui
+```
 
 
 ### 💡 EXAMPLE
