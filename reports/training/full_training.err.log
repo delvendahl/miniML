@@ -1,0 +1,46 @@
+Traceback (most recent call last):
+  File "/opt/miniconda3/envs/miniml-package/lib/python3.11/site-packages/jupyter_cache/executors/utils.py", line 58, in single_nb_execution
+    executenb(
+  File "/opt/miniconda3/envs/miniml-package/lib/python3.11/site-packages/nbclient/client.py", line 1323, in execute
+    return NotebookClient(nb=nb, resources=resources, km=km, **kwargs).execute()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/miniml-package/lib/python3.11/site-packages/jupyter_core/utils/__init__.py", line 165, in wrapped
+    return loop.run_until_complete(inner)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/miniml-package/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/opt/miniconda3/envs/miniml-package/lib/python3.11/site-packages/nbclient/client.py", line 709, in async_execute
+    await self.async_execute_cell(
+  File "/opt/miniconda3/envs/miniml-package/lib/python3.11/site-packages/nbclient/client.py", line 1062, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/opt/miniconda3/envs/miniml-package/lib/python3.11/site-packages/nbclient/client.py", line 918, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+import requests
+
+file_url = 'https://zenodo.org/records/14507343/files/1_GC_mepsc_train.h5'
+
+response = requests.get(file_url)
+
+if response.status_code == 200:
+    with open('../_data/GC_mEPSC_training_data.h5', 'wb') as file:
+        file.write(response.content)
+    print('Downloaded GC_mEPSC_training_data.h5')
+------------------
+
+
+[31m---------------------------------------------------------------------------[39m
+[31mFileNotFoundError[39m                         Traceback (most recent call last)
+[36mCell[39m[36m [39m[32mIn[1][39m[32m, line 8[39m
+[32m      4[39m 
+[32m      5[39m response = requests.get(file_url)
+[32m      6[39m 
+[32m      7[39m [38;5;28;01mif[39;00m response.status_code == [32m200[39m:
+[32m----> [39m[32m8[39m     [38;5;28;01mwith[39;00m open([33m'../_data/GC_mEPSC_training_data.h5'[39m, [33m'wb'[39m) [38;5;28;01mas[39;00m file:
+[32m      9[39m         file.write(response.content)
+[32m     10[39m     print([33m'Downloaded GC_mEPSC_training_data.h5'[39m)
+
+[31mFileNotFoundError[39m: [Errno 2] No such file or directory: '../_data/GC_mEPSC_training_data.h5'
+
