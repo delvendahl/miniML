@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "miniml-detect"
-version = "1.1.0"
+version = "1.1.1"
 authors = [
   { name="Philipp O'Neill", email="philipp.oneill@physiologie.uni-freiburg.de" },
   { name="Martin Baccino Calace", email="martin.baccinocalace@uzh.ch" },
@@ -30,7 +30,7 @@ dependencies = [
     "scipy==1.16.3",
     "tensorflow>=2.14.0,<2.16.0",
     "pyabf==2.3.8",
-    "pyheka==1.0.0",
+    "pyheka==1.0.1",
     "ruptures==1.1.10",
 ]
 
