@@ -44,6 +44,8 @@ class EventStats:
         Half decay times of individual events.
     halfwidths : np.ndarray
         Half-widths of individual events.
+    interevent_intervals : np.ndarray
+        Inter-event intervals of individual events.
     tau : float
         Average decay time constant.
     time : float
@@ -61,6 +63,7 @@ class EventStats:
     slopes: np.ndarray
     halfdecays: np.ndarray
     halfwidths: np.ndarray
+    interevent_intervals: np.ndarray
     tau: float
     time: float
     y_unit: str
@@ -1274,6 +1277,10 @@ class EventDetection:
                 list(range(self.event_locations.shape[0]))
             )
 
+        self.event_peak_times = self.event_peak_locations * self.trace.sampling
+        self.half_decay_times = self.half_decay * self.trace.sampling
+        self.event_start_times = self.event_start * self.trace.sampling
+
         self.avg_decay_fit = self._get_average_event_decay()
         self.event_stats = EventStats(
             amplitudes=self.event_peak_values - self.event_bsls,
@@ -1283,15 +1290,11 @@ class EventDetection:
             slopes=self.slopes,
             halfdecays=self.decaytimes,
             halfwidths=self.halfwidths,
+            interevent_intervals=np.diff(self.event_peak_times, prepend=np.nan),
             tau=self.avg_decay_fit[1],
             time=self.trace.total_time,
             y_unit=self.trace.y_unit,
         )
-
-        self.event_peak_times = self.event_peak_locations * self.trace.sampling
-        self.half_decay_times = self.half_decay * self.trace.sampling
-        self.event_start_times = self.event_start * self.trace.sampling
-        self.interevent_intervals = np.diff(self.event_peak_times, prepend=np.nan)
 
         if self.verbose:
             self.event_stats.print()
@@ -1390,7 +1393,8 @@ class EventDetection:
             )
             f.create_dataset("event_params/event_bsls", data=np.array(self.event_bsls))
             f.create_dataset(
-                "event_params/event_intervals", data=np.array(self.interevent_intervals)
+                "event_params/event_intervals",
+                data=np.array(self.event_stats.interevent_intervals),
             )
             f.create_dataset(
                 "event_statistics/amplitude_average",
@@ -1444,11 +1448,11 @@ class EventDetection:
             )
             f.create_dataset(
                 "event_statistics/iei_mean",
-                data=self.event_stats.mean(self.interevent_intervals),
+                data=self.event_stats.mean(self.event_stats.interevent_intervals),
             )
             f.create_dataset(
                 "event_statistics/iei_median",
-                data=self.event_stats.median(self.interevent_intervals),
+                data=self.event_stats.median(self.event_stats.interevent_intervals),
             )
 
             f.attrs["amplitude_unit"] = self.trace.y_unit
@@ -1504,7 +1508,7 @@ class EventDetection:
                 self.event_stats.risetimes,
                 self.event_stats.halfdecays,
                 self.event_stats.halfwidths,
-                self.interevent_intervals,
+                self.event_stats.interevent_intervals,
             )
         )
 
@@ -1519,7 +1523,7 @@ class EventDetection:
                 self.event_stats.mean(self.event_stats.halfwidths),
                 self.event_stats.tau,
                 self.event_stats.frequency,
-                self.event_stats.mean(self.interevent_intervals),
+                self.event_stats.mean(self.event_stats.interevent_intervals),
             )
         )
 
