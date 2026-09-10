@@ -48,6 +48,7 @@ Homepage = "https://github.com/delvendahl/miniML"
 Repository = "https://github.com/delvendahl/miniML"
 Issues = "https://github.com/delvendahl/miniML/issues"
 Documentation = "https://delvendahl.github.io/miniML"
+Changelog = "https://github.com/delvendahl/miniML/releases"
 Publication = "https://doi.org/10.7554/eLife.98485.3"
 
 [project.gui-scripts]
