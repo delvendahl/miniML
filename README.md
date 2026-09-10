@@ -21,6 +21,11 @@ In this repository, we provide documentation, pre-trained models, and Python cod
 
 ### 📢 RELEASES
 
+#### v.1.1.1 - 10 September 2026
+
+- upgrade pyheka dependency to v1.0.1
+- inter-event intervals are now part of EventStats
+
 #### v.1.1.0 - 04 September 2026
 
 - package installable from PyPI ("miniml-detect")
