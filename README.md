@@ -19,31 +19,6 @@ miniML is a deep-learning-based tool to detect synaptic events in 1d time-series
 In this repository, we provide documentation, pre-trained models, and Python code to run model inference on recorded data. In addition, an application example (cerebellar granule cell mEPSC recording) is included.
 
 
-### 📢 RELEASES
-
-#### v.1.1.1 - 10 September 2026
-
-- upgrade pyheka dependency to v1.0.1
-- inter-event intervals are now part of EventStats
-
-#### v.1.1.0 - 04 September 2026
-
-- package installable from PyPI ("miniml-detect")
-- major updates to GUI implementation and the code base
-- several small bug fixes
-- updated documentation
-- switch to using pyheka package for .dat file import
-
-#### v.1.0.0 - 24 July 2026
-
-- Initial release as package
-
-
-### 📈 ROADMAP
-
-Next versions of miniML will move to Keras3 and/or pyTorch backends, in order to support newer package and Python versions.
-
-
 ### 💻 INSTALLATION
 
 To use miniML, either clone the repository and install it locally, or install it directly from PyPI using pip:
@@ -122,6 +97,11 @@ The documentation includes notebooks showing how to train miniML models. You can
 [3 - Training dataset](https://www.kaggle.com/datasets/philipponeill/miniml-training-data)  
 
 The repository contains trained models for several event detection scenarios, as outlined in the associated paper. If you have trained a model that could be useful for other researchers, please consider opening a pull request or get in touch with us in order to add it to the repository.
+
+
+### 📈 ROADMAP
+
+Next versions of miniML will move to Keras3 and/or pyTorch backends, in order to support newer package and Python versions.
 
 
 ### 📝 CITATION
