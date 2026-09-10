@@ -111,13 +111,16 @@ def template_matching(data, kernel, threshold):
     # the detection criterion
     crit = s_n / (sse_n / (N - 1)) ** 0.5
 
+    # shift the criterion vector by N/2 to account for the zero padding used in convolution
+    crit = np.roll(crit, -N // 2)
+
     # threshold crossings
     pos = (
         np.where(crit < threshold)[0]
         if threshold < 0
         else np.where(crit > threshold)[0]
     )
-    indices = pos[np.where(np.diff(pos, prepend=0) > 1)[0]] - N // 2
+    indices = pos[np.where(np.diff(pos, prepend=0) > 1)[0]]
     indices = indices[np.where(indices > 0)[0]]  # Handle negative indices
 
     return TemplateMatchResult(
