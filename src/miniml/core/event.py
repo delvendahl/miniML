@@ -860,7 +860,7 @@ class EventDetection:
                 peak_index=event_peak_pos,
                 baseline=baseline.value,
                 amplitude=current_amplitude,
-                sampling_rate=self.trace.sampling_rate,
+                sampling_interval=self.trace.sampling,
             )
             self.halfwidths[ix] = halfwidth
             self.rise_half_amp_times[ix] = t_rise_half

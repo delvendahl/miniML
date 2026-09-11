@@ -633,7 +633,7 @@ def get_event_halfwidth(
     peak_index: int,
     baseline: float,
     amplitude: float,
-    sampling_rate: float,
+    sampling_interval: float,
 ) -> tuple[float, float, float]:
     """
     Measure event half-width and half-amplitude crossing times.
@@ -648,8 +648,8 @@ def get_event_halfwidth(
         Baseline value for the event.
     amplitude : float
         Peak-to-baseline amplitude.
-    sampling_rate : float
-        Sampling rate in hertz.
+    sampling_interval : float
+        Sampling interval in seconds.
 
     Returns
     -------
@@ -663,12 +663,11 @@ def get_event_halfwidth(
         peak_index < 0
         or peak_index >= len(event_data)
         or amplitude <= 0
-        or sampling_rate <= 0
+        or sampling_interval <= 0
     ):
         return np.nan, np.nan, np.nan
 
     half_amp_level = baseline + amplitude / 2.0
-    sampling_interval = 1.0 / sampling_rate
     t_rise_half = np.nan
     t_decay_half = np.nan
 
@@ -739,8 +738,12 @@ def get_event_halfwidth(
                             ) / (val2_rise - val1_rise)
 
     # Find decaying phase 50% crossing
-    # Search from peak_index to end
-    decaying_phase_data = event_data[peak_index:]
+    # Search from peak_index to end in smoothed data
+    if len(event_data) - peak_index >= 20:  # Only smooth if there are enough points
+        win = np.ones(10) / 10
+        decaying_phase_data = np.convolve(event_data[peak_index:], win, mode="same")
+    else:
+        decaying_phase_data = event_data[peak_index:]
     # Points at or above half_amp_level in the context of decaying_phase_data indices
     points_at_or_above_half_amp_decay = np.where(decaying_phase_data >= half_amp_level)[
         0

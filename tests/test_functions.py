@@ -43,7 +43,7 @@ class TestGetEventHalfwidth(unittest.TestCase):
         expected_half_width = expected_t_decay_half - expected_t_rise_half
 
         half_width, t_rise_half, t_decay_half = get_event_halfwidth(
-            event_data, peak_index, baseline, amplitude, self.sampling_rate
+            event_data, peak_index, baseline, amplitude, self.sampling_interval
         )
         self.assertAlmostEqual(
             t_rise_half,
@@ -141,7 +141,7 @@ class TestGetEventHalfwidth(unittest.TestCase):
         expected_half_width = expected_t_decay_half - expected_t_rise_half
 
         half_width, t_rise_half, t_decay_half = get_event_halfwidth(
-            event_data, peak_index, baseline, amplitude, self.sampling_rate
+            event_data, peak_index, baseline, amplitude, self.sampling_interval
         )
         self.assertAlmostEqual(t_rise_half, expected_t_rise_half, places=6)
         self.assertAlmostEqual(t_decay_half, expected_t_decay_half, places=6)
