@@ -92,8 +92,8 @@ class TestTraceLoader(unittest.TestCase):
         with self.assertRaises(ValueError):
             TraceLoader.from_heka_file("test.txt", rectype="mEPSC")
 
-    @patch("miniml.fileio.heka_reader.Bundle")
-    def test_from_heka_file_success(self, mock_bundle_class):
+    @patch("miniml.fileio.trace_loader.pyheka")
+    def test_from_heka_file_success(self, mock_pyheka):
         """Test loading from HEKA dat file with mocked Bundle contents."""
         mock_bundle = MagicMock()
         # pul has hierarchy: pul[group_index].children returns Series list
@@ -128,7 +128,8 @@ class TestTraceLoader(unittest.TestCase):
         mock_bundle.data = MagicMock()
         mock_bundle.data.__getitem__.return_value = np.array([1.0, 2.0, 3.0])
 
-        mock_bundle_class.return_value = mock_bundle
+        # mock_bundle_class.return_value = mock_bundle
+        mock_pyheka.Bundle.return_value = mock_bundle
 
         # Test loading
         trace = TraceLoader.from_heka_file(
@@ -144,12 +145,12 @@ class TestTraceLoader(unittest.TestCase):
         self.assertAlmostEqual(trace.sampling, 0.0001)
         np.testing.assert_allclose(trace.data, np.array([1e12, 2e12, 3e12]))
 
-    @patch("miniml.fileio.heka_reader.Bundle")
-    def test_from_heka_file_group_out_of_range(self, mock_bundle_class):
+    @patch("miniml.fileio.trace_loader.pyheka")
+    def test_from_heka_file_group_out_of_range(self, mock_pyheka):
         """Test that from_heka_file raises IndexError for out-of-range group."""
         mock_bundle = MagicMock()
         mock_bundle.pul.children = []  # No groups
-        mock_bundle_class.return_value = mock_bundle
+        mock_pyheka.return_value = mock_bundle
 
         with self.assertRaises(IndexError):
             TraceLoader.from_heka_file("test.dat", rectype="mEPSC", group=1)
