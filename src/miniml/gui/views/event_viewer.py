@@ -266,7 +266,7 @@ class EventViewer(QDialog):
                 "",
             ),
             (
-                f"{self.detection.interevent_intervals[self.ind]:.5f}",
+                f"{self.detection.event_stats.interevent_intervals[self.ind]:.5f}",
                 "s",
             ),
         ]

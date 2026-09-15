@@ -1344,9 +1344,12 @@ class EventDetection:
 
         self.deleted_events += len(event_indices)
 
-        if eval:
+        if eval and len(self.event_locations) > 0:
             self._get_singular_event_indices()
             self._eval_events()
+        elif eval and len(self.event_locations) == 0:  # all events deleted
+            del self.event_stats
+            del self.avg_decay_fit
 
     def save_to_h5(self, filename: str, include_prediction: bool = False) -> None:
         """

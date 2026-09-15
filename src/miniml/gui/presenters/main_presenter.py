@@ -410,7 +410,7 @@ class MainWindowPresenter(QObject):
             use_for_avg=result.use_for_avg,
         )
 
-        if not result.has_average_events:
+        if not result.has_average_events and result.has_remaining_events:
             self.showWarning.emit(
                 "All events excluded for average. At least one has to remain, using all detected events instead!"
             )
@@ -425,9 +425,12 @@ class MainWindowPresenter(QObject):
             )
             return
 
+        self.requestMainPlotUpdate.emit()
+        self.requestRefreshAnalysisViews.emit()
         self.state.apply_event_selection(
             exclude_events=self.state.exclude_events,
             use_for_avg=self.state.use_for_avg,
             num_events=0,
         )
+        self.requestClearAnalysisViews.emit()
         self.showWarning.emit("All detected events were deleted.")
