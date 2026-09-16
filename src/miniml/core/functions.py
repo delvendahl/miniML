@@ -72,15 +72,15 @@ class HalfwidthResult:
     ----------
     halfwidth : float
         Duration of the halfwidth window.
-    start_position : int
-        Position of the rising edge of the halfwidth window.
-    ennd_position : int
-        Position of the decaying edge of the halfwidth window.
+    start_position : float
+        Position of the rising edge of the halfwidth window. Can be interpolated between samples.
+    ennd_position : float
+        Position of the decaying edge of the halfwidth window. Can be interpolated between samples.
     """
 
     halfwidth: float
-    start_position: int
-    end_position: int
+    start_position: float
+    end_position: float
 
 
 def get_event_peak(
@@ -700,7 +700,7 @@ def get_event_halfwidth(
     amplitude: float,
     event_num: int,
     event_positions: np.ndarray | list[int] | list[float] = None,
-) -> tuple[float, int, int]:
+) -> tuple[float, float, float]:
     """Measure event half-width and half-amplitude crossing times."""
 
     if peak_index < 0 or peak_index >= len(event_data) or amplitude <= 0:
@@ -742,4 +742,4 @@ def get_event_halfwidth(
     if half_width < 0:
         return HalfwidthResult(np.nan, np.nan, np.nan)
 
-    return HalfwidthResult(half_width, int(t_rise_half), int(np.ceil(t_decay_half)))
+    return HalfwidthResult(half_width, t_rise_half, t_decay_half)

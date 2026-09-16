@@ -860,7 +860,6 @@ class EventDetection:
                 peak_index=event_peak_pos,
                 baseline=baseline.value,
                 amplitude=current_amplitude,
-                sampling_interval=self.trace.sampling,
                 event_num=ix,
                 event_positions=positions,
             )
