@@ -855,16 +855,20 @@ class EventDetection:
             ):  # event_peak_values and bsls are already inverted for negative events later, so use original direction for amplitude calc with data
                 current_amplitude = abs(data[event_peak_pos] - baseline.value)
 
-            halfwidth, t_rise_half, t_decay_half = get_event_halfwidth(
+            halfwidth = get_event_halfwidth(
                 event_data=data,
                 peak_index=event_peak_pos,
                 baseline=baseline.value,
                 amplitude=current_amplitude,
                 sampling_interval=self.trace.sampling,
+                event_num=ix,
+                event_positions=positions,
             )
-            self.halfwidths[ix] = halfwidth
-            self.rise_half_amp_times[ix] = t_rise_half
-            self.decay_half_amp_times[ix] = t_decay_half
+            self.halfwidths[ix] = halfwidth.halfwidth
+            self.rise_half_amp_times[ix] = (
+                halfwidth.start_position * self.trace.sampling
+            )
+            self.decay_half_amp_times[ix] = halfwidth.end_position * self.trace.sampling
 
             # calculate charges
             ### For charge; multiple event check done outside function.
