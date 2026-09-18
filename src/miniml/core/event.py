@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 import h5py
@@ -1485,6 +1487,130 @@ class EventDetection:
             if include_prediction:
                 f.create_dataset("prediction", data=self.prediction)
         print(f"Events saved to {filename}")
+
+    def save_minis(self, filename: str) -> None:
+        """
+        Save trace data, prediction/detection, and event locations to a .minis HDF5 file.
+
+        Parameters
+        ----------
+        filename : str
+            Destination filename. The ``.minis`` extension is appended if missing.
+        """
+        if not filename.endswith(".minis"):
+            filename += ".minis"
+
+        with h5py.File(filename, "w") as f:
+            f.create_dataset(
+                "data",
+                data=np.asarray(self.trace.data, dtype=np.float32),
+                compression="gzip",
+            )
+            f.create_dataset(
+                "detection",
+                data=np.asarray(self.prediction, dtype=np.float16),
+                compression="gzip",
+            )
+            f.create_dataset(
+                "event_locations",
+                data=np.asarray(self.event_locations, dtype=np.int64),
+                compression="gzip",
+            )
+
+            # Save trace metadata and detection configuration as dataset/file attributes
+            f.attrs["sampling_interval"] = self.trace.sampling
+            f.attrs["y_unit"] = self.trace.y_unit
+            f.attrs["source_filename"] = self.trace.filename
+            f.attrs["window_size"] = self.window_size
+            f.attrs["event_direction"] = self.event_direction
+            f.attrs["training_direction"] = self.training_direction
+            f.attrs["model_threshold"] = self.model_threshold
+
+        if self.verbose:
+            print(f"Detection saved to {filename}")
+
+    def save(self, filename: str) -> None:
+        """
+        Save detection to a .minis HDF5 file (alias for save_minis).
+
+        Parameters
+        ----------
+        filename : str
+            Destination filename.
+        """
+        self.save_minis(filename)
+
+    @classmethod
+    def load_minis(cls, filename: str) -> EventDetection:
+        """
+        Load an EventDetection instance from a .minis HDF5 file.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the .minis file.
+
+        Returns
+        -------
+        EventDetection
+            Reconstructed EventDetection instance with trace data, detection trace,
+            and event locations restored.
+        """
+        if not filename.endswith(".minis"):
+            filename += ".minis"
+
+        with h5py.File(filename, "r") as f:
+            data = f["data"][:].astype(np.float64)
+            detection = f["detection"][:].astype(np.float32)
+            event_locations = f["event_locations"][:].astype(np.int64)
+
+            sampling_interval = f.attrs.get("sampling_interval", 1.0)
+            y_unit = f.attrs.get("y_unit", "")
+            source_filename = f.attrs.get("source_filename", "")
+            window_size = int(f.attrs.get("window_size", 600))
+            event_direction_val = f.attrs.get("event_direction", -1)
+            event_direction = "negative" if event_direction_val == -1 else "positive"
+            training_direction_val = f.attrs.get("training_direction", -1)
+            training_direction = (
+                "negative" if training_direction_val == -1 else "positive"
+            )
+            model_threshold = float(f.attrs.get("model_threshold", 0.5))
+
+        trace = MiniTrace(
+            data=data,
+            sampling_interval=sampling_interval,
+            y_unit=y_unit,
+            filename=source_filename,
+        )
+
+        detector = cls(
+            data=trace,
+            window_size=window_size,
+            event_direction=event_direction,
+            training_direction=training_direction,
+            model_threshold=model_threshold,
+        )
+        detector.prediction = detection
+        detector.event_locations = event_locations
+
+        return detector
+
+    @classmethod
+    def load(cls, filename: str) -> EventDetection:
+        """
+        Load an EventDetection instance from a .minis HDF5 file (alias for load_minis).
+
+        Parameters
+        ----------
+        filename : str
+            Path to the .minis file.
+
+        Returns
+        -------
+        EventDetection
+            Reconstructed EventDetection instance.
+        """
+        return cls.load_minis(filename)
 
     def save_to_csv(self, filename: str = "") -> None:
         """
