@@ -144,6 +144,8 @@ class ResultsService:
             detection.save_to_csv(filename=filename)
         elif selected_filter == "HDF (*.h5 *.hdf *.hdf5)":
             detection.save_to_h5(filename=filename)
+        elif selected_filter == "MINIS (*.minis)":
+            detection.save_minis(filename=filename)
 
 
 @dataclass

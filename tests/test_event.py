@@ -322,6 +322,78 @@ class TestEventDetection(unittest.TestCase):
             self.assertTrue(os.path.exists(f"{csv_stem}_individual.csv"))
             self.assertTrue(os.path.exists(f"{csv_stem}_avgs.csv"))
 
+    def test_minis_save_and_load(self):
+        """Test save_minis and load_minis functionality."""
+        data_len = 1000
+        trace_data = np.random.randn(data_len).astype(np.float64)
+        pred_data = np.random.rand(data_len).astype(np.float32)
+        event_locs = np.array([100, 300, 500], dtype=np.int64)
+
+        trace = MiniTrace(
+            data=trace_data,
+            sampling_interval=0.0001,
+            y_unit="pA",
+            filename="test_minis_trace.abf",
+        )
+        detector = EventDetection(
+            data=trace,
+            window_size=600,
+            event_direction="negative",
+            training_direction="negative",
+            model_threshold=0.6,
+            verbose=0,
+        )
+        detector.prediction = pred_data
+        detector.event_locations = event_locs
+
+        with tempfile.NamedTemporaryFile(suffix=".minis", delete=False) as f:
+            minis_path = f.name
+
+        try:
+            detector.save_minis(minis_path)
+            self.assertTrue(os.path.exists(minis_path))
+
+            # Inspect HDF5 datasets directly to verify compression and dtypes
+            with h5py.File(minis_path, "r") as f_h5:
+                self.assertEqual(f_h5["data"].dtype, np.float32)
+                self.assertEqual(f_h5["detection"].dtype, np.float16)
+                self.assertEqual(f_h5["event_locations"].dtype, np.int64)
+                self.assertEqual(f_h5["data"].compression, "gzip")
+                self.assertEqual(f_h5["detection"].compression, "gzip")
+                self.assertEqual(f_h5["event_locations"].compression, "gzip")
+
+            # Load back using classmethod
+            loaded_detector = EventDetection.load_minis(minis_path)
+
+            self.assertEqual(loaded_detector.trace.sampling, 0.0001)
+            self.assertEqual(loaded_detector.trace.y_unit, "pA")
+            self.assertEqual(loaded_detector.trace.filename, "test_minis_trace.abf")
+            self.assertEqual(loaded_detector.window_size, 600)
+            self.assertEqual(loaded_detector.event_direction, -1)
+            self.assertEqual(loaded_detector.training_direction, -1)
+            self.assertEqual(loaded_detector.model_threshold, 0.6)
+
+            # Check array contents (converted float32 data back to float64, float16 prediction back to float32)
+            np.testing.assert_allclose(
+                loaded_detector.trace.data, trace_data, rtol=1e-5, atol=1e-5
+            )
+            np.testing.assert_allclose(
+                loaded_detector.prediction, pred_data, rtol=1e-3, atol=1e-3
+            )
+            np.testing.assert_array_equal(
+                loaded_detector.event_locations, event_locs
+            )
+
+            # Test aliases save/load
+            detector.save(minis_path)
+            loaded_alias = EventDetection.load(minis_path)
+            np.testing.assert_array_equal(
+                loaded_alias.event_locations, event_locs
+            )
+        finally:
+            if os.path.exists(minis_path):
+                os.remove(minis_path)
+
 
 class TestEventAnalysis(unittest.TestCase):
     def test_analysis_instantiation_and_eval(self):
