@@ -1516,6 +1516,11 @@ class EventDetection:
                 data=np.asarray(self.event_locations, dtype=np.int64),
                 compression="gzip",
             )
+            f.create_dataset(
+                "event_scores",
+                data=np.asarray(self.event_scores, dtype=np.float16),
+                compression="gzip",
+            )
 
             # Save trace metadata and detection configuration as dataset/file attributes
             f.attrs["sampling_interval"] = self.trace.sampling
@@ -1592,6 +1597,9 @@ class EventDetection:
         )
         detector.prediction = detection
         detector.event_locations = event_locations
+
+        if "event_scores" in f:
+            detector.event_scores = f["event_scores"][:].astype(np.float32)
 
         return detector
 
