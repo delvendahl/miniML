@@ -701,7 +701,29 @@ def get_event_halfwidth(
     event_num: int,
     event_positions: np.ndarray | list[int] | list[float] = None,
 ) -> tuple[float, float, float]:
-    """Measure event half-width and half-amplitude crossing times."""
+    """Measure event half-width and half-amplitude crossing times.
+
+    Parameters
+    ----------
+    event_data : np.ndarray
+        Event snippet.
+    peak_index : int
+        Peak index within ``event_data``.
+    baseline : float
+        Baseline value.
+    amplitude : float
+        Peak-to-baseline amplitude.
+    event_num : int
+        Index of the event currently being processed.
+    event_positions : np.ndarray | list[int] | list[float], optional
+        Absolute event positions in the full trace. Used to truncate the event snippet if the next event overlaps the decay tail.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        Half-width and half-amplitude crossing times (in samples).
+
+    """
 
     if peak_index < 0 or peak_index >= len(event_data) or amplitude <= 0:
         return HalfwidthResult(np.nan, np.nan, np.nan)

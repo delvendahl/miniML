@@ -863,7 +863,7 @@ class EventDetection:
                 event_num=ix,
                 event_positions=positions,
             )
-            self.halfwidths[ix] = halfwidth.halfwidth
+            self.halfwidths[ix] = halfwidth.halfwidth * self.trace.sampling
             self.rise_half_amp_times[ix] = (
                 halfwidth.start_position * self.trace.sampling
             )
