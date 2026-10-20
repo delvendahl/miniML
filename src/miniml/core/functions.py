@@ -194,11 +194,12 @@ def legacy_get_event_baseline(
         bsl_start = max(0, bsl_end - bsl_duration)
 
     if np.mean(data[bsl_start:bsl_end]) >= data[peak_positions[event_num]]:
-        min_position = np.argmin(data[int(add_points / 2) : add_points]) + int(
-            add_points / 2
-        )
+        if "min_position" not in locals():
+            min_position = np.argmin(data[int(add_points / 2) : add_points]) + int(
+                add_points / 2
+            )
 
-        bsl_duration = int(duration / 4)
+        bsl_duration = int(bsl_duration / 4)
         bsl_start = max(0, min_position - bsl_duration // 2)
         bsl_end = min_position + bsl_duration // 2
 
