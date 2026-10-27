@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from miniml.core.event import EventDetection
+from miniml.core.event import EventDetection, EventStats
 from miniml.core.trace import MiniTrace
 from miniml.fileio.trace_loader import TraceLoader
 from miniml.settings import Settings
@@ -215,6 +215,22 @@ class EventSelectionService:
 
         if has_remaining_events:
             detection._eval_events()
+        else:
+            # Clear event stats and set them to zero or empty arrays to avoid errors in the GUI when no events remain.
+            detection.event_stats = EventStats(
+                amplitudes=np.array([]),
+                scores=np.array([]),
+                charges=np.array([]),
+                risetimes=np.array([]),
+                slopes=np.array([]),
+                halfdecays=np.array([]),
+                halfwidths=np.array([]),
+                interevent_intervals=np.array([]),
+                tau=np.nan,
+                time=detection.trace.total_time,
+                y_unit=detection.trace.y_unit,
+            )
+            detection.singular_event_indices = np.array([], dtype=int)
 
         return EventSelectionResult(
             exclude_events=exclude_events,

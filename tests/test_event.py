@@ -20,6 +20,7 @@ class TestEventStats(unittest.TestCase):
         slopes = np.array([5.0, 6.0, 7.0])
         decaytimes = np.array([0.003, 0.004, 0.005])
         halfwidths = np.array([0.002, 0.0025, 0.003])
+        interevent_intervals = np.array([0.2, 0.3, 0.4])
         tau = 0.004
         time = 10.0
         unit = "pA"
@@ -30,11 +31,12 @@ class TestEventStats(unittest.TestCase):
             charges=charges,
             risetimes=risetimes,
             slopes=slopes,
-            decaytimes=decaytimes,
+            halfdecays=decaytimes,
             halfwidths=halfwidths,
+            interevent_intervals=interevent_intervals,
             tau=tau,
             time=time,
-            unit=unit,
+            y_unit=unit,
         )
 
         self.assertEqual(stats.event_count, 3)
@@ -44,7 +46,7 @@ class TestEventStats(unittest.TestCase):
         self.assertAlmostEqual(
             stats.cv(stats.amplitudes), np.std(amplitudes, ddof=1) / 12.0
         )
-        self.assertAlmostEqual(stats.frequency(), 0.3)
+        self.assertAlmostEqual(stats.frequency, 0.3)
 
     def test_stats_with_nan(self):
         """Test EventStats methods when NaN or empty arrays are passed."""
@@ -54,11 +56,12 @@ class TestEventStats(unittest.TestCase):
             charges=np.array([]),
             risetimes=np.array([]),
             slopes=np.array([]),
-            decaytimes=np.array([]),
+            halfdecays=np.array([]),
             halfwidths=np.array([]),
+            interevent_intervals=np.array([]),
             tau=np.nan,
             time=10.0,
-            unit="pA",
+            y_unit="pA",
         )
         self.assertTrue(np.isnan(stats.mean(stats.amplitudes)))
         self.assertTrue(np.isnan(stats.median(stats.amplitudes)))
@@ -72,11 +75,12 @@ class TestEventStats(unittest.TestCase):
             charges=np.array([]),
             risetimes=np.array([]),
             slopes=np.array([]),
-            decaytimes=np.array([]),
+            halfdecays=np.array([]),
             halfwidths=np.array([]),
+            interevent_intervals=np.array([]),
             tau=np.nan,
             time=10.0,
-            unit="pA",
+            y_unit="pA",
         )
         self.assertTrue(np.isnan(stats_zero.cv(stats_zero.amplitudes)))
 
@@ -88,11 +92,12 @@ class TestEventStats(unittest.TestCase):
             charges=np.array([2.0]),
             risetimes=np.array([0.001]),
             slopes=np.array([5.0]),
-            decaytimes=np.array([0.003]),
+            halfdecays=np.array([0.003]),
             halfwidths=np.array([0.002]),
+            interevent_intervals=np.array([0.4]),
             tau=0.004,
             time=10.0,
-            unit="pA",
+            y_unit="pA",
         )
         with patch("builtins.print") as mock_print:
             stats.print()
@@ -265,7 +270,6 @@ class TestEventDetection(unittest.TestCase):
         self.detector.half_decay_times = np.array([0.21, 0.31])
         self.detector.event_start = np.array([2000, 3000])
         self.detector.event_start_times = np.array([0.2, 0.3])
-        self.detector.interevent_intervals = np.array([np.nan, 0.1])
         self.detector.event_bsls = np.array([0.0, 0.0])
         self.detector.prediction = np.zeros(220)
         self.detector.stride_length = 20
@@ -285,11 +289,12 @@ class TestEventDetection(unittest.TestCase):
             charges=np.array([2.0, 2.5]),
             risetimes=np.array([0.001, 0.0012]),
             slopes=np.array([5.0, 6.0]),
-            decaytimes=np.array([0.003, 0.0035]),
+            halfdecays=np.array([0.003, 0.0035]),
             halfwidths=np.array([0.002, 0.0022]),
+            interevent_intervals=np.array([0.2, 0.3]),
             tau=0.004,
             time=self.trace.total_time,
-            unit="pA",
+            y_unit="pA",
         )
         self.detector.singular_event_indices = np.array([0, 1])
 

@@ -20,13 +20,14 @@ class AnalysisPlotPresenter:
         """Render detected events, amplitude histogram, and average waveform."""
         event_plot.clear()
         event_plot.setTitle("Detected events")
-        time_data = (
-            np.arange(0, detection.events[0].shape[0]) * detection.trace.sampling
-        )
-        for event in detection.events:
-            event_plot.plot(
-                time_data, event, pen=pg.mkPen(color=settings.colors[3], width=1)
+        if len(detection.events):
+            time_data = (
+                np.arange(0, detection.events[0].shape[0]) * detection.trace.sampling
             )
+            for event in detection.events:
+                event_plot.plot(
+                    time_data, event, pen=pg.mkPen(color=settings.colors[3], width=1)
+                )
         event_plot.setLabel("bottom", "Time", "s")
         event_plot.setLabel("left", "Amplitude", detection.trace.y_unit)
 
@@ -40,16 +41,20 @@ class AnalysisPlotPresenter:
         histogram_plot.setLabel("bottom", "Amplitude", detection.trace.y_unit)
         histogram_plot.setLabel("left", "Count", "")
 
-        ev_average = (
-            np.mean(detection.events[detection.singular_event_indices], axis=0)
-            if len(detection.singular_event_indices) > 0
-            else np.zeros(detection.events[0].shape[0])
-        )
         average_plot.clear()
         average_plot.setTitle("Average event waveform")
-        average_plot.plot(
-            time_data, ev_average, pen=pg.mkPen(color=settings.colors[2], width=2)
-        )
+        if len(detection.events):
+            time_data = (
+                np.arange(0, detection.events[0].shape[0]) * detection.trace.sampling
+            )
+            ev_average = (
+                np.mean(detection.events[detection.singular_event_indices], axis=0)
+                if len(detection.singular_event_indices) > 0
+                else np.zeros(detection.events[0].shape[0])
+            )
+            average_plot.plot(
+                time_data, ev_average, pen=pg.mkPen(color=settings.colors[2], width=2)
+            )
         average_plot.setLabel("bottom", "Time", "s")
         average_plot.setLabel("left", "Amplitude", detection.trace.y_unit)
 
