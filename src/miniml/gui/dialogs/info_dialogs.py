@@ -118,7 +118,7 @@ class AboutPanel(QDialog):
         Build and populate the about panel layout.
         """
         super().__init__(parent)
-        package_meta = get_package_metadata("miniml")
+        package_meta = get_package_metadata("miniml-detect")
 
         layout = QFormLayout(self)
 
