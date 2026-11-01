@@ -460,8 +460,8 @@ class EventDetection:
             shuffle=False,
         )
 
-        ds = ds.map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.batch(self.batch_size, num_parallel_calls=tf.data.AUTOTUNE)
+        ds = ds.map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE)
         ds = ds.prefetch(tf.data.AUTOTUNE)
 
         self.prediction = tf.squeeze(

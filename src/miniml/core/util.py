@@ -35,8 +35,7 @@ def exp_fit(x: FloatArray, amp: float, tau: float, offset: float) -> FloatArray:
     return amp * np.exp(-(x - x[0]) / tau) + offset
 
 
-@tf.function
-def minmax_scaling(x: tf.Tensor) -> tf.Tensor:
+def minmax_scaling(x):
     """
     Apply min-max normalization to a tensor.
 
@@ -50,13 +49,10 @@ def minmax_scaling(x: tf.Tensor) -> tf.Tensor:
     tf.Tensor
         Tensor rescaled to the ``[0, 1]`` range using its minimum and maximum.
     """
-    x_min = tf.expand_dims(tf.math.reduce_min(x), axis=-1)
-    x_max = tf.expand_dims(tf.math.reduce_max(x), axis=-1)
-
-    if tf.math.equal(x_max, x_min):
-        return tf.zeros_like(x)
-
-    return tf.math.divide(tf.math.subtract(x, x_min), tf.math.subtract(x_max, x_min))
+    x_min = tf.reduce_min(x, axis=1, keepdims=True)
+    x_max = tf.reduce_max(x, axis=1, keepdims=True)
+    denom = tf.where(x_max == x_min, tf.ones_like(x_max), x_max - x_min)
+    return (x - x_min) / denom
 
 
 def mEPSC_template(
