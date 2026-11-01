@@ -541,61 +541,36 @@ def get_event_risetime(
     if min_percentage > max_percentage or min_percentage <= 0 or max_percentage >= 100:
         raise ValueError("Invalid risetime parameters.")
 
-    amplitude = data[-1] - baseline if not amplitude else amplitude
+    if amplitude is None:
+        amplitude = data[-1] - baseline
 
-    target_sampling_rate = 200_000  # Hz
-    target_sampling = 1 / target_sampling_rate
-    current_sampling = 1 / sampling_rate
+    dt = 1.0 / sampling_rate
+    min_level = baseline + amplitude * min_percentage / 100
+    max_level = baseline + amplitude * max_percentage / 100
 
-    time_ax_original = np.arange(0, data.shape[0]) * current_sampling
-    resampled_time_ax = np.arange(
-        0, time_ax_original[-1] + target_sampling, target_sampling
-    )
+    def crossing_time(level: float) -> tuple[float, float]:
+        """Time (s) and value of the last below-threshold -> above crossing."""
+        below = data < level
+        i = data.size - 1 - int(np.argmax(below[::-1]))  # last sample below level
+        if i >= data.size - 1:
+            return (data.size - 1) * dt, data[-1]
+        # sub-sample linear interpolation between sample i and i+1
+        frac = (level - data[i]) / (data[i + 1] - data[i])
+        return (i + frac) * dt, level
 
-    rise_data = np.interp(resampled_time_ax, time_ax_original, data)
+    start_time, start_value = crossing_time(min_level)
+    end_time, end_value = crossing_time(max_level)
 
-    min_level = baseline + (amplitude * min_percentage / 100)
-    max_level = baseline + (amplitude * max_percentage / 100)
-    rise_min_threshold = rise_data[::-1] < min_level
-    rise_max_threshold = rise_data[::-1] < max_level
-    # This should always be possible... If this breaks, take check in again.
-    # try:
-    # rise_min_level_crossing = np.argmax(rise_min_threshold)
-    # rise_max_level_crossing = np.argmax(rise_max_threshold)
-    # min_position_rise = rise_data.shape[0] - rise_min_level_crossing
-    # max_position_rise = rise_data.shape[0] - rise_max_level_crossing
-    # except ValueError:
-    #     min_position_rise = 0 # bsl_start_position
-    #     max_position_rise = rise_data.shape[0] - 1 # peak_position
-    rise_min_level_crossing = int(np.argmax(rise_min_threshold))
-    rise_max_level_crossing = int(np.argmax(rise_max_threshold))
-    min_position_rise = rise_data.shape[0] - rise_min_level_crossing
-    max_position_rise = rise_data.shape[0] - rise_max_level_crossing
-    if (
-        max_position_rise <= min_position_rise
-        or min_position_rise == 0
-        or max_position_rise >= rise_data.shape[0] - 1
-    ):
-        min_position_rise = 0
-        max_position_rise = rise_data.shape[0] - 1
-        risetime = (max_position_rise - min_position_rise) * 0.8
-    else:
-        risetime = max_position_rise - min_position_rise
-
-    risetime *= 1 / target_sampling_rate
-
-    min_value_rise = rise_data[min_position_rise]
-    min_position_rise *= 1 / target_sampling_rate
-
-    max_value_rise = rise_data[max_position_rise]
-    max_position_rise *= 1 / target_sampling_rate
+    duration = end_time - start_time
+    if duration <= 0:
+        duration = np.nan
 
     return RisetimeResult(
-        duration=risetime,
-        start_time=min_position_rise,
-        start_value=min_value_rise,
-        end_time=max_position_rise,
-        end_value=max_value_rise,
+        duration=duration,
+        start_time=start_time,
+        start_value=start_value,
+        end_time=end_time,
+        end_value=end_value,
         percentage=(min_percentage, max_percentage),
     )
 
