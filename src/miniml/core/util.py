@@ -52,6 +52,7 @@ def minmax_scaling(x):
     x_min = tf.reduce_min(x, axis=1, keepdims=True)
     x_max = tf.reduce_max(x, axis=1, keepdims=True)
     denom = tf.where(x_max == x_min, tf.ones_like(x_max), x_max - x_min)
+
     return (x - x_min) / denom
 
 
