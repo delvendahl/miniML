@@ -13,6 +13,7 @@ In the following, we provide example code for the analysis of multiple recording
 ```python
 import tensorflow as tf
 from pathlib import Path
+from miniml import EventDetection, TraceLoader
 
 file_list = ['recording_1.dat', 'recording_2.dat', 'recording_3.dat']
 raw_data_folder = 'data'
@@ -27,11 +28,12 @@ window_size = 600
 for filename in file_list:
     filepath = Path(folder_name) / filename
     # load data from file
-    trace = MiniTrace.from_heka_file(filename=filepath,
-                                     rectype=pgf_name,
-                                     exclude_series=None,
-                                     scaling=scaling,
-                                     unit=unit)
+    trace = TraceLoader.from_heka_file(filename=filepath,
+                                       rectype=pgf_name,
+                                       exclude_series=None,
+                                       scaling=scaling,
+                                       unit=unit,
+                                       )
 
     # create miniML detection object
     detection = EventDetection(data=trace,
@@ -40,19 +42,20 @@ for filename in file_list:
                                window_size=window_size,
                                batch_size=512,
                                event_direction='negative',
-                               verbose=0)
+                               verbose=0,
+                               )
 
     # run analysis
     detection.detect_events(eval=True,
                             peak_w=5,
                             rel_prom_cutoff=0.25,
-                            convolve_win=20,
-                            gradient_convolve_win=40)
+                            convolve_win=15,
+                            gradient_convolve_win=40,
+                            )
     
     # Save results to file
-    detection.save_to_pickle(filename=f'results_folder/{filepath.stem}.pickle', 
-                             include_prediction=False, 
-                             include_data=False)
+    detection.save_to_h5(filename=f'results_folder/{filepath.stem}.h5', 
+                         include_prediction=False)
 ```
 
 Of course, you can also collect the results of the analysis in a custom object and use them for further analysis and/or saving to file. In the following example, we collect the results of the analysis in a pandas dataframe.
