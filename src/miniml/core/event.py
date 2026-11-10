@@ -456,17 +456,15 @@ class EventDetection:
             targets=None,
             sequence_length=win_size,
             sequence_stride=stride,
-            batch_size=None,
+            batch_size=self.batch_size,
             shuffle=False,
         )
 
-        ds = (
-            ds.batch(self.batch_size, num_parallel_calls=tf.data.AUTOTUNE)
-            .map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE)
-            .prefetch(tf.data.AUTOTUNE)
+        ds = ds.map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE).prefetch(
+            tf.data.AUTOTUNE
         )
 
-        self.prediction = tf.squeeze(
+        self.prediction = np.squeeze(
             self.model.predict(ds, verbose=self.verbose, callbacks=self.callbacks)
         )
 
