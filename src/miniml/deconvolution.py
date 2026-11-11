@@ -31,7 +31,10 @@ class DeconvolutionResult(NamedTuple):
 
 
 def make_template(
-    t_rise=0.0005, t_decay=0.001, duration=0.005, sampling=2e-5
+    t_rise: float = 0.0005,
+    t_decay: float = 0.001,
+    duration: float = 0.005,
+    sampling: float = 2e-5,
 ) -> np.ndarray:
     """
     Creates a normalized template for deconvolution.
