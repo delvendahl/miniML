@@ -1,6 +1,5 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import NamedTuple
 
 import numpy as np
 import ruptures as rpt
