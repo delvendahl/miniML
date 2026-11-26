@@ -437,9 +437,12 @@ class EventDetection:
             If the derived stride is invalid.
         """
         # resample values for prediction:
-        data = signal.resample(
-            self.trace.data, round(len(self.trace.data) * self.resampling_factor)
-        )
+        if self.resampling_factor == 1:
+            data = self.trace.data
+        else:
+            data = signal.resample(
+                self.trace.data, round(len(self.trace.data) * self.resampling_factor)
+            )
 
         # invert the trace if event_direction and training_direction are different.
         if self.event_direction != self.training_direction:
