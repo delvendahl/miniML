@@ -19,18 +19,43 @@ class TestUtils(unittest.TestCase):
         np.testing.assert_allclose(res, expected)
 
     def test_minmax_scaling_tensor(self):
-        """Test min-max normalization on a TensorFlow tensor."""
-        x = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0], dtype=tf.float32)
-        expected = tf.constant([0.0, 0.25, 0.5, 0.75, 1.0], dtype=tf.float32)
+        """Test min-max normalization, per window, on a batched tensor."""
+        x = tf.constant(
+            [[[1.0], [2.0], [3.0], [4.0], [5.0]]], dtype=tf.float32
+        )  # (1, 5, 1)
+        expected = tf.constant(
+            [[[0.0], [0.25], [0.5], [0.75], [1.0]]], dtype=tf.float32
+        )
         res = minmax_scaling(x)
         np.testing.assert_allclose(res.numpy(), expected.numpy())
 
     def test_minmax_scaling_flat_tensor(self):
-        """Test minmax_scaling when max == min."""
-        x = tf.constant([2.0, 2.0, 2.0], dtype=tf.float32)
-        expected = tf.constant([0.0, 0.0, 0.0], dtype=tf.float32)
+        """Test minmax_scaling when all values in a window are equal."""
+        x = tf.constant([[[2.0], [2.0], [2.0]]], dtype=tf.float32)  # (1, 3, 1)
+        expected = tf.zeros_like(x)
         res = minmax_scaling(x)
         np.testing.assert_allclose(res.numpy(), expected.numpy())
+
+    def test_minmax_scaling_per_window(self):
+        """Each window is normalized independently, not against the batch."""
+        x = tf.constant(
+            [
+                [[1.0], [2.0], [3.0]],  # window 1: range 1–3
+                [[10.0], [20.0], [30.0]],  # window 2: range 10–30
+            ],
+            dtype=tf.float32,
+        )  # (2, 3, 1)
+        expected = tf.constant(
+            [
+                [[0.0], [0.5], [1.0]],
+                [[0.0], [0.5], [1.0]],
+            ],
+            dtype=tf.float32,
+        )
+        res = minmax_scaling(x)
+        np.testing.assert_allclose(res.numpy(), expected.numpy())
+        # A batch-wide normalization would have produced very different
+        # values for window 2 (e.g. ~0.32–1.0 against the global range 1–30).
 
     def test_mEPSC_template(self):
         """Test mEPSC_template waveform generation."""

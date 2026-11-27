@@ -437,9 +437,12 @@ class EventDetection:
             If the derived stride is invalid.
         """
         # resample values for prediction:
-        data = signal.resample(
-            self.trace.data, round(len(self.trace.data) * self.resampling_factor)
-        )
+        if self.resampling_factor == 1:
+            data = self.trace.data
+        else:
+            data = signal.resample(
+                self.trace.data, round(len(self.trace.data) * self.resampling_factor)
+            )
 
         # invert the trace if event_direction and training_direction are different.
         if self.event_direction != self.training_direction:
@@ -456,15 +459,15 @@ class EventDetection:
             targets=None,
             sequence_length=win_size,
             sequence_stride=stride,
-            batch_size=None,
+            batch_size=self.batch_size,
             shuffle=False,
         )
 
-        ds = ds.map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE)
-        ds = ds.batch(self.batch_size, num_parallel_calls=tf.data.AUTOTUNE)
-        ds = ds.prefetch(tf.data.AUTOTUNE)
+        ds = ds.map(minmax_scaling, num_parallel_calls=tf.data.AUTOTUNE).prefetch(
+            tf.data.AUTOTUNE
+        )
 
-        self.prediction = tf.squeeze(
+        self.prediction = np.squeeze(
             self.model.predict(ds, verbose=self.verbose, callbacks=self.callbacks)
         )
 

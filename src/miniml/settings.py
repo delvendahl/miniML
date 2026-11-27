@@ -43,7 +43,7 @@ class Settings:
         event_threshold: float = 0.5,
         minimum_peak_width: int = 5,
         direction: str = "negative",
-        batch_size: int = 512,
+        batch_size: int = 2048,
         filter_factor: float = 20,
         gradient_convolve_win: int = 25,
         relative_prominence: float = 0.25,

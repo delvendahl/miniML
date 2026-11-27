@@ -30,7 +30,7 @@ Transfer learning model for mEPSC detection in Drosophila NMJ two-electrode volt
 
 ### 5. iGluSnFR optical minis model
 
-Transfer learning model for mEPSC detection in optical mini recordings using *iGluSnFR*. Training data was generated using data from [Agarwal et al.](https://doi.org/10.1038/s41592-023-01863-6).
+Transfer learning model for mEPSC detection in optical mini recordings using *iGluSnFR*. Training data was generated using data from [Aggarwal et al.](https://doi.org/10.1038/s41592-023-01863-6).
 
 ```{seealso}
 Associated training datasets can be found on [Zenodo](https://doi.org/10.5281/zenodo.14507343).
